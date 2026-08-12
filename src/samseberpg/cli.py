@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import argparse
+import os
 from pathlib import Path
 
 from .db import GameDatabase
 from .game import GameService
+from .llm_parser import OllamaActionParser, OllamaParserError, build_parser_context
 from .parser import parse_command
 
 
@@ -31,20 +33,53 @@ def _print_state(db: GameDatabase, player_id: str = "player_1") -> None:
     print("Инвентарь: " + (", ".join(inventory) if inventory else "пуст"))
 
 
+def resolve_player_input(
+    text: str,
+    db: GameDatabase,
+    ollama_parser: OllamaActionParser | None = None,
+    player_id: str = "player_1",
+):
+    action = parse_command(text, player_id=player_id)
+    if action is not None or ollama_parser is None:
+        return action
+    context = build_parser_context(db, player_id)
+    return ollama_parser.parse(text, context, player_id=player_id)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Sam-Sebe-RPG Pilot v0.1")
     parser.add_argument("--db", default="game.db", help="Путь к SQLite-файлу мира")
     parser.add_argument("--seed", type=int, default=1, help="Seed детерминированного RNG")
+    parser.add_argument(
+        "--ollama-model",
+        default=os.environ.get("SAM_SEBE_OLLAMA_MODEL"),
+        help="Опциональная локальная Ollama-модель для свободного ввода",
+    )
+    parser.add_argument(
+        "--ollama-url",
+        default=os.environ.get("SAM_SEBE_OLLAMA_URL", "http://localhost:11434"),
+        help="Base URL локального Ollama",
+    )
     args = parser.parse_args(argv)
 
     db = GameDatabase(Path(args.db))
     db.initialize()
     db.bootstrap_if_empty()
     game = GameService(db, seed=args.seed)
+    ollama_parser = (
+        OllamaActionParser(model=args.ollama_model, base_url=args.ollama_url)
+        if args.ollama_model
+        else None
+    )
 
     print("Sam-Sebe-RPG Pilot v0.1")
     _print_state(db)
     print("Напиши help для списка команд.")
+    if ollama_parser is not None:
+        print(
+            f"Свободный ввод: Ollama {args.ollama_model} "
+            "(parser только предлагает CanonicalAction)."
+        )
 
     known_aimed = db.has_ability("player_1", "aimed_throw")
     while True:
@@ -62,14 +97,37 @@ def main(argv: list[str] | None = None) -> int:
             print(HELP)
             continue
 
-        action = parse_command(text)
+        try:
+            action = resolve_player_input(text, db, ollama_parser)
+        except OllamaParserError as exc:
+            print(f"Ollama parser недоступен: {exc}")
+            continue
         if action is None:
-            print("Не понял действие. Попробуй сформулировать его как одну из базовых команд.")
+            if ollama_parser is None:
+                print(
+                    "Не понял действие. Попробуй базовую команду или запусти CLI "
+                    "с --ollama-model для свободного ввода."
+                )
+            else:
+                print("Это намерение пока нельзя выразить текущим игровым языком.")
             continue
 
         result = game.execute(action)
         print(result.summary)
         if result.data:
+            if "entities" in result.data:
+                exits = result.data.get("exits", [])
+                print("Выходы: " + (", ".join(exits) if exits else "нет"))
+                entities = result.data["entities"]
+                if entities:
+                    print("Сущности:")
+                    for entity in entities:
+                        print(
+                            f"  {entity['entity_id']} — {entity['name']} "
+                            f"[{entity['entity_type']}]"
+                        )
+                else:
+                    print("Сущности: нет")
             if "hit" in result.data:
                 print(
                     f"Бросок: {'попадание' if result.data['hit'] else 'промах'}; "

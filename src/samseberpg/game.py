@@ -1,20 +1,27 @@
 from __future__ import annotations
 
+import hashlib
 import json
-import random
 import sqlite3
 from typing import Any
 
 from .db import GameDatabase
-from .domain import ActionResult, ActionType, CanonicalAction
+from .domain import ActionResult, ActionType, CanonicalAction, MechanicSpec
 from .world import LOCATION_GRAPH
-from .progression import ProgressionService
+from .progression import MechanicValidator, ProgressionService
 
 
 class GameService:
     def __init__(self, db: GameDatabase, seed: int = 0):
         self.db = db
-        self.rng = random.Random(seed)
+        with self.db.connect() as conn:
+            conn.execute(
+                "INSERT OR IGNORE INTO world_meta(key, value) VALUES ('rng_seed', ?)",
+                (str(seed),),
+            )
+            conn.execute(
+                "INSERT OR IGNORE INTO world_meta(key, value) VALUES ('rng_counter', '0')"
+            )
 
     def execute(self, action: CanonicalAction) -> ActionResult:
         with self.db.connect() as conn:
@@ -64,6 +71,7 @@ class GameService:
         data = {
             "location_id": location_id,
             "entities": [dict(row) for row in entities],
+            "exits": sorted(LOCATION_GRAPH.get(location_id, set())),
         }
         return self._record(
             conn, action, location_id, True, "OK", "Ты осматриваешься.", data=data
@@ -215,9 +223,10 @@ class GameService:
             )
 
         aimed = bool(action.modifiers.get("aimed", False))
+        accuracy_bonus = 0.0
         if aimed:
             unlocked = conn.execute(
-                "SELECT 1 FROM abilities WHERE player_id = ? AND ability_id = 'aimed_throw'",
+                "SELECT mechanic_json FROM abilities WHERE player_id = ? AND ability_id = 'aimed_throw'",
                 (action.actor_id,),
             ).fetchone()
             if unlocked is None:
@@ -229,9 +238,21 @@ class GameService:
                     "ACTION_NOT_UNLOCKED",
                     "Точный бросок ещё не освоен.",
                 )
+            mechanic = json.loads(unlocked["mechanic_json"])
+            spec = MechanicSpec(
+                primitive=mechanic.get("primitive", ""),
+                value=mechanic.get("value", 0),
+                action=mechanic.get("action"),
+                variant=mechanic.get("variant"),
+                condition=mechanic.get("condition"),
+            )
+            valid, reason = MechanicValidator().validate(spec)
+            if not valid or spec.action != "THROW" or spec.variant != "aimed":
+                raise ValueError(f"Invalid persisted aimed_throw mechanic: {reason}")
+            accuracy_bonus = float(spec.value) / 100.0
 
-        roll = self.rng.random()
-        chance = 0.55 if aimed else 0.45
+        roll = self._next_roll(conn)
+        chance = 0.45 + accuracy_bonus
         hit = roll < chance
         projectile_types = [tag for tag in tags if tag != "improvised_projectile"]
         projectile_type = projectile_types[0] if projectile_types else "unknown"
@@ -303,6 +324,25 @@ class GameService:
             f"Проходит {ticks} такт(а/ов).",
             data={"world_time": new_time},
         )
+
+    def _next_roll(self, conn: sqlite3.Connection) -> float:
+        seed_row = conn.execute(
+            "SELECT value FROM world_meta WHERE key = 'rng_seed'"
+        ).fetchone()
+        counter_row = conn.execute(
+            "SELECT value FROM world_meta WHERE key = 'rng_counter'"
+        ).fetchone()
+        if seed_row is None or counter_row is None:
+            raise RuntimeError("RNG state is not initialized")
+        seed = seed_row["value"]
+        counter = int(counter_row["value"])
+        digest = hashlib.sha256(f"{seed}:{counter}".encode("utf-8")).digest()
+        roll = int.from_bytes(digest[:8], "big") / 2**64
+        conn.execute(
+            "UPDATE world_meta SET value = ? WHERE key = 'rng_counter'",
+            (str(counter + 1),),
+        )
+        return roll
 
     def _world_time(self, conn: sqlite3.Connection) -> int:
         row = conn.execute(

@@ -98,3 +98,38 @@ def test_throw_moves_item_back_to_location_and_records_evidence(tmp_path: Path) 
     assert event["evidence"]["location_id"] == "workshop_yard"
     assert isinstance(event["evidence"]["hit"], bool)
     assert 0.0 <= event["evidence"]["accuracy_roll"] < 1.0
+
+
+def test_rng_sequence_survives_service_restart(tmp_path: Path) -> None:
+    db_a, game_a = make_game(tmp_path, "continuous.db", seed=41)
+    db_b, game_b = make_game(tmp_path, "restarted.db", seed=41)
+
+    take(game_a, "stone_flat_1")
+    first_a = game_a.execute(
+        CanonicalAction(
+            "player_1", ActionType.THROW, target_id="target_barrel", item_id="stone_flat_1"
+        )
+    )
+    take(game_a, "stone_flat_1")
+    second_a = game_a.execute(
+        CanonicalAction(
+            "player_1", ActionType.THROW, target_id="target_barrel", item_id="stone_flat_1"
+        )
+    )
+
+    take(game_b, "stone_flat_1")
+    first_b = game_b.execute(
+        CanonicalAction(
+            "player_1", ActionType.THROW, target_id="target_barrel", item_id="stone_flat_1"
+        )
+    )
+    restarted = GameService(db_b, seed=999)
+    take(restarted, "stone_flat_1")
+    second_b = restarted.execute(
+        CanonicalAction(
+            "player_1", ActionType.THROW, target_id="target_barrel", item_id="stone_flat_1"
+        )
+    )
+
+    assert first_a.data["accuracy_roll"] == first_b.data["accuracy_roll"]
+    assert second_a.data["accuracy_roll"] == second_b.data["accuracy_roll"]

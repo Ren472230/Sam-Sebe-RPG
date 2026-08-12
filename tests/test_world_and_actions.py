@@ -100,3 +100,14 @@ def test_wait_advances_world_time(tmp_path: Path) -> None:
 
     assert result.success is True
     assert db.get_world_time() == 3
+
+
+def test_look_returns_visible_entities_and_connected_exits(tmp_path: Path) -> None:
+    _db, game = make_game(tmp_path)
+
+    result = game.execute(CanonicalAction("player_1", ActionType.LOOK))
+
+    assert result.success is True
+    assert result.data["exits"] == ["village_square"]
+    entity_ids = {entity["entity_id"] for entity in result.data["entities"]}
+    assert {"mira_craftswoman", "target_barrel", "stone_flat_1"} <= entity_ids

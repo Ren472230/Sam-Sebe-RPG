@@ -113,7 +113,7 @@ def test_aimed_throw_requires_unlock_then_adds_accuracy(tmp_path: Path) -> None:
         conn.execute(
             """
             INSERT INTO abilities(player_id, ability_id, mechanic_json, unlocked_at)
-            VALUES ('player_1', 'aimed_throw', '{"primitive":"MODIFY_ACCURACY","value":10}', 0)
+            VALUES ('player_1', 'aimed_throw', '{"primitive":"MODIFY_ACCURACY","value":10,"action":"THROW","variant":"aimed"}', 0)
             """
         )
 
@@ -128,3 +128,33 @@ def test_aimed_throw_requires_unlock_then_adds_accuracy(tmp_path: Path) -> None:
     )
     assert aimed.success is True
     assert aimed.data["accuracy"] == 0.55
+
+
+def test_aimed_throw_reads_accuracy_bonus_from_persisted_mechanic(tmp_path: Path) -> None:
+    db, game = make_game(tmp_path, seed=1)
+    ensure_owned(db, game, "stone_flat_1")
+    with db.connect() as conn:
+        conn.execute(
+            """
+            INSERT INTO abilities(player_id, ability_id, mechanic_json, unlocked_at)
+            VALUES (
+                'player_1',
+                'aimed_throw',
+                '{"primitive":"MODIFY_ACCURACY","value":7,"action":"THROW","variant":"aimed"}',
+                0
+            )
+            """
+        )
+
+    aimed = game.execute(
+        CanonicalAction(
+            "player_1",
+            ActionType.THROW,
+            item_id="stone_flat_1",
+            target_id="target_barrel",
+            modifiers={"aimed": True},
+        )
+    )
+
+    assert aimed.success is True
+    assert aimed.data["accuracy"] == 0.52
