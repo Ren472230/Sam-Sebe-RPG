@@ -33,14 +33,14 @@ Implementation used RED → GREEN cycles on the feature branch through GitHub Ac
 - input-reporting contract: 2 new failures while 100 tests passed, then green;
 - founder-readiness smoke: 1 expected missing-demo failure while 110 tests passed, then green after adding the smoke implementation.
 
-## Fresh verification before this record
+## Verification
 
-At head `9f70a102a77f54738ad98672bc31188b084f817c`, GitHub Actions executed:
+The verified Audit Fix Pack A code/docs snapshot reached:
 
 ```text
-python -m pip install -e '.[dev]'  -> PASS
+python -m pip install -e '.[dev]'   -> PASS
 python -m compileall -q src scripts -> PASS
-python -m pytest -q                 -> 111 passed in 3.38s
+python -m pytest -q                 -> 111 passed
 ```
 
 The test suite includes subprocess coverage for:
@@ -50,7 +50,7 @@ The test suite includes subprocess coverage for:
 - `scripts/demo_living_world.py`;
 - `scripts/demo_founder_readiness.py`.
 
-Because this completion record itself creates a new documentation commit, CI must be rechecked on the resulting final head before reporting completion externally.
+A later documentation-only completion-record commit also ran through the same CI gate with **111 passed in 3.29s**, confirming that the branch remained green after final documentation synchronization.
 
 ## Deferred intentionally
 
