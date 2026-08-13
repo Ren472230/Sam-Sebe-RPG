@@ -29,15 +29,35 @@ def run(db_path: Path) -> None:
     db.bootstrap_if_empty()
     game = GameService(db, seed=4)
 
-    # One possible first-day route, not a prescribed quest solution.
-    for item_id in ("stone_flat_1", "stone_round_1"):
-        must(game, CanonicalAction("player_1", ActionType.TAKE, item_id=item_id))
-        must(
-            game,
-            CanonicalAction(
-                "player_1", ActionType.GIVE, target_id="mira_craftswoman", item_id=item_id
-            ),
-        )
+    # One possible money-route day. The third coin now requires leaving the starter yard
+    # and interacting with another local instead of solving lodging with two nearby stones.
+    must(game, CanonicalAction("player_1", ActionType.TAKE, item_id="stone_flat_1"))
+    must(
+        game,
+        CanonicalAction(
+            "player_1", ActionType.GIVE, target_id="mira_craftswoman", item_id="stone_flat_1"
+        ),
+    )
+
+    must(game, CanonicalAction("player_1", ActionType.MOVE, destination_id="village_square"))
+    must(game, CanonicalAction("player_1", ActionType.MOVE, destination_id="river_edge"))
+    must(game, CanonicalAction("player_1", ActionType.TAKE, item_id="pinecone_1"))
+    must(
+        game,
+        CanonicalAction(
+            "player_1", ActionType.GIVE, target_id="kaspar_forager", item_id="pinecone_1"
+        ),
+    )
+
+    must(game, CanonicalAction("player_1", ActionType.MOVE, destination_id="village_square"))
+    must(game, CanonicalAction("player_1", ActionType.MOVE, destination_id="workshop_yard"))
+    must(game, CanonicalAction("player_1", ActionType.TAKE, item_id="stone_round_1"))
+    must(
+        game,
+        CanonicalAction(
+            "player_1", ActionType.GIVE, target_id="mira_craftswoman", item_id="stone_round_1"
+        ),
+    )
 
     must(game, CanonicalAction("player_1", ActionType.MOVE, destination_id="village_square"))
     must(game, CanonicalAction("player_1", ActionType.TAKE, item_id="bread_1"))
