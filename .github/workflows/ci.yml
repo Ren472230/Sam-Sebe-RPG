@@ -1,0 +1,46 @@
+name: Pilot CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+      - name: Install test dependencies
+        run: python -m pip install -e '.[dev]'
+      - name: Compile
+        run: python -m compileall -q src scripts
+      - name: Test
+        run: python -m pytest -q
+
+  windows-launcher-smoke:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Run systems launcher through batch
+        shell: cmd
+        run: |
+          call "Играть_системный_режим.bat" < NUL > windows-smoke.log 2>&1
+          set "EXIT_CODE=%ERRORLEVEL%"
+          type windows-smoke.log
+          if not "%EXIT_CODE%"=="0" exit /b %EXIT_CODE%
+          findstr /C:"Sam-Sebe-RPG Pilot v0.1" windows-smoke.log >NUL
+          if not "%ERRORLEVEL%"=="0" exit /b 33
+          findstr /C:"Traceback" windows-smoke.log >NUL
+          if "%ERRORLEVEL%"=="0" exit /b 34
+          if not exist ".venv\Scripts\sam-sebe-rpg.exe" exit /b 31
+          if not exist "playtests\founder-systems.db" exit /b 32
+          exit /b 0
