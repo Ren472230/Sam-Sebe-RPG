@@ -1,0 +1,8 @@
+.worktrees/
+__pycache__/
+.pytest_cache/
+.venv/
+*.py[cod]
+*.db
+*.sqlite3
+.DS_Store
