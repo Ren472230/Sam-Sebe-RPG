@@ -1,66 +1,150 @@
 # Sam-Sebe-RPG — Pilot v0.1
 
-Первая маленькая игровая модель **Emergent RPG / Living World**.
+Экспериментальная маленькая модель **Emergent RPG / Living World**.
 
-Сейчас Pilot проверяет уже не только технический цикл `Behavior → Achievement → Ability`, но и более важный вопрос:
+Текущий Pilot проверяет три связанные гипотезы:
 
-> интересно ли игроку жить и экспериментировать в маленьком системном мире, если у него есть понятная жизненная ситуация, но нет класса, квестового списка и заданного маршрута?
+1. интересно ли игроку самостоятельно экспериментировать в маленьком системном мире без класса и quest checklist;
+2. создаёт ли автономная жизнь NPC ощущение, что мир занят своими делами;
+3. воспринимается ли `Behavior → Achievement → Ability` как естественная биографическая прогрессия.
 
-## Как начинается игра
+Автотесты доказывают техническое поведение. Интересность игры подтверждает только реальный founder playtest.
 
-Ты приезжаешь в маленькое поселение у брода.
+## Старт
+
+Игрок приезжает в маленькое поселение у брода:
 
 - утро;
-- денег нет;
+- 0 монет;
 - профессии нет;
-- ночлег пока не найден;
-- к вечеру можно попробовать решить вопрос с ночлегом, но игра не заставляет это делать.
+- ночлег не найден;
+- место у Орена стоит 3 монеты или может быть получено через доверие местного;
+- решать вопрос ночлега необязательно.
 
-У трактирщика Орена место стоит 3 монеты. Есть и социальный путь: если кто-то из местных достаточно тебе доверяет, можно попросить ночлег без оплаты.
-
-Это **мягкая мотивация**, а не квест. Игрок может вообще проигнорировать ночлег и заниматься тем, что ему интересно.
+Это мягкая жизненная ситуация, а не квест.
 
 ## Что уже работает
 
-- persistent-мир в SQLite;
-- 3 локации, 3 NPC, 2 ворона;
-- время суток + **Living World v0**: автономная причинная цепочка Миры и Каспара;
-- монеты и persistent-состояние ночлега;
-- `LOOK`, `MOVE`, `TAKE`, `DROP`, `TALK`, `GIVE`, `FEED`, `THROW`, `WAIT`;
-- deterministic social rules и доверие;
-- подарки с защитой от бесконечного фарма одной и той же находки;
-- кормление воронов с persistent trust;
-- последствия: попадание в вывеску трактира ухудшает отношение Орена;
-- два реальных пути к ночлегу: деньги или доверие;
-- append-only `ActionEvent` log;
-- Behavior Analyzer;
-- скрытая progression **«Рука помнит дугу» → `aimed_throw`**;
-- `MechanicValidator` с whitelist/limits;
-- deterministic parser;
-- опциональный локальный Ollama parser со structured output;
-- локальный CLI;
-- offline playtest report;
-- три demo: progression-loop, игровой «первый день» и автономный Living World.
+### Authoritative world
 
-## Главное архитектурное правило
+- persistent SQLite;
+- schema version 2 + migration pre-audit saves;
+- 3 локации, 3 NPC, 2 ворона;
+- `LOOK / MOVE / TAKE / DROP / TALK / GIVE / FEED / THROW / WAIT`;
+- deterministic persistent RNG;
+- `GameService` остаётся единственной authoritative gameplay boundary;
+- `action_events`, `world_events` и `input_attempts` разделены по назначению.
+
+### Living World v0
+
+Мира и Каспар имеют минимальную автономную причинную цепочку без LLM:
+
+```text
+Мира работает
+→ расходует wood_stock
+→ возникает нехватка
+→ просит ресурс
+→ Каспар реагирует
+→ забирает реальную driftwood_1
+→ возвращается
+→ передаёт древесину
+→ Мира снова может работать
+```
+
+Игрок и NPC используют **тот же физический предмет**. Если игрок забрал `driftwood_1` первым, Каспар не создаёт замену из воздуха.
+
+`WAIT N` обрабатывает каждый промежуточный tick. Автономные события пишутся в `world_events` и не загрязняют Behavior Engine игрока.
+
+После действия обычный интерфейс показывает только новые автономные события, которые произошли **в текущей локации игрока**. Off-screen события сохраняются в истории мира, но не выдаются игроку как omniscient debug log.
+
+### Первый день и отношения
+
+Текущий Pilot balance:
+
+```text
+Mira: flat_stone  -> +1 trust, +1 coin
+Mira: round_stone -> +1 trust, +1 coin
+Mira: useful_wood -> +1 trust, +0 coins
+Kaspar: pinecone  -> +1 trust, +1 coin
+```
+
+Повтор того же contribution tag не фармит деньги/доверие.
+
+Социальный ночлег доступен, когда Mira или Kaspar имеют trust >= 2. Поэтому два разных стартовых вклада дают социальный маршрут, но только 2 монеты — денежный путь за 3 монеты требует ещё одного взаимодействия/исследования.
+
+### Последствия очевидных действий
+
+- кормление ворона повышает его trust;
+- попадание в вывеску Орена снижает его trust;
+- успешный бросок в NPC снижает trust цели и сохраняет `hit_by_player_count`;
+- успешный бросок в ворона повышает fear, снижает trust и заставляет его улететь;
+- combat/HP при этом не добавлены.
+
+### Behavior → Achievement → Ability
+
+Первая скрытая ветка:
+
+```text
+разнообразное компетентное метание
+→ «Рука помнит дугу»
+→ aimed_throw
+```
+
+`aimed_throw` добавляет +10 процентных пунктов точности после persisted `MechanicValidator` проверки.
+
+У способности теперь есть один положительный системный use case: прицельное попадание в старую бочку во дворе мастерской может один раз выправить перекошенную деталь; Мира замечает точную работу и повышает trust. Это не квест и не новая ветка контента — только доказательство, что emergent ability способна иметь практический смысл.
+
+## Архитектурное правило LLM
 
 LLM не определяет реальность мира.
 
 ```text
-текст игрока
+raw player input
     ↓
-parser / optional Ollama
+deterministic parser / optional Ollama fallback
     ↓
 CanonicalAction proposal
     ↓
-GameService validation + deterministic rules
+GameService validation + deterministic resolution
     ↓
-SQLite authoritative state + ActionEvent
+time advance + Living World reaction
     ↓
-BehaviorAnalyzer / ProgressionService
+SQLite authoritative state
+    ↓
+action/world evidence + Behavior/Progression
 ```
 
-Даже в режиме свободного ввода Ollama не пишет в SQLite и не решает исход действия.
+Ollama никогда не пишет в SQLite и не выбирает исход действия.
+
+## Input telemetry
+
+Schema v2 добавляет `input_attempts`. Для каждой игровой фразы локально сохраняются:
+
+- raw input;
+- parser mode;
+- parser model;
+- recognition status;
+- proposed canonical action;
+- GameService result code;
+- parser error;
+- parser latency.
+
+Эта телеметрия **не влияет на игровой мир**.
+
+Human playtest report показывает только агрегаты, а не сырой текст игрока. Это позволяет измерять parser friction, включая попытки, которые вообще не дошли до `GameService`.
+
+## Action timing contract
+
+Для новых action events:
+
+- `world_time` = completion/resolved tick;
+- `started_at_tick` = начало;
+- `resolved_at_tick` = завершение;
+- `duration_ticks` = сколько tick заняло действие.
+
+`LOOK` и неуспешные действия имеют duration 0. Обычные успешные timed actions — 1. `WAIT N` — N.
+
+Pre-audit saves мигрируют в schema v2 без сброса state; старым events duration консервативно ставится 0, потому что историческую длительность нельзя восстановить надёжно.
 
 ## Быстрый запуск
 
@@ -91,224 +175,146 @@ pip install -e ".[dev]"
 Проверка:
 
 ```bash
+python -m compileall -q src scripts
 pytest -q
 ```
 
-## Играть вручную
+## Два CLI-режима
+
+### Founder — продуктовый режим
 
 ```bash
-sam-sebe-rpg --db game.db
+sam-sebe-rpg --mode founder --db playtests/founder-free.db --ollama-model <model>
 ```
 
-или:
+Это режим по умолчанию. `help` сознательно **не показывает каталог игровых механик и locked abilities**, чтобы не загрязнять `WHAT_IF` experiment подсказками интерфейса.
+
+### Systems — диагностический режим
 
 ```bash
-PYTHONPATH=src python -m samseberpg.cli --db game.db
+sam-sebe-rpg --mode systems --db playtests/founder-systems.db
 ```
 
-Начало не показывает оптимальный путь. Для systems-only режима можно использовать `help` и `осмотреться`.
+Показывает канонические команды для технической проверки. Синтаксис `aimed_throw` появляется только после реального unlock.
 
-Примеры канонических команд:
-
-```text
-осмотреться
-идти village_square
-взять stone_flat_1
-поговорить mira_craftswoman
-дать stone_flat_1 mira_craftswoman
-покормить raven_1 bread_1
-спросить oren_innkeeper о ночлеге
-оплатить ночлег
-попросить ночлег
-бросить stone_flat_1 в target_barrel
-прицельно бросить stone_flat_1 в target_barrel
-ждать 3
-```
-
-`спросить ... о ночлеге` **только узнаёт условия**. Деньги не списываются без отдельного `оплатить ночлег`. Социальный вариант тоже требует отдельного `попросить ночлег`.
+Systems mode не используется для доказательства ощущения свободного ввода.
 
 ## Свободный ввод через Ollama
 
-Для продуктового теста свободной формулировки действий:
-
 ```bash
-sam-sebe-rpg --db playtests/founder-free.db --ollama-model <локальная_модель>
+sam-sebe-rpg \
+  --mode founder \
+  --db playtests/founder-free.db \
+  --ollama-model <локальная_модель>
 ```
 
-Также можно задать:
+Также поддерживаются:
 
 ```bash
 export SAM_SEBE_OLLAMA_MODEL=<локальная_модель>
 export SAM_SEBE_OLLAMA_URL=http://localhost:11434
 ```
 
-Ollama ограничен JSON Schema и authoritative world IDs. Для разговоров о ночлеге разрешены только канонические намерения:
+Structured parser ограничен реализованными action types, canonical lodging topics и authoritative entity IDs текущего контекста.
 
-- `lodging` — узнать условия;
-- `pay_lodging` — явно заплатить;
-- `request_lodging` — явно попросить по доверию.
+Тесты с fake transport доказывают schema/validation boundary, но не качество конкретной реальной модели. Это проверяется только founder free-input session.
 
-Произвольные action/topic или выдуманные ID отбрасываются.
+## Demos
 
-## Три demo
-
-### 1. Старый технический progression-loop
+### Progression
 
 ```bash
 python scripts/demo_pilot.py
 ```
 
-Проверяет полный цикл:
+Доказывает технический `behavior → achievement → ability → persistence` loop.
 
-```text
-behavior → achievement → aimed_throw → persistence
-```
-
-Финал:
-
-```text
-aimed_throw: unlocked
-aimed_accuracy: 55%
-persistence: PASS
-DEMO PASS
-```
-
-### 2. Первый игровой день
+### Первый день — денежный маршрут
 
 ```bash
 python scripts/demo_first_day.py --db first-day-demo.db
 ```
 
-Показывает **один возможный**, но не обязательный маршрут: взаимодействие с Мирой, вороном и Ореном, получение монет и явную оплату ночлега.
+После аудита третий coin требует выйти из стартового двора и взаимодействовать с Каспаром; два стартовых камня больше не покупают комнату автоматически.
 
-Финал:
-
-```text
-lodging_secured=True
-raven_trust=1
-FIRST DAY DEMO PASS
-```
-
-### 3. Автономный Living World
+### Living World
 
 ```bash
-python scripts/demo_living_world.py
+python scripts/demo_living_world.py --db living-world-demo.db
 ```
 
-Без TALK/GIVE-команд время само запускает цепочку Миры и Каспара, включая сохранение посреди процесса и продолжение после reopen.
+Доказывает автономную цепочку Миры/Каспара и persistence через reopen.
 
-Финал:
+### Founder readiness
 
-```text
-persistence: PASS
-LIVING WORLD DEMO PASS
+```bash
+python scripts/demo_founder_readiness.py --db founder-ready.db
 ```
 
-## Первый день: системные правила
+Smoke проверяет в одной persistent session:
 
-### Время
+- spoiler-safe founder help;
+- input telemetry;
+- локально наблюдаемое автономное событие;
+- audited social route;
+- hostile consequence;
+- positive aimed utility;
+- schema v2.
 
-- tick 0–3 — утро;
-- tick 4–7 — день;
-- tick 8–11 — под вечер;
-- tick 12+ — вечер.
-
-`LOOK` не тратит время. Большинство успешных действий тратят 1 tick. `WAIT` тратит указанное число ticks.
-
-`Living World v0` обрабатывает каждый промежуточный tick отдельно. Мира и Каспар больше не телепортируются на площадь по расписанию: их положение меняется только из-за автономной ресурсной цепочки. Постоянного фонового сервера пока нет — мир симулируется при обработке игровых ticks. При этом `WAIT 9` эквивалентен девяти `WAIT 1`.
-
-### Доверие
-
-Для Pilot механически важно только `trust`:
-
-- 0 — незнакомец;
-- 1–2 — положительное знакомство;
-- 3+ — человек готов поручиться за игрока;
-- отрицательное значение — недоверие.
-
-### Мини-экономика
-
-Это ещё не полноценная экономика. Монеты нужны только как альтернативный путь к ночлегу.
-
-Полезные **первые уникальные** находки могут дать монеты/доверие. Повтор одного и того же типа находки не создаёт бесконечный доход.
-
-### Living World v0
-
-Это первый настоящий автономный слой мира, полностью без LLM.
-
-- у Миры есть физический запас древесины и рабочие циклы;
-- когда запас заканчивается, потребность сама создаёт запрос ресурса;
-- Каспар замечает запрос, идёт к реке, забирает реальную `driftwood_1`, возвращается и передаёт её Мире;
-- каждый шаг записывается отдельно в `world_events`;
-- игрок конкурирует с NPC за тот же предмет: если забрать корягу первым, Каспар не сможет завершить цепочку;
-- если игрок сам отдаст корягу Мире обычным `GIVE`, это удовлетворит ту же потребность и позволит ей продолжить работу.
-
-То есть это уже не декоративное «NPC переместился по таймеру», а минимальный цикл **need → goal → action → consequence**. При этом в v0 нет универсального планировщика, GOAP или AI-агентов.
-
-## Behavior → Achievement → Ability
-
-Существующая бросковая ветка остаётся скрытой и необязательной.
-
-`aimed_throw` открывается при сочетании:
-
-- минимум 12 валидных бросков;
-- минимум 5 попаданий;
-- минимум 3 разных целей;
-- минимум 2 типов импровизированных снарядов;
-- минимум 2 локаций.
-
-Это ускоренные условия для Pilot, а не будущий баланс.
+Это **не** доказательство fun/product-market fit.
 
 ## Playtest report
 
-После ручной сессии:
-
 ```bash
-python scripts/playtest_report.py game.db
-```
-
-или JSON:
-
-```bash
-python scripts/playtest_report.py game.db --json
+python scripts/playtest_report.py playtests/founder-free.db
+python scripts/playtest_report.py playtests/founder-free.db --json
 ```
 
 Отчёт показывает:
 
-- число событий/ошибок;
-- типы действий и локации;
+- player action counts/failures;
+- input-attempt recognition metrics;
+- parser mode/error aggregates;
 - throwing evidence;
 - achievements/abilities;
-- время/фазу дня;
-- монеты и статус ночлега;
-- trust NPC;
-- trust животных;
-- количество и типы автономных `world_events`;
-- последние события Living World с actor/time/summary.
+- world time/day phase;
+- coins/lodging;
+- NPC/animal trust;
+- counts/latest autonomous world events.
 
-Эти цифры дополняют наблюдение, но не заменяют главный продуктовый сигнал: **сколько раз игрок сам подумал «а что будет, если…?»**
+Протокол: `docs/playtests/founder-v0.1.md`.
 
-Точный протокол: `docs/playtests/founder-v0.1.md`.
+## CI
+
+`.github/workflows/ci.yml` проверяет feature-ветку и PR на Python 3.12:
+
+```text
+editable install
+compileall
+pytest
+```
 
 ## Что сознательно НЕ делаем сейчас
 
 - quest/task log;
-- классы и уровни;
-- combat/PvP;
-- hunger/thirst/health;
+- classes/levels;
+- combat/HP;
+- hunger/thirst;
 - crafting;
-- магазины и полноценную экономику;
-- LLM-диалоги NPC;
+- shops/full economy;
+- LLM NPC dialogue/agency;
 - factions/organizations/romance;
-- Discord;
+- more NPCs/locations/items;
+- Discord/web UI;
 - multiplayer concurrency;
-- web UI;
 - RAG/vector DB;
-- больше локаций и NPC;
-- вторую большую progression branch;
 - generic GOAP/utility planner;
-- автономного Орена/животных;
-- real-time catch-up, пока программа закрыта;
-- respawn ресурсов.
+- resource respawn/economy;
+- generic Mechanic Compiler;
+- real-time catch-up while the program is closed.
 
-Сначала один маленький день должен доказать, что сочетание **мотив → эксперимент → системное последствие → персональная история/прогрессия** действительно интересно.
+## Следующий product gate
+
+Не расширять мир до Living World v1.
+
+Следующее доказательство — **реальный 30–60 минутный founder free-input playtest**. После него решение принимается по evidence: parser friction, самостоятельные `WHAT_IF`, заметность причинных world events, желание вмешиваться, ценность последствий и biographical progression.
