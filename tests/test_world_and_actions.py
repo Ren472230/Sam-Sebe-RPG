@@ -20,6 +20,7 @@ def test_initialize_creates_required_tables_and_bootstrap_world(tmp_path: Path) 
         "action_events",
         "behavior_profiles",
         "entities",
+        "input_attempts",
         "inventory",
         "player_resources",
         "player_state",
