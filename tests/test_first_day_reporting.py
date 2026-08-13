@@ -6,8 +6,7 @@ from samseberpg.reporting import build_playtest_report
 
 def test_report_includes_first_day_state_and_relationships(tmp_path: Path) -> None:
     db = GameDatabase(tmp_path / "game.db")
-    db.initialize()
-    db.bootstrap_if_empty()
+    db.initialize(); db.bootstrap_if_empty()
     with db.connect() as conn:
         conn.execute("UPDATE player_resources SET coins=2, lodging_secured=1 WHERE player_id='player_1'")
         conn.execute("INSERT INTO relations(source_id,target_id,relation_type,value) VALUES ('mira_craftswoman','player_1','trust',2)")
