@@ -6,8 +6,7 @@ from samseberpg.db import GameDatabase
 
 def make_db(tmp_path: Path) -> GameDatabase:
     db = GameDatabase(tmp_path / "game.db")
-    db.initialize()
-    db.bootstrap_if_empty()
+    db.initialize(); db.bootstrap_if_empty()
     return db
 
 
@@ -32,7 +31,6 @@ def test_help_exposes_social_verbs_but_not_a_solution_checklist() -> None:
 
 def test_intro_frames_a_soft_life_problem_without_assigning_a_class() -> None:
     import samseberpg.cli as cli
-
     assert hasattr(cli, "INTRO")
     low = cli.INTRO.lower()
     assert "нов" in low
