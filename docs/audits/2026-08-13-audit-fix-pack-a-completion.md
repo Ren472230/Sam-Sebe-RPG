@@ -33,9 +33,9 @@ Implementation used RED → GREEN cycles on the feature branch through GitHub Ac
 - input-reporting contract: 2 new failures while 100 tests passed, then green;
 - founder-readiness smoke: 1 expected missing-demo failure while 110 tests passed, then green after adding the smoke implementation.
 
-## Verification
+## Verification contract
 
-The verified Audit Fix Pack A code/docs snapshot reached:
+The completion gate is:
 
 ```text
 python -m pip install -e '.[dev]'   -> PASS
@@ -50,7 +50,7 @@ The test suite includes subprocess coverage for:
 - `scripts/demo_living_world.py`;
 - `scripts/demo_founder_readiness.py`.
 
-A later documentation-only completion-record commit also ran through the same CI gate with **111 passed in 3.29s**, confirming that the branch remained green after final documentation synchronization.
+The authoritative final CI result is the GitHub Actions run attached to the current feature-branch head/PR, rather than a commit hash embedded in this document.
 
 ## Deferred intentionally
 
