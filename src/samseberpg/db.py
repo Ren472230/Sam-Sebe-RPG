@@ -6,6 +6,8 @@ from pathlib import Path
 from typing import Any
 
 
+LATEST_SCHEMA_VERSION = 2
+
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS world_meta (
     key TEXT PRIMARY KEY,
@@ -49,6 +51,9 @@ CREATE TABLE IF NOT EXISTS relations (
 CREATE TABLE IF NOT EXISTS action_events (
     event_id INTEGER PRIMARY KEY AUTOINCREMENT,
     world_time INTEGER NOT NULL,
+    started_at_tick INTEGER NOT NULL DEFAULT 0,
+    resolved_at_tick INTEGER NOT NULL DEFAULT 0,
+    duration_ticks INTEGER NOT NULL DEFAULT 0,
     actor_id TEXT NOT NULL,
     action_type TEXT NOT NULL,
     target_id TEXT,
@@ -59,6 +64,19 @@ CREATE TABLE IF NOT EXISTS action_events (
     behavior_tags_json TEXT NOT NULL DEFAULT '[]',
     evidence_json TEXT NOT NULL DEFAULT '{}',
     summary TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS input_attempts (
+    attempt_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    world_time INTEGER NOT NULL,
+    raw_text TEXT NOT NULL,
+    parser_mode TEXT NOT NULL,
+    parser_model TEXT,
+    recognized INTEGER NOT NULL,
+    canonical_action_json TEXT,
+    result_code TEXT,
+    parser_error TEXT,
+    latency_ms REAL
 );
 
 CREATE TABLE IF NOT EXISTS world_events (
@@ -219,6 +237,146 @@ class GameDatabase:
             conn.execute(
                 "INSERT OR IGNORE INTO world_meta(key, value) VALUES ('world_time', '0')"
             )
+            version_row = conn.execute(
+                "SELECT value FROM world_meta WHERE key = 'schema_version'"
+            ).fetchone()
+            if version_row is None:
+                timing_columns = {
+                    "started_at_tick",
+                    "resolved_at_tick",
+                    "duration_ticks",
+                }
+                inferred_version = (
+                    LATEST_SCHEMA_VERSION
+                    if timing_columns <= self._table_columns(conn, "action_events")
+                    else 1
+                )
+                conn.execute(
+                    "INSERT INTO world_meta(key, value) VALUES ('schema_version', ?)",
+                    (str(inferred_version),),
+                )
+                version = inferred_version
+            else:
+                version = int(version_row["value"])
+
+            if version < 2:
+                self._migrate_1_to_2(conn)
+                version = 2
+            if version != LATEST_SCHEMA_VERSION:
+                raise RuntimeError(f"Unsupported schema version: {version}")
+
+    def _migrate_1_to_2(self, conn: sqlite3.Connection) -> None:
+        columns = self._table_columns(conn, "action_events")
+        if "started_at_tick" not in columns:
+            conn.execute(
+                "ALTER TABLE action_events ADD COLUMN started_at_tick INTEGER NOT NULL DEFAULT 0"
+            )
+        if "resolved_at_tick" not in columns:
+            conn.execute(
+                "ALTER TABLE action_events ADD COLUMN resolved_at_tick INTEGER NOT NULL DEFAULT 0"
+            )
+        if "duration_ticks" not in columns:
+            conn.execute(
+                "ALTER TABLE action_events ADD COLUMN duration_ticks INTEGER NOT NULL DEFAULT 0"
+            )
+        conn.execute(
+            """
+            UPDATE action_events
+            SET started_at_tick = world_time,
+                resolved_at_tick = world_time,
+                duration_ticks = 0
+            """
+        )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS input_attempts (
+                attempt_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                world_time INTEGER NOT NULL,
+                raw_text TEXT NOT NULL,
+                parser_mode TEXT NOT NULL,
+                parser_model TEXT,
+                recognized INTEGER NOT NULL,
+                canonical_action_json TEXT,
+                result_code TEXT,
+                parser_error TEXT,
+                latency_ms REAL
+            )
+            """
+        )
+        conn.execute(
+            "UPDATE world_meta SET value = '2' WHERE key = 'schema_version'"
+        )
+
+    def _table_columns(self, conn: sqlite3.Connection, table_name: str) -> set[str]:
+        rows = conn.execute(f"PRAGMA table_info({table_name})").fetchall()
+        return {str(row["name"]) for row in rows}
+
+    def table_columns(self, table_name: str) -> set[str]:
+        with self.connect() as conn:
+            return self._table_columns(conn, table_name)
+
+    def get_schema_version(self) -> int:
+        with self.connect() as conn:
+            row = conn.execute(
+                "SELECT value FROM world_meta WHERE key = 'schema_version'"
+            ).fetchone()
+        return int(row["value"]) if row else 0
+
+    def record_input_attempt(
+        self,
+        *,
+        world_time: int,
+        raw_text: str,
+        parser_mode: str,
+        parser_model: str | None,
+        recognized: bool,
+        canonical_action: dict[str, Any] | None,
+        parser_error: str | None,
+        latency_ms: float | None,
+    ) -> int:
+        with self.connect() as conn:
+            cursor = conn.execute(
+                """
+                INSERT INTO input_attempts(
+                    world_time, raw_text, parser_mode, parser_model, recognized,
+                    canonical_action_json, parser_error, latency_ms
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    world_time,
+                    raw_text,
+                    parser_mode,
+                    parser_model,
+                    int(recognized),
+                    json.dumps(canonical_action, ensure_ascii=False)
+                    if canonical_action is not None
+                    else None,
+                    parser_error,
+                    latency_ms,
+                ),
+            )
+            return int(cursor.lastrowid)
+
+    def complete_input_attempt(self, attempt_id: int, result_code: str) -> None:
+        with self.connect() as conn:
+            conn.execute(
+                "UPDATE input_attempts SET result_code = ? WHERE attempt_id = ?",
+                (result_code, attempt_id),
+            )
+
+    def list_input_attempts(self) -> list[dict[str, Any]]:
+        with self.connect() as conn:
+            rows = conn.execute(
+                "SELECT * FROM input_attempts ORDER BY attempt_id"
+            ).fetchall()
+        attempts: list[dict[str, Any]] = []
+        for row in rows:
+            data = dict(row)
+            data["recognized"] = bool(data["recognized"])
+            raw_action = data.pop("canonical_action_json")
+            data["canonical_action"] = json.loads(raw_action) if raw_action else None
+            attempts.append(data)
+        return attempts
 
     def bootstrap_if_empty(self) -> None:
         """Idempotently add bootstrap data, including upgrades for older pilot DBs."""
