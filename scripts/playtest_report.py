@@ -16,8 +16,22 @@ def render_human(report: dict[str, object]) -> str:
         f"Всего событий: {report['total_events']}",
         f"Неудачных событий: {report['failed_events']}",
         f"Типов действий: {report['unique_action_types']}",
+        f"Попыток ввода: {report.get('input_attempts_total', 0)}",
+        f"Распознано: {report.get('recognized_inputs', 0)}",
+        f"Не распознано: {report.get('unrecognized_inputs', 0)}",
         "Действия:",
     ]
+
+    parser_mode_counts = report.get("parser_mode_counts", {})
+    if isinstance(parser_mode_counts, dict) and parser_mode_counts:
+        lines.append("Парсеры:")
+        for mode, count in parser_mode_counts.items():
+            lines.append(f"  {mode}: {count}")
+    parser_error_counts = report.get("parser_error_counts", {})
+    if isinstance(parser_error_counts, dict) and parser_error_counts:
+        lines.append("Ошибки парсера:")
+        for mode, count in parser_error_counts.items():
+            lines.append(f"  {mode}: {count}")
 
     action_counts = report["action_counts"]
     assert isinstance(action_counts, dict)
