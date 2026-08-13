@@ -33,7 +33,14 @@ jobs:
       - name: Run systems launcher through batch
         shell: cmd
         run: |
-          call "Играть_системный_режим.bat" < NUL
-          if errorlevel 1 exit /b %errorlevel%
+          call "Играть_системный_режим.bat" < NUL > windows-smoke.log 2>&1
+          set "EXIT_CODE=%ERRORLEVEL%"
+          type windows-smoke.log
+          if not "%EXIT_CODE%"=="0" exit /b %EXIT_CODE%
+          findstr /C:"Sam-Sebe-RPG Pilot v0.1" windows-smoke.log >NUL
+          if not "%ERRORLEVEL%"=="0" exit /b 33
+          findstr /C:"Traceback" windows-smoke.log >NUL
+          if "%ERRORLEVEL%"=="0" exit /b 34
           if not exist ".venv\Scripts\sam-sebe-rpg.exe" exit /b 31
           if not exist "playtests\founder-systems.db" exit /b 32
+          exit /b 0
