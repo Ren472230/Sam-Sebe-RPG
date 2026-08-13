@@ -28,7 +28,8 @@ function Test-Python312 {
         if ($LASTEXITCODE -ne 0 -or -not $output) {
             return $false
         }
-        $version = [version]($output | Select-Object -Last 1).Trim()
+        $versionText = ($output | Select-Object -Last 1).Trim()
+        $version = [version]$versionText
         return ($version.Major -gt 3 -or ($version.Major -eq 3 -and $version.Minor -ge 12))
     }
     catch {
