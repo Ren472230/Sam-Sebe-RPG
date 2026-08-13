@@ -185,19 +185,54 @@ def test_explicit_request_lodging_uses_local_trust_without_spending_coins(tmp_pa
 
 def test_social_lodging_route_is_reachable_through_world_actions(tmp_path: Path) -> None:
     db, game = make_game(tmp_path)
-    for item_id in ("stone_flat_1", "stone_round_1"):
-        assert game.execute(CanonicalAction("player_1", ActionType.TAKE, item_id=item_id)).success
-        assert game.execute(CanonicalAction("player_1", ActionType.GIVE, target_id="mira_craftswoman", item_id=item_id)).success
-    assert npc_trust(db, "mira_craftswoman") == 2
-    assert db.fetch_player_resources("player_1")["coins"] == 4
+
+    # Build some trust, then race Kaspar to the shared wood resource.
+    assert game.execute(CanonicalAction("player_1", ActionType.TAKE, item_id="stone_flat_1")).success
+    assert game.execute(
+        CanonicalAction(
+            "player_1",
+            ActionType.GIVE,
+            target_id="mira_craftswoman",
+            item_id="stone_flat_1",
+        )
+    ).success
+    assert npc_trust(db, "mira_craftswoman") == 1
 
     assert game.execute(CanonicalAction("player_1", ActionType.MOVE, destination_id="village_square")).success
     assert game.execute(CanonicalAction("player_1", ActionType.MOVE, destination_id="river_edge")).success
     assert game.execute(CanonicalAction("player_1", ActionType.TAKE, item_id="driftwood_1")).success
     assert game.execute(CanonicalAction("player_1", ActionType.MOVE, destination_id="village_square")).success
-    assert game.execute(CanonicalAction("player_1", ActionType.GIVE, target_id="mira_craftswoman", item_id="driftwood_1")).success
-    assert npc_trust(db, "mira_craftswoman") == 3
+    assert game.execute(CanonicalAction("player_1", ActionType.MOVE, destination_id="workshop_yard")).success
+    assert game.execute(
+        CanonicalAction(
+            "player_1",
+            ActionType.GIVE,
+            target_id="mira_craftswoman",
+            item_id="driftwood_1",
+        )
+    ).success
+    assert npc_trust(db, "mira_craftswoman") == 2
 
-    result = game.execute(CanonicalAction("player_1", ActionType.TALK, target_id="oren_innkeeper", modifiers={"topic": "request_lodging"}))
+    assert game.execute(CanonicalAction("player_1", ActionType.TAKE, item_id="stone_round_1")).success
+    assert game.execute(
+        CanonicalAction(
+            "player_1",
+            ActionType.GIVE,
+            target_id="mira_craftswoman",
+            item_id="stone_round_1",
+        )
+    ).success
+    assert npc_trust(db, "mira_craftswoman") == 3
+    assert db.fetch_player_resources("player_1")["coins"] == 4
+
+    assert game.execute(CanonicalAction("player_1", ActionType.MOVE, destination_id="village_square")).success
+    result = game.execute(
+        CanonicalAction(
+            "player_1",
+            ActionType.TALK,
+            target_id="oren_innkeeper",
+            modifiers={"topic": "request_lodging"},
+        )
+    )
     assert result.success is True
     assert db.fetch_player_resources("player_1") == {"coins": 4, "lodging_secured": True}
