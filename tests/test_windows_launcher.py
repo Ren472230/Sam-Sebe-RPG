@@ -106,3 +106,12 @@ def test_python_version_probe_is_safe_for_windows_powershell_51():
     text = read(PS1)
     assert "raise SystemExit(sys.version_info < (3, 12))" in text
     assert 'print(f"' not in text
+
+
+def test_game_process_uses_utf8_and_propagates_real_exit_code():
+    text = read(PS1)
+    assert '$env:PYTHONIOENCODING = "utf-8"' in text
+    assert '$env:PYTHONUTF8 = "1"' in text
+    assert '$gameExitCode = $LASTEXITCODE' in text
+    assert 'exit $gameExitCode' in text
+    assert '$code = Start-Game' not in text
