@@ -1,4 +1,4 @@
-param(
+﻿param(
     [Parameter(Mandatory = $true)]
     [ValidateSet("PlayFounder", "PlaySystems", "ResetSave")]
     [string]$Action
