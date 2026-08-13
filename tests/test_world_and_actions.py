@@ -24,6 +24,7 @@ def test_initialize_creates_required_tables_and_bootstrap_world(tmp_path: Path) 
         "player_resources",
         "player_state",
         "relations",
+        "world_events",
         "world_meta",
     }
     assert db.fetch_player("player_1")["location_id"] == "workshop_yard"
