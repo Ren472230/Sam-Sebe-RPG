@@ -21,13 +21,11 @@ def test_player_resources_bootstrap_with_no_money_or_lodging(tmp_path: Path) -> 
 
 def test_day_service_module_exists() -> None:
     import importlib.util
-
     assert importlib.util.find_spec("samseberpg.day") is not None
 
 
 def test_schedule_moves_mira_and_kaspar_to_square_at_tick_eight(tmp_path: Path) -> None:
     from samseberpg.day import DayService
-
     db = make_db(tmp_path)
     day = DayService()
     with db.connect() as conn:
@@ -43,7 +41,6 @@ def test_schedule_moves_mira_and_kaspar_to_square_at_tick_eight(tmp_path: Path) 
 def test_look_is_free_but_meaningful_actions_advance_time(tmp_path: Path) -> None:
     from samseberpg.domain import ActionType, CanonicalAction
     from samseberpg.game import GameService
-
     db = make_db(tmp_path)
     game = GameService(db, seed=1)
     assert game.execute(CanonicalAction("player_1", ActionType.LOOK)).success
@@ -58,7 +55,6 @@ def test_look_is_free_but_meaningful_actions_advance_time(tmp_path: Path) -> Non
 
 def test_day_phase_reaches_evening_after_twelve_ticks() -> None:
     from samseberpg.day import DayService
-
     day = DayService()
     assert day.phase(0) == "утро"
     assert day.phase(4) == "день"
