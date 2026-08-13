@@ -8,8 +8,8 @@ from typing import Any
 class SocialService:
     GIFT_RULES: dict[str, dict[str, tuple[int, int]]] = {
         "mira_craftswoman": {
-            "flat_stone": (1, 2),
-            "round_stone": (1, 2),
+            "flat_stone": (1, 1),
+            "round_stone": (1, 1),
             "useful_wood": (1, 0),
         },
         "kaspar_forager": {
@@ -54,6 +54,8 @@ class SocialService:
         state: dict[str, Any] | None = None,
     ) -> str:
         state = state or {}
+        if trust < 0:
+            return "Разговор не складывается: человек держится холодно и явно тебе не доверяет."
         if npc_id == "mira_craftswoman":
             if bool(state.get("requested_wood", False)) and int(state.get("wood_stock", 0)) == 0:
                 return (
@@ -173,7 +175,7 @@ class SocialService:
             return {"secured": True, "route": "already"}
 
         for npc_id in ("mira_craftswoman", "kaspar_forager"):
-            if self.get_trust(conn, npc_id, player_id) >= 3:
+            if self.get_trust(conn, npc_id, player_id) >= 2:
                 conn.execute(
                     "UPDATE player_resources SET lodging_secured = 1 WHERE player_id = ?",
                     (player_id,),
