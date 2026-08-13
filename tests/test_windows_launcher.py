@@ -100,3 +100,9 @@ def test_launcher_uses_version_stamp_in_repository_venv():
 
 def test_windows_powershell_script_has_utf8_bom():
     assert PS1.read_bytes().startswith(b"\xef\xbb\xbf")
+
+
+def test_python_version_probe_is_safe_for_windows_powershell_51():
+    text = read(PS1)
+    assert "raise SystemExit(sys.version_info < (3, 12))" in text
+    assert 'print(f"' not in text
