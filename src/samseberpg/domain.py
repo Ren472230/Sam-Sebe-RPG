@@ -10,6 +10,7 @@ class ActionType(StrEnum):
     MOVE = "MOVE"
     TAKE = "TAKE"
     DROP = "DROP"
+    TALK = "TALK"
     GIVE = "GIVE"
     USE = "USE"
     THROW = "THROW"
@@ -56,7 +57,11 @@ class MechanicSpec:
     condition: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
-        primitive = self.primitive.value if isinstance(self.primitive, MechanicPrimitive) else self.primitive
+        primitive = (
+            self.primitive.value
+            if isinstance(self.primitive, MechanicPrimitive)
+            else self.primitive
+        )
         data: dict[str, Any] = {"primitive": primitive, "value": self.value}
         if self.action is not None:
             data["action"] = self.action

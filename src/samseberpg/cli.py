@@ -4,17 +4,30 @@ import argparse
 import os
 from pathlib import Path
 
+from .day import DayService
 from .db import GameDatabase
 from .game import GameService
 from .llm_parser import OllamaActionParser, OllamaParserError, build_parser_context
 from .parser import parse_command
 
 
+INTRO = """
+Ты новенький в маленьком поселении у брода. Утро только началось.
+Денег у тебя нет, и место на ночь пока не найдено. Люди вокруг живут своей жизнью.
+Ты можешь осмотреться и пробовать делать то, что кажется тебе разумным или интересным.
+""".strip()
+
 HELP = """Команды:
   осмотреться
   идти <location_id>
   взять <item_id>
   бросить_на_землю <item_id>
+  поговорить <npc_id>
+  спросить <npc_id> о ночлеге
+  оплатить ночлег
+  попросить ночлег
+  дать <item_id> <npc_id>
+  покормить <animal_id> <item_id>
   бросить <item_id> в <target_id>
   прицельно бросить <item_id> в <target_id>
   ждать [ticks]
@@ -28,7 +41,16 @@ def _print_state(db: GameDatabase, player_id: str = "player_1") -> None:
     if player is None:
         print("Игрок не найден.")
         return
-    print(f"Локация: {player['location_id']} | Время: {db.get_world_time()}")
+
+    world_time = db.get_world_time()
+    resources = db.fetch_player_resources(player_id) or {
+        "coins": 0,
+        "lodging_secured": False,
+    }
+    phase = DayService().phase(world_time)
+    print(f"Локация: {player['location_id']} | {phase} | Время: {world_time}")
+    lodging = "есть" if resources["lodging_secured"] else "нет"
+    print(f"Монеты: {resources['coins']} | Ночлег: {lodging}")
     inventory = db.list_inventory(player_id)
     print("Инвентарь: " + (", ".join(inventory) if inventory else "пуст"))
 
@@ -44,6 +66,25 @@ def resolve_player_input(
         return action
     context = build_parser_context(db, player_id)
     return ollama_parser.parse(text, context, player_id=player_id)
+
+
+def _render_result(result) -> None:
+    print(result.summary)
+    if "entities" in result.data:
+        exits = result.data.get("exits", [])
+        print("Выходы: " + (", ".join(exits) if exits else "нет"))
+        entities = result.data["entities"]
+        if entities:
+            for entity in entities:
+                print(
+                    f"  {entity['entity_id']} — {entity['name']} "
+                    f"[{entity['entity_type']}]"
+                )
+        else:
+            print("Сущности: нет")
+    if "hit" in result.data:
+        outcome = "попадание" if result.data["hit"] else "промах"
+        print(f"Бросок: {outcome}; шанс {result.data['accuracy']:.0%}.")
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -73,6 +114,7 @@ def main(argv: list[str] | None = None) -> int:
     )
 
     print("Sam-Sebe-RPG Pilot v0.1")
+    print(INTRO)
     _print_state(db)
     print("Напиши help для списка команд.")
     if ollama_parser is not None:
@@ -113,26 +155,7 @@ def main(argv: list[str] | None = None) -> int:
             continue
 
         result = game.execute(action)
-        print(result.summary)
-        if result.data:
-            if "entities" in result.data:
-                exits = result.data.get("exits", [])
-                print("Выходы: " + (", ".join(exits) if exits else "нет"))
-                entities = result.data["entities"]
-                if entities:
-                    print("Сущности:")
-                    for entity in entities:
-                        print(
-                            f"  {entity['entity_id']} — {entity['name']} "
-                            f"[{entity['entity_type']}]"
-                        )
-                else:
-                    print("Сущности: нет")
-            if "hit" in result.data:
-                print(
-                    f"Бросок: {'попадание' if result.data['hit'] else 'промах'}; "
-                    f"шанс {result.data['accuracy']:.0%}."
-                )
+        _render_result(result)
 
         has_aimed = db.has_ability("player_1", "aimed_throw")
         if has_aimed and not known_aimed:

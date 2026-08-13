@@ -2,104 +2,105 @@
 
 ## Product question
 
-The first playable design must answer one question before we expand the world:
-
 > Does a player enjoy living experimentally in a small systemic world when there is a reason to act, but no prescribed class or quest route?
 
-The existing vertical slice already proves the technical Behavior → Achievement → Ability loop. This design turns that slice into a small game situation suitable for a 30–60 minute founder playtest.
+The technical Behavior → Achievement → Ability loop already exists. The first-day layer turns it into a small playable situation for a 30–60 minute founder playtest.
 
-## Chosen approach
+## Chosen approach: soft life problem
 
-Use a **soft life problem**, not a quest chain and not survival pressure.
+The player is a newcomer in a tiny settlement. It is morning. They have no profession, 0 coins and no lodging.
 
-The player is a newcomer in a tiny settlement. It is morning. They have no profession and almost no standing with the locals. By evening they would like to secure a place to sleep at Oren's inn.
+By evening it would be useful to secure a bed at Oren's inn, but this is not a quest and is not mandatory. There is no game-over for ignoring it.
 
-Oren does not give a quest list. He simply has a rule: lodging costs 3 coins, or a local who trusts the player enough can vouch for them.
+Oren's rule is simple:
 
-The player may ignore this goal completely. Sleeping outside is allowed. There is no game-over and no forced route.
+- pay 3 coins; or
+- explicitly ask for lodging when Mira or Kaspar trusts the player enough to vouch for them.
 
-This gives the player a reason to inspect the world while preserving the core fantasy: **how they decide to live becomes the beginning of who they become**.
+Asking Oren **about** lodging only explains the situation. It never spends coins or completes the goal automatically. Payment and social request are separate player choices.
+
+The practical problem exists only to make the first actions meaningful. The product fantasy remains: **how the player chooses to live becomes the beginning of who they become**.
 
 ## First 60 seconds
 
-The first screen should communicate only:
+The opening communicates only:
 
-- the player has arrived in a small settlement;
-- it is morning;
-- they have 0 coins and no lodging;
-- evening will come as actions consume time;
-- Oren at the square can explain lodging;
-- the game accepts commands/actions rather than offering a quest menu.
+- newcomer to a small settlement;
+- morning;
+- 0 coins;
+- no lodging;
+- people live their own lives;
+- the player may inspect and try actions.
 
-It must not list optimal strategies, progression branches, achievements, or every possible interaction.
-
-The player should immediately be able to `look`, move, talk, pick things up, give things, feed animals, throw objects, or wait.
+It must not show optimal strategies, progression thresholds, a quest log, classes, or a list of reward branches.
 
 ## World
 
-Keep the existing three locations:
+Keep exactly three locations:
 
 1. `workshop_yard` — Mira's workshop yard.
-2. `village_square` — Oren's inn and the village square.
-3. `river_edge` — riverbank where Kaspar spends much of the day.
+2. `village_square` — Oren's inn and the square.
+3. `river_edge` — riverbank where Kaspar spends the morning.
 
-Keep three NPCs and two ravens. Do not add more characters for this pilot.
+Keep exactly three NPCs and two ravens.
 
-### NPC roles
+### Mira
 
-**Mira, craftswoman**
-- values useful unusual materials;
-- appreciates different kinds of stones rather than endless copies of the same thing;
-- can reward a useful first contribution with coins and trust;
-- spends the morning at the workshop and later moves to the square.
+- values different useful materials;
+- `flat_stone` and `round_stone` are distinct useful contributions;
+- `useful_wood` is another distinct contribution;
+- first useful contributions can increase trust and sometimes pay coins;
+- repeating the same contribution tag does not farm trust/money;
+- later in the day she moves to the square.
 
-**Oren, innkeeper**
+### Oren
+
 - controls lodging;
-- offers a bed for 3 coins;
-- also accepts a social route when another local trusts the player enough to vouch for them;
-- reacts negatively if the player repeatedly damages or attacks inn property.
+- explains the 3-coin / social-vouch alternatives;
+- payment must be explicit;
+- social request must be explicit;
+- hitting the inn sign can reduce his trust.
 
-**Kaspar, forager**
-- spends the morning near the river and later returns to the square;
-- values useful natural finds;
-- can build trust through relevant gifts.
+### Kaspar
+
+- values relevant natural finds;
+- can build trust through useful contributions;
+- moves from the river to the square later in the day.
 
 ### Ravens
 
-Ravens have persistent `trust` and `fear` state.
-
-Feeding them with food raises trust. This is intentionally not required for lodging. It exists to test whether players pursue self-created interests even when those interests do not advance the obvious practical goal.
+Ravens have persistent state. Feeding with food raises trust. This is intentionally unnecessary for lodging, so it can reveal whether the player pursues a self-created interest.
 
 ## Player state
 
-Add only what the first-day design needs:
+Only add what this experiment needs:
 
+- location;
+- inventory;
 - `coins`, initially 0;
 - `lodging_secured`, initially false;
-- current location;
-- inventory;
-- existing achievements and abilities.
+- achievements/abilities already present.
 
-Do not add hunger, thirst, health, level, experience, attributes, equipment slots, or character classes.
+Do not add health, hunger, thirst, attributes, level, equipment slots or classes.
 
-## Time and persistent world
+## Time and independent world motion
 
-`world_time` becomes meaningful game time.
+`world_time` becomes meaningful:
 
-- The day begins at tick 0 (morning).
-- Most successful meaningful actions consume 1 tick.
-- `LOOK` does not consume time.
-- `WAIT` consumes the requested number of ticks.
-- At later ticks NPC schedules update lazily when the game processes the next action.
-- Mira and Kaspar can move to the square later in the day without the player causing that movement.
+- tick 0–3: morning;
+- tick 4–7: day;
+- tick 8–11: late day;
+- tick 12+: evening.
 
-This is enough to demonstrate that the world changes independently without implementing a continuous background server.
+`LOOK` is free. Most successful meaningful actions consume one tick. `WAIT` consumes the requested number of ticks.
 
-The pilot does not hard-stop at evening. The UI simply reports that evening has arrived and whether lodging is secured.
+At tick 8+, Mira and Kaspar move to `village_square`. The update is lazy: it occurs when the next game action is processed. No continuous background server is required.
+
+The day does not hard-stop at evening.
 
 ## Canonical actions
 
-Keep existing actions:
+Existing:
 
 - LOOK
 - MOVE
@@ -108,7 +109,7 @@ Keep existing actions:
 - THROW
 - WAIT
 
-Implement the already reserved actions:
+First-day additions:
 
 - TALK
 - GIVE
@@ -116,126 +117,116 @@ Implement the already reserved actions:
 
 ### TALK
 
-`TALK` is deterministic in v0.1. It is not an AI chatbot.
+TALK is deterministic, not an LLM NPC chatbot.
 
-It returns a short state-aware response based on NPC identity, world time, relationship, and an optional topic.
+Oren supports three canonical lodging intentions:
 
-Important topic for Oren: `lodging`.
+- `lodging` — information only;
+- `pay_lodging` — explicitly spend 3 coins if available;
+- `request_lodging` — explicitly ask for the social route if Mira/Kaspar trust >= 3.
 
-If the player asks Oren about lodging:
-- with at least 3 coins, the player can pay 3 coins and secure lodging;
-- otherwise, if Mira or Kaspar trust is at least 3, Oren accepts the social vouch and secures lodging;
-- otherwise Oren explains the rule without giving a quest checklist.
+This split protects player agency: curiosity cannot accidentally spend resources or resolve a goal.
 
 ### GIVE
 
-The player can give an owned item to an NPC at the same location.
+An owned item can be given to a present NPC.
 
-- the item leaves player inventory and is removed from immediate world availability;
-- relevant first-time contributions may increase trust and award coins;
-- repeating the same contribution must not produce unlimited money or trust.
+- the item leaves inventory;
+- deterministic tag rules decide relevance;
+- unique useful contributions can change trust/coins;
+- repeat contribution tags give no repeat reward.
 
-For the pilot, NPC preference rules are deterministic and tag-based.
+Bootstrap includes a small third Mira-relevant find, `driftwood_1` (`useful_wood`), at the river so the social lodging route is reachable organically after world movement.
 
 ### FEED
 
-The player can feed a raven with an owned item tagged `food`.
+An owned food item can feed a present animal.
 
-- the food is consumed;
-- raven trust increases;
-- the event receives behavior tags such as `animal_care`;
-- no guaranteed mechanical ability is added in this design.
-
-The point is to record whether the player chooses to build a relationship with animals without being instructed to do so.
+- food is consumed;
+- raven trust persists;
+- event is tagged `animal_care`;
+- no automatic ability is promised from this in v0.1.
 
 ## Consequences
 
-Freedom must create consequences, not just parser acknowledgement.
+Freedom must alter state:
 
-At minimum:
+- useful gifts change trust/coins;
+- feeding changes animal trust;
+- sign hits can reduce Oren trust;
+- duplicate contribution rewards are blocked;
+- time moves NPCs;
+- lodging state persists.
 
-- valued gifts can change NPC trust and coins;
-- feeding changes raven trust;
-- hitting Oren's inn sign with thrown objects can reduce Oren's trust;
-- the same exploit/reward cannot be farmed infinitely;
-- world time changes NPC positions;
-- securing lodging changes player state persistently.
-
-The existing throwing progression remains intact:
+The existing optional throwing progression remains:
 
 behavioral variety + competence → `hand_remembers_arc` → `aimed_throw`.
 
-This progression is optional. The game must never tell the player to grind throwing to unlock it.
+The UI must not instruct the player to grind for it.
 
 ## Relationship model
 
-Reuse the existing `relations` table.
-
-For this pilot only `trust` is mechanically important.
-
-Trust is small and legible:
+Only `trust` matters mechanically in this Pilot:
 
 - 0 — stranger;
 - 1–2 — positive familiarity;
 - 3+ — enough trust to vouch for lodging;
 - negative — distrust.
 
-Do not build love, jealousy, fear networks, debts, factions, or general social AI yet.
+Do not add romance, jealousy, debts, factions or general social AI yet.
 
 ## Economy
 
-Economy is deliberately tiny.
+Coins only create one practical alternative to the social route. This is not a full economy.
 
-Coins exist only to create one practical alternative to the social route.
-
-No shops, price simulation, inflation, crafting economy, wages, or item marketplace.
-
-The pilot only needs deterministic one-time rewards for useful contributions and the 3-coin lodging payment.
+No shops, inflation, simulated prices, crafting economy or wages.
 
 ## Parser boundary
 
-The deterministic parser and optional Ollama parser may produce `TALK`, `GIVE`, and `FEED` canonical actions.
+Both parsers may produce TALK/GIVE/FEED proposals.
 
-The LLM still has no authority over outcomes:
+The optional Ollama parser is constrained to:
 
-free text → parser proposal → CanonicalAction → validation → deterministic GameService → state/event changes.
+- implemented action types;
+- canonical lodging topics;
+- entity IDs actually present in authoritative context.
 
-The parser must not invent entity IDs outside the current context.
+Pipeline remains:
 
-## Founder playtest experience
+free text → parser proposal → CanonicalAction → GameService validation → deterministic state changes.
 
-A successful session is not defined by obtaining lodging.
+## Founder playtest signals
 
-A good 30–60 minute session should produce several of these signals:
+A good 30–60 minute session should produce several of these:
 
-- the player voluntarily asks "what happens if I..." and tries at least five unsuggested actions;
-- the player notices that time/NPC positions change independently;
-- at least two systems intersect in a meaningful way (item → NPC trust → lodging, behavior → ability → reuse, action → property/social consequence);
-- the player pursues at least one self-created interest that is not necessary for lodging;
-- an emergent ability, if unlocked, feels causally connected to the player's behavior;
-- after obtaining or failing to obtain lodging, the player still wants to try something else.
+- at least five self-initiated “what if?” experiments;
+- at least one self-created interest unrelated to lodging;
+- visible independent world movement;
+- at least one meaningful systemic consequence;
+- at least two systems intersect naturally;
+- lodging motivates action without becoming a quest checklist;
+- after lodging is solved or ignored, the player still wants to continue;
+- if progression unlocks, it feels causally tied to biography and invites another experiment.
 
 ## Failure signals
 
-Stop and redesign rather than adding content if:
+Stop and redesign rather than add content if:
 
-- the player treats NPC contributions as an obvious quest checklist;
-- the only interesting thing remains the LLM parser;
-- the player needs constant hints for what to do;
-- the first day becomes a linear route for exactly 3 coins;
-- free experiments mostly return "not implemented";
-- relationships feel like invisible point farming;
-- the player obtains the first ability but has no reason to test it.
+- the first day becomes a linear 3-coin quest;
+- NPCs feel like trust vending machines;
+- most experiments end in “not implemented”;
+- the only interesting part is free-text AI parsing;
+- independent world changes are technically present but invisible in play;
+- progression feels like hidden repetition counters;
+- after lodging/progression there is no desire to continue.
 
 ## Explicitly out of scope
-
-Do not add in this pass:
 
 - combat;
 - health/hunger/thirst;
 - crafting;
-- shops or full economy;
-- quests/task log;
+- shops/full economy;
+- quest/task log;
 - factions/organizations;
 - romance;
 - LLM NPC dialogue;
@@ -243,22 +234,18 @@ Do not add in this pass:
 - Discord;
 - multiplayer concurrency;
 - web UI;
-- more locations or NPCs;
-- a second generated mechanic branch unless playtest evidence demands it.
+- more locations/NPCs;
+- second major progression branch.
 
 ## Technical boundaries
 
-- `GameService` remains the only authoritative state mutation path.
-- NPC schedule updates are deterministic/lazy.
-- relationship, economy, and lodging rules are ordinary code.
-- all meaningful outcomes append `ActionEvent` evidence.
-- progression continues to derive from events, not from a fixed visible skill tree.
-- new rules must be covered by tests before implementation.
+- `GameService` is the authoritative mutation boundary.
+- schedules are deterministic/lazy.
+- relationships/economy/lodging are ordinary code.
+- meaningful outcomes append ActionEvent evidence.
+- progression derives from behavior events, not a visible fixed skill tree.
+- new behavior is test-first.
 
-## Decision
+## Completion gate
 
-Pilot v0.1 is no longer treated as complete merely because the Behavior Engine works.
-
-The next completion gate is:
-
-> **A founder can play one coherent first day in the settlement for 30–60 minutes, understand their practical situation without a quest list, make several different choices, experience persistent consequences, and potentially discover personalized progression.**
+> A founder can play one coherent first day for 30–60 minutes, understand the practical situation without a quest list, make different choices, experience persistent consequences and independent world motion, and potentially discover personalized progression.

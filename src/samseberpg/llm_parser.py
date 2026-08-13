@@ -18,7 +18,11 @@ IMPLEMENTED_ACTIONS = {
     ActionType.DROP,
     ActionType.THROW,
     ActionType.WAIT,
+    ActionType.TALK,
+    ActionType.GIVE,
+    ActionType.FEED,
 }
+ALLOWED_TALK_TOPICS = {"lodging", "pay_lodging", "request_lodging"}
 
 ACTION_SCHEMA: dict[str, Any] = {
     "type": "object",
@@ -36,6 +40,10 @@ ACTION_SCHEMA: dict[str, Any] = {
         "destination_id": {"type": ["string", "null"]},
         "aimed": {"type": "boolean"},
         "ticks": {"type": "integer", "minimum": 1, "maximum": 100},
+        "topic": {
+            "type": ["string", "null"],
+            "enum": [None, "lodging", "pay_lodging", "request_lodging"],
+        },
     },
     "required": [
         "recognized",
@@ -45,6 +53,7 @@ ACTION_SCHEMA: dict[str, Any] = {
         "destination_id",
         "aimed",
         "ticks",
+        "topic",
     ],
     "additionalProperties": False,
 }
@@ -131,9 +140,11 @@ class OllamaActionParser:
                         "Ты parser намерения игрока для детерминированной RPG. "
                         "Ты не решаешь исход действия и не меняешь мир. "
                         "Верни только структуру, соответствующую JSON schema. "
-                        "Используй только action_type из schema и только ID из переданного контекста, "
-                        "если они нужны. Если действие нельзя выразить текущим игровым языком, "
-                        "поставь recognized=false."
+                        "Используй только action_type и topic из schema и только ID "
+                        "из переданного контекста. Для разговора о ночлеге: lodging — "
+                        "узнать условия, pay_lodging — явно заплатить, request_lodging — "
+                        "явно попросить ночлег по знакомству. Если действие нельзя выразить "
+                        "текущим игровым языком, поставь recognized=false."
                     ),
                 },
                 {
@@ -158,7 +169,6 @@ class OllamaActionParser:
 
         if not isinstance(data, dict) or data.get("recognized") is not True:
             return None
-
         try:
             action_type = ActionType(str(data.get("action_type")))
         except ValueError:
@@ -174,17 +184,51 @@ class OllamaActionParser:
             if not isinstance(ticks, int) or isinstance(ticks, bool):
                 return None
             modifiers["ticks"] = ticks
+        if action_type == ActionType.TALK:
+            topic = data.get("topic")
+            if topic is not None:
+                if not isinstance(topic, str) or topic not in ALLOWED_TALK_TOPICS:
+                    return None
+                modifiers["topic"] = topic
 
         def optional_string(key: str) -> str | None:
             value = data.get(key)
             return value if isinstance(value, str) and value else None
 
+        target_id = optional_string("target_id")
+        item_id = optional_string("item_id")
+        destination_id = optional_string("destination_id")
+        visible_ids = {
+            str(entity.get("entity_id"))
+            for entity in context.get("visible_entities", [])
+            if isinstance(entity, dict) and entity.get("entity_id")
+        }
+        inventory = {str(item) for item in context.get("inventory", [])}
+        exits = {str(exit_id) for exit_id in context.get("exits", [])}
+
+        if action_type == ActionType.MOVE and destination_id not in exits:
+            return None
+        if action_type == ActionType.TAKE and item_id not in visible_ids:
+            return None
+        if action_type == ActionType.DROP and item_id not in inventory:
+            return None
+        if action_type == ActionType.THROW and (
+            item_id not in inventory or target_id not in visible_ids
+        ):
+            return None
+        if action_type == ActionType.TALK and target_id not in visible_ids:
+            return None
+        if action_type in {ActionType.GIVE, ActionType.FEED} and (
+            item_id not in inventory or target_id not in visible_ids
+        ):
+            return None
+
         return CanonicalAction(
             actor_id=player_id,
             action_type=action_type,
-            target_id=optional_string("target_id"),
-            item_id=optional_string("item_id"),
-            destination_id=optional_string("destination_id"),
+            target_id=target_id,
+            item_id=item_id,
+            destination_id=destination_id,
             modifiers=modifiers,
             source_text=text,
         )

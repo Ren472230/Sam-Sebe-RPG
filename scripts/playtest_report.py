@@ -18,6 +18,7 @@ def render_human(report: dict[str, object]) -> str:
         f"Типов действий: {report['unique_action_types']}",
         "Действия:",
     ]
+
     action_counts = report["action_counts"]
     assert isinstance(action_counts, dict)
     if action_counts:
@@ -40,6 +41,33 @@ def render_human(report: dict[str, object]) -> str:
             "Abilities: " + (", ".join(report["abilities"]) or "нет"),
         ]
     )
+
+    first_day = report.get("first_day")
+    if isinstance(first_day, dict):
+        lines.extend(
+            [
+                "Первый день:",
+                f"  Фаза дня: {first_day.get('phase', 'неизвестно')}",
+                f"  Монеты: {first_day.get('coins', 0)}",
+                f"  Ночлег: {'есть' if first_day.get('lodging_secured') else 'нет'}",
+                "  Доверие NPC:",
+            ]
+        )
+        npc_trust = first_day.get("npc_trust", {})
+        if isinstance(npc_trust, dict) and npc_trust:
+            for npc_id, value in npc_trust.items():
+                lines.append(f"    {npc_id}: {value:g}")
+        else:
+            lines.append("    нет")
+
+        lines.append("  Доверие животных:")
+        animal_trust = first_day.get("animal_trust", {})
+        if isinstance(animal_trust, dict) and animal_trust:
+            for animal_id, value in animal_trust.items():
+                lines.append(f"    {animal_id}: {value}")
+        else:
+            lines.append("    нет")
+
     return "\n".join(lines)
 
 
@@ -52,8 +80,7 @@ def main(argv: list[str] | None = None) -> int:
     if not args.db.exists():
         parser.error(f"database not found: {args.db}")
 
-    db = GameDatabase(args.db)
-    report = build_playtest_report(db)
+    report = build_playtest_report(GameDatabase(args.db))
     if args.json:
         print(json.dumps(report, ensure_ascii=False, indent=2))
     else:
