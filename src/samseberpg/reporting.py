@@ -12,7 +12,9 @@ def build_playtest_report(
     db: GameDatabase, player_id: str = "player_1"
 ) -> dict[str, Any]:
     events = db.list_events(player_id)
+    world_events = db.list_world_events()
     action_counts = Counter(event["action_type"] for event in events)
+    world_event_counts = Counter(event["event_type"] for event in world_events)
     locations = sorted(
         {
             event["location_id"]
@@ -95,6 +97,9 @@ def build_playtest_report(
         "throwing": throwing,
         "achievements": achievements,
         "abilities": abilities,
+        "world_events_total": len(world_events),
+        "world_event_counts": dict(sorted(world_event_counts.items())),
+        "latest_world_events": world_events[-10:],
         "first_day": {
             "coins": resources["coins"],
             "lodging_secured": resources["lodging_secured"],
