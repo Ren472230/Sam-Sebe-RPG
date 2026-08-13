@@ -22,3 +22,18 @@ jobs:
         run: python -m compileall -q src scripts
       - name: Test
         run: python -m pytest -q
+
+  windows-launcher-smoke:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Run systems launcher through batch
+        shell: cmd
+        run: |
+          call "Играть_системный_режим.bat" < NUL
+          if errorlevel 1 exit /b %errorlevel%
+          if not exist ".venv\Scripts\sam-sebe-rpg.exe" exit /b 31
+          if not exist "playtests\founder-systems.db" exit /b 32
