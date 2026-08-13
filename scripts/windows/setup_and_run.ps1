@@ -5,6 +5,8 @@
 )
 
 $ErrorActionPreference = "Stop"
+$env:PYTHONIOENCODING = "utf-8"
+$env:PYTHONUTF8 = "1"
 $LauncherContractVersion = "1"
 $RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 $VenvDir = Join-Path $RepoRoot ".venv"
@@ -187,7 +189,8 @@ function Start-Game {
     if ($Mode -eq "systems") {
         Write-Host "Запускаю системный режим. Сохранение: playtests\founder-systems.db" -ForegroundColor Cyan
         & $VenvGame --mode systems --db $SystemsDb
-        return $LASTEXITCODE
+        $gameExitCode = $LASTEXITCODE
+        exit $gameExitCode
     }
 
     $gameArgs = @("--mode", "founder", "--db", $FounderDb, "--ollama-model", $Model)
@@ -197,7 +200,8 @@ function Start-Game {
     Write-Host "Запускаю founder-режим. Сохранение: playtests\founder-free.db" -ForegroundColor Cyan
     Write-Host "Свободный ввод: Ollama $Model" -ForegroundColor Cyan
     & $VenvGame @gameArgs
-    return $LASTEXITCODE
+    $gameExitCode = $LASTEXITCODE
+    exit $gameExitCode
 }
 
 function Reset-PlaytestSave {
@@ -257,26 +261,20 @@ try {
     }
 
     if ($Action -eq "PlaySystems") {
-        $code = Start-Game -Mode "systems"
-        if ($null -eq $code) { $code = 0 }
-        exit $code
+        Start-Game -Mode "systems"
     }
 
     $models = @(Get-OllamaModels)
     $model = Resolve-FounderModel -Models $models
     if ($model) {
-        $code = Start-Game -Mode "founder" -Model $model
-        if ($null -eq $code) { $code = 0 }
-        exit $code
+        Start-Game -Mode "founder" -Model $model
     }
 
     Write-Host "Founder-режим со свободным вводом требует уже установленную и запущенную Ollama с локальной моделью." -ForegroundColor Yellow
     Write-Host "Лаунчер не устанавливает Ollama и не скачивает модели автоматически."
     $fallback = Read-Host "Запустить системный режим сейчас? [Y/N]"
     if ($fallback -match '^[Yy]$') {
-        $code = Start-Game -Mode "systems"
-        if ($null -eq $code) { $code = 0 }
-        exit $code
+        Start-Game -Mode "systems"
     }
 
     Write-Host "Запуск отменён."
