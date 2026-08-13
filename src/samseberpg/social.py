@@ -45,8 +45,23 @@ class SocialService:
         )
         return new_value
 
-    def talk_summary(self, npc_id: str, trust: float, topic: str | None = None) -> str:
+    def talk_summary(
+        self,
+        npc_id: str,
+        trust: float,
+        topic: str | None = None,
+        *,
+        state: dict[str, Any] | None = None,
+    ) -> str:
+        state = state or {}
         if npc_id == "mira_craftswoman":
+            if bool(state.get("requested_wood", False)) and int(state.get("wood_stock", 0)) == 0:
+                return (
+                    "Мира отодвигает незаконченные заготовки: древесина кончилась, "
+                    "и теперь она ждёт материал, чтобы продолжить работу."
+                )
+            if int(state.get("work_cycles", 0)) > 0 and int(state.get("wood_stock", 0)) > 0:
+                return "Мира снова работает: запас древесины пока позволяет продолжать."
             return (
                 "Мира перебирает заготовки: хорошие камни и необычные материалы "
                 "здесь всегда находят применение."
@@ -91,6 +106,14 @@ class SocialService:
                     received.add(tag)
                 break
 
+        wood_stock_delta = 0
+        request_cleared = False
+        if npc_id == "mira_craftswoman" and "useful_wood" in item_tags:
+            state["wood_stock"] = int(state.get("wood_stock", 0)) + 1
+            request_cleared = bool(state.get("requested_wood", False))
+            state["requested_wood"] = False
+            wood_stock_delta = 1
+
         if trust_delta:
             self.change_trust(conn, npc_id, player_id, trust_delta)
         if coins_delta:
@@ -98,7 +121,7 @@ class SocialService:
                 "UPDATE player_resources SET coins = coins + ? WHERE player_id = ?",
                 (coins_delta, player_id),
             )
-        if accepted_key is not None:
+        if accepted_key is not None or wood_stock_delta:
             state["received_contributions"] = sorted(received)
             conn.execute(
                 "UPDATE entities SET state_json = ? WHERE entity_id = ?",
@@ -109,6 +132,8 @@ class SocialService:
             "trust_delta": trust_delta,
             "coins_delta": coins_delta,
             "accepted_key": accepted_key,
+            "wood_stock_delta": wood_stock_delta,
+            "request_cleared": request_cleared,
         }
 
     def pay_lodging(self, conn: sqlite3.Connection, player_id: str) -> dict[str, Any]:
