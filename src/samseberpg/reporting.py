@@ -13,8 +13,15 @@ def build_playtest_report(
 ) -> dict[str, Any]:
     events = db.list_events(player_id)
     world_events = db.list_world_events()
+    input_attempts = db.list_input_attempts()
     action_counts = Counter(event["action_type"] for event in events)
     world_event_counts = Counter(event["event_type"] for event in world_events)
+    parser_mode_counts = Counter(attempt["parser_mode"] for attempt in input_attempts)
+    parser_error_counts = Counter(
+        attempt["parser_mode"]
+        for attempt in input_attempts
+        if attempt.get("parser_error")
+    )
     locations = sorted(
         {
             event["location_id"]
@@ -86,6 +93,7 @@ def build_playtest_report(
         "lodging_secured": False,
     }
     world_time = db.get_world_time()
+    recognized_inputs = sum(bool(attempt["recognized"]) for attempt in input_attempts)
     return {
         "player_id": player_id,
         "world_time": world_time,
@@ -94,6 +102,11 @@ def build_playtest_report(
         "action_counts": dict(sorted(action_counts.items())),
         "unique_action_types": len(action_counts),
         "locations_touched": locations,
+        "input_attempts_total": len(input_attempts),
+        "recognized_inputs": recognized_inputs,
+        "unrecognized_inputs": len(input_attempts) - recognized_inputs,
+        "parser_mode_counts": dict(sorted(parser_mode_counts.items())),
+        "parser_error_counts": dict(sorted(parser_error_counts.items())),
         "throwing": throwing,
         "achievements": achievements,
         "abilities": abilities,
