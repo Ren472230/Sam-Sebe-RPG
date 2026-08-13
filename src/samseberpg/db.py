@@ -61,6 +61,17 @@ CREATE TABLE IF NOT EXISTS action_events (
     summary TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS world_events (
+    event_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    world_time INTEGER NOT NULL,
+    actor_id TEXT NOT NULL,
+    event_type TEXT NOT NULL,
+    target_id TEXT,
+    location_id TEXT,
+    data_json TEXT NOT NULL DEFAULT '{}',
+    summary TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS behavior_profiles (
     player_id TEXT NOT NULL,
     behavior_key TEXT NOT NULL,
@@ -97,7 +108,7 @@ BOOTSTRAP_ENTITIES: tuple[
         "Мира, ремесленница",
         "workshop_yard",
         ["npc"],
-        {},
+        {"wood_stock": 2, "work_cycles": 0, "requested_wood": False},
     ),
     (
         "oren_innkeeper",
@@ -113,7 +124,7 @@ BOOTSTRAP_ENTITIES: tuple[
         "Каспар, собиратель",
         "river_edge",
         ["npc"],
-        {},
+        {"carrying_wood": 0},
     ),
     (
         "raven_1",
@@ -228,6 +239,33 @@ class GameDatabase:
                         json.dumps(state),
                     ),
                 )
+            living_world_defaults = {
+                "mira_craftswoman": {
+                    "wood_stock": 2,
+                    "work_cycles": 0,
+                    "requested_wood": False,
+                },
+                "kaspar_forager": {"carrying_wood": 0},
+            }
+            for entity_id, defaults in living_world_defaults.items():
+                row = conn.execute(
+                    "SELECT state_json FROM entities WHERE entity_id = ?",
+                    (entity_id,),
+                ).fetchone()
+                if row is None:
+                    continue
+                state = json.loads(row["state_json"])
+                changed = False
+                for key, value in defaults.items():
+                    if key not in state:
+                        state[key] = value
+                        changed = True
+                if changed:
+                    conn.execute(
+                        "UPDATE entities SET state_json = ? WHERE entity_id = ?",
+                        (json.dumps(state, ensure_ascii=False), entity_id),
+                    )
+
             conn.execute(
                 """
                 INSERT OR IGNORE INTO player_state(player_id, location_id)
@@ -326,6 +364,18 @@ class GameDatabase:
             data["success"] = bool(data["success"])
             data["behavior_tags"] = json.loads(data.pop("behavior_tags_json"))
             data["evidence"] = json.loads(data.pop("evidence_json"))
+            events.append(data)
+        return events
+
+    def list_world_events(self) -> list[dict[str, Any]]:
+        with self.connect() as conn:
+            rows = conn.execute(
+                "SELECT * FROM world_events ORDER BY event_id"
+            ).fetchall()
+        events: list[dict[str, Any]] = []
+        for row in rows:
+            data = dict(row)
+            data["data"] = json.loads(data.pop("data_json"))
             events.append(data)
         return events
 
