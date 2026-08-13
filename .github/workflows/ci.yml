@@ -30,21 +30,6 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
-      - name: Diagnose Windows Python discovery
-        shell: powershell
-        run: |
-          Write-Host "python command:"
-          Get-Command python | Format-List Name,CommandType,Source,Path
-          python --version
-          Write-Host "python exit=$LASTEXITCODE"
-          Write-Host "py command:"
-          Get-Command py -ErrorAction SilentlyContinue | Format-List Name,CommandType,Source,Path
-          py -3.12 --version
-          Write-Host "py exit=$LASTEXITCODE"
-          $probe = 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")'
-          Write-Host "probe text=$probe"
-          & python -c $probe
-          Write-Host "probe exit=$LASTEXITCODE"
       - name: Run systems launcher through batch
         shell: cmd
         run: |
