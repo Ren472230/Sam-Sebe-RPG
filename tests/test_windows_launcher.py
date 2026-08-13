@@ -42,8 +42,9 @@ def test_runtime_install_is_local_and_excludes_dev_dependencies():
 
 def test_save_paths_are_distinct_and_scoped_to_playtests():
     text = read(PS1).replace("\\", "/")
-    assert "playtests/founder-free.db" in text
-    assert "playtests/founder-systems.db" in text
+    assert 'Join-Path $PlaytestsDir "founder-free.db"' in text
+    assert 'Join-Path $PlaytestsDir "founder-systems.db"' in text
+    assert '$PlaytestsDir = Join-Path $RepoRoot "playtests"' in text
 
 
 def test_launcher_never_auto_installs_external_tools_or_models():
@@ -91,6 +92,7 @@ def test_batch_wrappers_pause_only_on_failure():
 
 
 def test_launcher_uses_version_stamp_in_repository_venv():
-    text = read(PS1).replace("\\", "/")
-    assert ".venv/.sam-sebe-launcher-version" in text
+    text = read(PS1)
+    assert '$VenvDir = Join-Path $RepoRoot ".venv"' in text
+    assert '$StampPath = Join-Path $VenvDir ".sam-sebe-launcher-version"' in text
     assert '$LauncherContractVersion = "1"' in text
