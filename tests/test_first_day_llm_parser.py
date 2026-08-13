@@ -8,15 +8,13 @@ from samseberpg.llm_parser import ACTION_SCHEMA, OllamaActionParser, build_parse
 
 def make_db(tmp_path: Path) -> GameDatabase:
     db = GameDatabase(tmp_path / "game.db")
-    db.initialize()
-    db.bootstrap_if_empty()
+    db.initialize(); db.bootstrap_if_empty()
     return db
 
 
 def response_for(data: dict):
     def transport(url, payload, timeout):
         return {"message": {"content": json.dumps(data)}}
-
     return transport
 
 
