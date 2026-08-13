@@ -42,6 +42,25 @@ def render_human(report: dict[str, object]) -> str:
         ]
     )
 
+    world_events_total = report.get("world_events_total")
+    if isinstance(world_events_total, int):
+        lines.append(f"Автономные события мира: {world_events_total}")
+        world_event_counts = report.get("world_event_counts", {})
+        if isinstance(world_event_counts, dict) and world_event_counts:
+            lines.append("  По типам:")
+            for event_type, count in world_event_counts.items():
+                lines.append(f"    {event_type}: {count}")
+        latest_world_events = report.get("latest_world_events", [])
+        if isinstance(latest_world_events, list) and latest_world_events:
+            lines.append("  Последние:")
+            for event in latest_world_events:
+                if not isinstance(event, dict):
+                    continue
+                lines.append(
+                    f"    t={event.get('world_time')} {event.get('actor_id')} "
+                    f"{event.get('event_type')} — {event.get('summary', '')}"
+                )
+
     first_day = report.get("first_day")
     if isinstance(first_day, dict):
         lines.extend(
