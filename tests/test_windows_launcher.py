@@ -96,3 +96,7 @@ def test_launcher_uses_version_stamp_in_repository_venv():
     assert '$VenvDir = Join-Path $RepoRoot ".venv"' in text
     assert '$StampPath = Join-Path $VenvDir ".sam-sebe-launcher-version"' in text
     assert '$LauncherContractVersion = "1"' in text
+
+
+def test_windows_powershell_script_has_utf8_bom():
+    assert PS1.read_bytes().startswith(b"\xef\xbb\xbf")
