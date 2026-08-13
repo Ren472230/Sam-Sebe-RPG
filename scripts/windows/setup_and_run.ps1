@@ -23,14 +23,9 @@ function Test-Python312 {
     )
 
     try {
-        $probe = 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")'
-        $output = & $Executable @PrefixArgs -c $probe 2>$null
-        if ($LASTEXITCODE -ne 0 -or -not $output) {
-            return $false
-        }
-        $versionText = ($output | Select-Object -Last 1).Trim()
-        $version = [version]$versionText
-        return ($version.Major -gt 3 -or ($version.Major -eq 3 -and $version.Minor -ge 12))
+        $probe = 'import sys; raise SystemExit(sys.version_info < (3, 12))'
+        & $Executable @PrefixArgs -c $probe 2>$null
+        return ($LASTEXITCODE -eq 0)
     }
     catch {
         return $false
