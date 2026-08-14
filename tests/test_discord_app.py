@@ -137,3 +137,62 @@ def test_discord_app_can_give_food_to_present_npc(tmp_path):
             "SELECT owner_actor_id FROM entities WHERE id = 'bread_1'"
         ).fetchone()[0]
     assert owner == "npc_oren"
+
+
+def test_discord_app_renders_sale_money_and_filled_bottle(tmp_path):
+    db, app = make_app(tmp_path)
+    app.handle_act("discord-a", "Ren", "идти village_square", "eco-move")
+
+    square = app.handle_look("discord-a", "Ren")
+    before = app.handle_me("discord-a", "Ren")
+    assert "Пустая бутылка" in square
+    assert "цена: 3 монеты" in square
+    assert "**Монеты:** 10" in before
+
+    buy = app.handle_act(
+        "discord-a",
+        "Ren",
+        "купить bottle_1 у npc_oren",
+        "eco-buy",
+    )
+    assert "покупаете Пустая бутылка за 3 монеты" in buy
+    after_buy = app.handle_me("discord-a", "Ren")
+    assert "**Монеты:** 7" in after_buy
+    assert "Пустая бутылка" in after_buy
+
+    use = app.handle_act(
+        "discord-a",
+        "Ren",
+        "использовать bottle_1 на village_well",
+        "eco-use",
+    )
+    assert "наполняете Пустая бутылка водой" in use
+    after_use = app.handle_me("discord-a", "Ren")
+    assert "внутри: water" in after_use
+
+    with db.connect() as conn:
+        assert conn.execute(
+            "SELECT coins FROM npcs WHERE actor_id = 'npc_oren'"
+        ).fetchone()[0] == 23
+
+
+def test_discord_buy_retry_does_not_double_charge(tmp_path):
+    db, app = make_app(tmp_path)
+    app.handle_act("discord-a", "Ren", "идти village_square", "retry-move")
+    first = app.handle_act(
+        "discord-a", "Ren", "купить bottle_1 у npc_oren", "retry-buy"
+    )
+    second = app.handle_act(
+        "discord-a", "Ren", "купить bottle_1 у npc_oren", "retry-buy"
+    )
+    assert first == second
+    with db.connect() as conn:
+        player = conn.execute(
+            "SELECT actor_id FROM players WHERE discord_user_id = 'discord-a'"
+        ).fetchone()[0]
+        assert conn.execute(
+            "SELECT coins FROM players WHERE actor_id = ?", (player,)
+        ).fetchone()[0] == 7
+        assert conn.execute(
+            "SELECT coins FROM npcs WHERE actor_id = 'npc_oren'"
+        ).fetchone()[0] == 23
