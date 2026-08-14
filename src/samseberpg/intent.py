@@ -15,6 +15,7 @@ PROPOSAL_ACTION_TYPES = frozenset({
     "GIVE",
     "BUY",
     "USE",
+    "TALK",
     "UNSUPPORTED",
 })
 
@@ -201,6 +202,19 @@ def canonicalize_proposal(
             context.player_id,
             ActionType.BUY,
             item_id=item_id,
+            target_id=target_id,
+            source_text=source_text,
+        )
+
+    if action_type == "TALK":
+        if item_id is not None or destination_id is not None or target_id is None:
+            return None
+        actor = next((actor for actor in context.actors if actor.id == target_id), None)
+        if actor is None or actor.actor_type != "npc":
+            return None
+        return CanonicalAction(
+            context.player_id,
+            ActionType.TALK,
             target_id=target_id,
             source_text=source_text,
         )
