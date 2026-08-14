@@ -1,16 +1,26 @@
 from __future__ import annotations
 
+import json
 from uuid import uuid4
 
 from .clock import Clock
 from .db import DEFAULT_WORLD_ID, GameDatabase
-from .domain import VisibleActor, VisibleEntity, WorldView
+from .world import WorldSynchronizer
+from .domain import (
+    ActionResult,
+    ActionType,
+    CanonicalAction,
+    VisibleActor,
+    VisibleEntity,
+    WorldView,
+)
 
 
 class GameService:
     def __init__(self, db: GameDatabase, clock: Clock) -> None:
         self.db = db
         self.clock = clock
+        self.synchronizer = WorldSynchronizer()
 
     def register_player(self, discord_user_id: str, name: str) -> str:
         conn = self.db.connect()
@@ -46,7 +56,10 @@ class GameService:
             conn.close()
 
     def observe(self, player_id: str) -> WorldView:
-        with self.db.connect() as conn:
+        conn = self.db.connect()
+        try:
+            conn.execute("BEGIN IMMEDIATE")
+            self.synchronizer.catch_up(conn, DEFAULT_WORLD_ID, self.clock.now())
             player = conn.execute(
                 "SELECT actors.location_id, locations.name, locations.description "
                 "FROM players "
@@ -74,6 +87,13 @@ class GameService:
                 "WHERE owner_actor_id = ? ORDER BY name, id",
                 (player_id,),
             ).fetchall()
+            conn.execute("COMMIT")
+        except Exception:
+            if conn.in_transaction:
+                conn.execute("ROLLBACK")
+            raise
+        finally:
+            conn.close()
 
         return WorldView(
             player_id=player_id,
@@ -84,6 +104,201 @@ class GameService:
             visible_entities=tuple(_visible_entity(row) for row in entity_rows),
             inventory=tuple(_visible_entity(row) for row in inventory_rows),
         )
+
+    def execute(self, action: CanonicalAction, external_id: str | None = None) -> ActionResult:
+        conn = self.db.connect()
+        try:
+            conn.execute("BEGIN IMMEDIATE")
+            self.synchronizer.catch_up(conn, DEFAULT_WORLD_ID, self.clock.now())
+            if external_id is not None:
+                replay_row = conn.execute(
+                    "SELECT result_json FROM processed_interactions WHERE external_id = ?",
+                    (external_id,),
+                ).fetchone()
+                if replay_row is not None:
+                    stored = json.loads(str(replay_row[0]))
+                    conn.execute("COMMIT")
+                    return ActionResult(
+                        success=bool(stored["success"]),
+                        code=str(stored["code"]),
+                        summary=str(stored["summary"]),
+                        event_id=int(stored["event_id"]),
+                        replayed=True,
+                    )
+
+            player = conn.execute(
+                "SELECT actors.location_id FROM players "
+                "JOIN actors ON actors.id = players.actor_id "
+                "WHERE players.actor_id = ?",
+                (action.actor_id,),
+            ).fetchone()
+
+            if player is None:
+                result = self._record_result(
+                    conn,
+                    action,
+                    external_id,
+                    actor_id=None,
+                    location_id=None,
+                    success=False,
+                    code="PLAYER_NOT_FOUND",
+                    summary="Player not found.",
+                )
+                conn.execute("COMMIT")
+                return result
+
+            location_id = str(player[0])
+            success, code, summary, event_location = self._resolve_action(
+                conn, action, location_id
+            )
+            result = self._record_result(
+                conn,
+                action,
+                external_id,
+                actor_id=action.actor_id,
+                location_id=event_location,
+                success=success,
+                code=code,
+                summary=summary,
+            )
+            conn.execute("COMMIT")
+            return result
+        except Exception:
+            if conn.in_transaction:
+                conn.execute("ROLLBACK")
+            raise
+        finally:
+            conn.close()
+
+    def _resolve_action(
+        self, conn, action: CanonicalAction, location_id: str
+    ) -> tuple[bool, str, str, str]:
+        if action.action_type is ActionType.LOOK:
+            return True, "OK", "Looked around.", location_id
+
+        if action.action_type is ActionType.MOVE:
+            destination_id = action.destination_id
+            adjacent = (
+                destination_id is not None
+                and conn.execute(
+                    "SELECT 1 FROM location_edges "
+                    "WHERE from_location_id = ? AND to_location_id = ?",
+                    (location_id, destination_id),
+                ).fetchone()
+                is not None
+            )
+            if not adjacent:
+                return False, "INVALID_DESTINATION", "Destination is not adjacent.", location_id
+            conn.execute(
+                "UPDATE actors SET location_id = ? WHERE id = ?",
+                (destination_id, action.actor_id),
+            )
+            return True, "OK", f"Moved to {destination_id}.", str(destination_id)
+
+        if action.action_type is ActionType.TAKE:
+            entity = conn.execute(
+                "SELECT location_id, owner_actor_id, portable FROM entities WHERE id = ?",
+                (action.target_id,),
+            ).fetchone()
+            if entity is None:
+                return False, "TARGET_NOT_FOUND", "Target does not exist.", location_id
+            if entity[1] is not None:
+                return False, "ALREADY_OWNED", "Target is already owned.", location_id
+            if entity[0] != location_id:
+                return False, "TARGET_NOT_PRESENT", "Target is not present here.", location_id
+            if not bool(entity[2]):
+                return False, "NOT_PORTABLE", "Target cannot be carried.", location_id
+            conn.execute(
+                "UPDATE entities SET location_id = NULL, owner_actor_id = ? WHERE id = ?",
+                (action.actor_id, action.target_id),
+            )
+            return True, "OK", f"Took {action.target_id}.", location_id
+
+        if action.action_type is ActionType.DROP:
+            entity = conn.execute(
+                "SELECT owner_actor_id FROM entities WHERE id = ?",
+                (action.target_id,),
+            ).fetchone()
+            if entity is None or entity[0] != action.actor_id:
+                return False, "ITEM_NOT_OWNED", "Item is not owned by this player.", location_id
+            conn.execute(
+                "UPDATE entities SET owner_actor_id = NULL, location_id = ? WHERE id = ?",
+                (location_id, action.target_id),
+            )
+            return True, "OK", f"Dropped {action.target_id}.", location_id
+
+        raise ValueError(f"unsupported action type: {action.action_type}")
+
+    def _record_result(
+        self,
+        conn,
+        action: CanonicalAction,
+        external_id: str | None,
+        *,
+        actor_id: str | None,
+        location_id: str | None,
+        success: bool,
+        code: str,
+        summary: str,
+    ) -> ActionResult:
+        evidence = {
+            key: value
+            for key, value in {
+                "destination_id": action.destination_id,
+                "source_text": action.source_text,
+            }.items()
+            if value is not None
+        }
+        cursor = conn.execute(
+            "INSERT INTO action_events "
+            "(world_id, external_id, occurred_at, actor_id, action_type, target_id, location_id, "
+            "success, result_code, summary, evidence_json) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (
+                DEFAULT_WORLD_ID,
+                external_id,
+                _timestamp(self.clock),
+                actor_id,
+                action.action_type.value,
+                action.target_id,
+                location_id,
+                int(success),
+                code,
+                summary,
+                json.dumps(evidence, separators=(",", ":"), sort_keys=True),
+            ),
+        )
+        result = ActionResult(
+            success=success,
+            code=code,
+            summary=summary,
+            event_id=int(cursor.lastrowid),
+        )
+        if external_id is not None:
+            processed_at = _timestamp(self.clock)
+            conn.execute(
+                "INSERT INTO processed_interactions "
+                "(external_id, world_id, actor_id, action_event_id, result_json, processed_at) "
+                "VALUES (?, ?, ?, ?, ?, ?)",
+                (
+                    external_id,
+                    DEFAULT_WORLD_ID,
+                    actor_id,
+                    result.event_id,
+                    json.dumps(
+                        {
+                            "success": result.success,
+                            "code": result.code,
+                            "summary": result.summary,
+                            "event_id": result.event_id,
+                        },
+                        separators=(",", ":"),
+                        sort_keys=True,
+                    ),
+                    processed_at,
+                ),
+            )
+        return result
 
 
 def _visible_actor(row) -> VisibleActor:
