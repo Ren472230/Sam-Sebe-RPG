@@ -1,0 +1,58 @@
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from enum import StrEnum
+from typing import Any
+
+
+class ActionType(StrEnum):
+    LOOK = "LOOK"
+    MOVE = "MOVE"
+    TAKE = "TAKE"
+    DROP = "DROP"
+
+
+@dataclass(frozen=True, slots=True)
+class CanonicalAction:
+    actor_id: str
+    action_type: ActionType
+    target_id: str | None = None
+    destination_id: str | None = None
+    source_text: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class ActionResult:
+    success: bool
+    code: str
+    summary: str
+    event_id: int | None = None
+    data: dict[str, Any] = field(default_factory=dict)
+    replayed: bool = False
+
+
+@dataclass(frozen=True, slots=True)
+class VisibleActor:
+    id: str
+    name: str
+    actor_type: str
+    activity: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class VisibleEntity:
+    id: str
+    name: str
+    entity_type: str
+    portable: bool
+
+
+@dataclass(frozen=True, slots=True)
+class WorldView:
+    player_id: str
+    location_id: str
+    location_name: str
+    location_description: str
+    actors: tuple[VisibleActor, ...]
+    entities: tuple[VisibleEntity, ...]
+    inventory: tuple[VisibleEntity, ...]
