@@ -10,6 +10,8 @@ class ActionType(StrEnum):
     MOVE = "MOVE"
     TAKE = "TAKE"
     DROP = "DROP"
+    THROW = "THROW"
+    GIVE = "GIVE"
 
 
 @dataclass(frozen=True, slots=True)
@@ -17,6 +19,7 @@ class CanonicalAction:
     actor_id: str
     action_type: ActionType
     target_id: str | None = None
+    item_id: str | None = None
     destination_id: str | None = None
     source_text: str | None = None
 
@@ -45,6 +48,7 @@ class VisibleEntity:
     name: str
     entity_type: str
     portable: bool
+    state: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass(frozen=True, slots=True)
