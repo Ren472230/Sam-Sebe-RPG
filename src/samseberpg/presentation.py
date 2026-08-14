@@ -5,8 +5,9 @@ from .domain import ActionResult, WorldView
 
 HELP_TEXT = (
     "Пока понимаю: `осмотреться`, `идти <location_id>`, "
-    "`взять <entity_id>`, `положить <entity_id>`.\n"
-    "Например: `идти village_square` или `взять stone_flat_1`."
+    "`взять <entity_id>`, `положить <entity_id>`, "
+    "`бросить <item_id> в <target_id>`, `дать <item_id> <actor_id>`.\n"
+    "Например: `бросить stone_flat_1 в tavern_sign`."
 )
 
 
@@ -24,9 +25,15 @@ def render_world(view: WorldView) -> str:
         + (f" — {actor.activity}" if actor.activity else "")
         for actor in view.actors
     ]
-    entity_lines = [
-        f"- {entity.name} (`{entity.id}`)" for entity in view.entities
-    ]
+    entity_lines = []
+    for entity in view.entities:
+        condition = entity.state.get("condition")
+        state_suffix = (
+            f" — состояние: {condition}%"
+            if isinstance(condition, int) and not isinstance(condition, bool)
+            else ""
+        )
+        entity_lines.append(f"- {entity.name} (`{entity.id}`){state_suffix}")
     actors = "\n".join(actor_lines) if actor_lines else "- никого"
     entities = "\n".join(entity_lines) if entity_lines else "- ничего заметного"
     return limit_message(
