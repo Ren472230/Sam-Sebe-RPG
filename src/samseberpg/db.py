@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS worlds (
     created_at TEXT NOT NULL,
     last_simulated_at TEXT NOT NULL
 );
+
 CREATE TABLE IF NOT EXISTS locations (
     id TEXT PRIMARY KEY,
     world_id TEXT NOT NULL REFERENCES worlds(id) ON DELETE CASCADE,
@@ -30,12 +31,14 @@ CREATE TABLE IF NOT EXISTS locations (
     description TEXT NOT NULL,
     sort_order INTEGER NOT NULL
 );
+
 CREATE TABLE IF NOT EXISTS location_edges (
     world_id TEXT NOT NULL REFERENCES worlds(id) ON DELETE CASCADE,
     from_location_id TEXT NOT NULL REFERENCES locations(id) ON DELETE CASCADE,
     to_location_id TEXT NOT NULL REFERENCES locations(id) ON DELETE CASCADE,
     PRIMARY KEY (world_id, from_location_id, to_location_id)
 );
+
 CREATE TABLE IF NOT EXISTS actors (
     id TEXT PRIMARY KEY,
     world_id TEXT NOT NULL REFERENCES worlds(id) ON DELETE CASCADE,
@@ -44,17 +47,20 @@ CREATE TABLE IF NOT EXISTS actors (
     location_id TEXT NOT NULL REFERENCES locations(id),
     created_at TEXT NOT NULL
 );
+
 CREATE TABLE IF NOT EXISTS players (
     actor_id TEXT PRIMARY KEY REFERENCES actors(id) ON DELETE CASCADE,
     discord_user_id TEXT NOT NULL UNIQUE,
     joined_at TEXT NOT NULL,
     coins INTEGER NOT NULL DEFAULT 10 CHECK(coins >= 0)
 );
+
 CREATE TABLE IF NOT EXISTS npcs (
     actor_id TEXT PRIMARY KEY REFERENCES actors(id) ON DELETE CASCADE,
     role TEXT NOT NULL,
     current_activity TEXT NOT NULL
 );
+
 CREATE TABLE IF NOT EXISTS npc_schedule (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     npc_actor_id TEXT NOT NULL REFERENCES npcs(actor_id) ON DELETE CASCADE,
@@ -64,6 +70,7 @@ CREATE TABLE IF NOT EXISTS npc_schedule (
     activity TEXT NOT NULL,
     priority INTEGER NOT NULL DEFAULT 0
 );
+
 CREATE TABLE IF NOT EXISTS entities (
     id TEXT PRIMARY KEY,
     world_id TEXT NOT NULL REFERENCES worlds(id) ON DELETE CASCADE,
@@ -76,6 +83,7 @@ CREATE TABLE IF NOT EXISTS entities (
     created_at TEXT NOT NULL,
     CHECK ((location_id IS NULL) != (owner_actor_id IS NULL))
 );
+
 CREATE TABLE IF NOT EXISTS relations (
     source_actor_id TEXT NOT NULL REFERENCES actors(id) ON DELETE CASCADE,
     target_actor_id TEXT NOT NULL REFERENCES actors(id) ON DELETE CASCADE,
@@ -89,6 +97,7 @@ CREATE TABLE IF NOT EXISTS relations (
     PRIMARY KEY (source_actor_id, target_actor_id),
     CHECK (source_actor_id != target_actor_id)
 );
+
 CREATE TABLE IF NOT EXISTS action_events (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     world_id TEXT NOT NULL REFERENCES worlds(id) ON DELETE CASCADE,
@@ -103,9 +112,11 @@ CREATE TABLE IF NOT EXISTS action_events (
     summary TEXT NOT NULL,
     evidence_json TEXT NOT NULL DEFAULT '{}'
 );
+
 CREATE INDEX IF NOT EXISTS idx_action_events_actor ON action_events(actor_id, id);
 CREATE INDEX IF NOT EXISTS idx_entities_location ON entities(location_id);
 CREATE INDEX IF NOT EXISTS idx_entities_owner ON entities(owner_actor_id);
+
 CREATE TABLE IF NOT EXISTS processed_interactions (
     external_id TEXT PRIMARY KEY,
     world_id TEXT NOT NULL REFERENCES worlds(id) ON DELETE CASCADE,
@@ -123,7 +134,12 @@ class GameDatabase:
 
     def connect(self) -> sqlite3.Connection:
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        conn = sqlite3.connect(self.path, timeout=5.0, isolation_level=None, check_same_thread=False)
+        conn = sqlite3.connect(
+            self.path,
+            timeout=5.0,
+            isolation_level=None,
+            check_same_thread=False,
+        )
         conn.row_factory = sqlite3.Row
         conn.execute("PRAGMA foreign_keys = ON")
         conn.execute("PRAGMA busy_timeout = 5000")
@@ -142,6 +158,7 @@ class GameDatabase:
                 if conn.execute("SELECT 1 FROM worlds WHERE id = ?", (WORLD_ID,)).fetchone():
                     conn.commit()
                     return
+
                 conn.execute(
                     "INSERT INTO worlds(id, name, timezone, created_at, last_simulated_at) VALUES (?, ?, ?, ?, ?)",
                     (WORLD_ID, "Пограничная деревня", "UTC", timestamp, timestamp),
@@ -151,14 +168,20 @@ class GameDatabase:
                     ("village_square", WORLD_ID, "Деревенская площадь", "Небольшая площадь перед таверной и колодцем.", 2),
                     ("river_edge", WORLD_ID, "Берег реки", "Тихий берег у лесной кромки, где собирают травы и камни.", 3),
                 ]
-                conn.executemany("INSERT INTO locations(id, world_id, name, description, sort_order) VALUES (?, ?, ?, ?, ?)", locations)
+                conn.executemany(
+                    "INSERT INTO locations(id, world_id, name, description, sort_order) VALUES (?, ?, ?, ?, ?)",
+                    locations,
+                )
                 edges = [
                     (WORLD_ID, "workshop_yard", "village_square"),
                     (WORLD_ID, "village_square", "workshop_yard"),
                     (WORLD_ID, "village_square", "river_edge"),
                     (WORLD_ID, "river_edge", "village_square"),
                 ]
-                conn.executemany("INSERT INTO location_edges(world_id, from_location_id, to_location_id) VALUES (?, ?, ?)", edges)
+                conn.executemany(
+                    "INSERT INTO location_edges(world_id, from_location_id, to_location_id) VALUES (?, ?, ?)",
+                    edges,
+                )
                 npc_rows = [
                     ("npc_mira", WORLD_ID, "npc", "Мира", "workshop_yard", timestamp, "ремесленница", "работает за верстаком"),
                     ("npc_oren", WORLD_ID, "npc", "Орен", "village_square", timestamp, "трактирщик", "готовит таверну к посетителям"),
@@ -185,8 +208,8 @@ class GameDatabase:
                     schedules,
                 )
                 entities = [
-                    ("stone_flat_1", "Плоский камень", "stone", "workshop_yard", 1, {"throwable": True}),
-                    ("stone_round_1", "Круглый камень", "stone", "workshop_yard", 1, {"throwable": True}),
+                    ("stone_flat_1", "Плоский камень", "stone", "workshop_yard", 1, {"throwable": True, "impact_damage": 20}),
+                    ("stone_round_1", "Круглый камень", "stone", "workshop_yard", 1, {"throwable": True, "impact_damage": 20}),
                     ("bread_1", "Каравай хлеба", "food", "village_square", 1, {"edible": True}),
                     ("apple_1", "Красное яблоко", "food", "village_square", 1, {"edible": True}),
                     ("bottle_1", "Пустая бутылка", "container", "village_square", 1, {}),
@@ -200,7 +223,10 @@ class GameDatabase:
                 ]
                 conn.executemany(
                     "INSERT INTO entities(id, world_id, name, entity_type, location_id, owner_actor_id, portable, state_json, created_at) VALUES (?, ?, ?, ?, ?, NULL, ?, ?, ?)",
-                    [(entity_id, WORLD_ID, name, entity_type, location_id, portable, json.dumps(state, ensure_ascii=False), timestamp) for entity_id, name, entity_type, location_id, portable, state in entities],
+                    [
+                        (entity_id, WORLD_ID, name, entity_type, location_id, portable, json.dumps(state, ensure_ascii=False), timestamp)
+                        for entity_id, name, entity_type, location_id, portable, state in entities
+                    ],
                 )
                 conn.commit()
             except Exception:
