@@ -137,3 +137,13 @@ python scripts/demo_consequences.py
 ```bash
 python scripts/demo_economy_use.py
 ```
+
+## SQLite migrations
+
+`GameDatabase.initialize()` использует `PRAGMA user_version` и автоматически обновляет старые founder DB до текущего schema/data contract. Миграции не удаляют мир и не сбрасывают player coins, ownership, relations, events или существующее состояние объектов. DB из более новой неизвестной версии отклоняется с typed error вместо рискованного downgrade.
+
+Проверить апгрейд representative legacy DB:
+
+```bash
+python scripts/demo_migration.py
+```
