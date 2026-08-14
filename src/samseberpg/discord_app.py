@@ -2,13 +2,20 @@ from __future__ import annotations
 
 from .domain import ActionType
 from .game import GameService
+from .intent import (
+    IntentResolutionError,
+    IntentResolver,
+    build_intent_context,
+    canonicalize_proposal,
+)
 from .parser import parse_action
 from .presentation import HELP_TEXT, limit_message, render_action_result, render_me, render_world
 
 
 class DiscordGameApplication:
-    def __init__(self, game: GameService):
+    def __init__(self, game: GameService, intent_resolver: IntentResolver | None = None):
         self.game = game
+        self.intent_resolver = intent_resolver
 
     def handle_look(self, discord_user_id: str, display_name: str) -> str:
         player_id = self.game.register_player(discord_user_id, display_name)
@@ -27,6 +34,15 @@ class DiscordGameApplication:
     ) -> str:
         player_id = self.game.register_player(discord_user_id, display_name)
         action = parse_action(text, player_id)
+        if action is None and self.intent_resolver is not None:
+            context = build_intent_context(self.game.observe(player_id))
+            try:
+                proposal = self.intent_resolver.resolve(text, context)
+            except IntentResolutionError:
+                return f"Не удалось безопасно разобрать действие.\n\n{HELP_TEXT}"
+            action = canonicalize_proposal(proposal, context, source_text=text)
+            if action is None:
+                return f"Не понял действие или оно пока не поддерживается.\n\n{HELP_TEXT}"
         if action is None:
             return HELP_TEXT
 
