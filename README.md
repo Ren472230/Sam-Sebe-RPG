@@ -7,7 +7,7 @@
 - одна деревня: 3 локации, 3 NPC, 12 стартовых объектов;
 - несколько игроков в одном каноническом мире;
 - Discord user ID -> стабильный player actor;
-- LOOK / MOVE / TAKE / DROP / THROW / GIVE;
+- LOOK / MOVE / TAKE / DROP / THROW / GIVE / BUY / USE;
 - атомарные SQLite-транзакции и append-only action events;
 - idempotency по external interaction ID;
 - persistence после перезапуска;
@@ -48,7 +48,7 @@ adapter -> CanonicalAction -> GameService -> deterministic rules -> SQLite trans
 
 ## Текущий scope
 
-Сейчас намеренно отсутствуют combat, crafting, большой мир, dynamic lighting, автономные LLM-NPC, vector DB/RAG, PostgreSQL/Redis и Discord Activity. Discord adapter, THROW/GIVE и persistent consequences уже есть. Следующий продуктовый слой — USE/BUY и минимальный экономический loop.
+Сейчас намеренно отсутствуют combat, crafting, большой мир, dynamic lighting, автономные LLM-NPC, vector DB/RAG, PostgreSQL/Redis и Discord Activity. Discord adapter, persistent consequences и минимальный BUY/USE loop уже есть. Следующий продуктовый слой — безопасная эволюция схемы БД и natural-language intent provider.
 
 ## Discord founder build
 
@@ -84,7 +84,9 @@ python -m samseberpg.discord_bot
 - `/act text:взять stone_flat_1`;
 - `/act text:положить stone_flat_1`;
 - `/act text:бросить stone_flat_1 в tavern_sign`;
-- `/act text:дать bread_1 npc_oren`.
+- `/act text:дать bread_1 npc_oren`;
+- `/act text:купить bottle_1 у npc_oren`;
+- `/act text:использовать bottle_1 на village_well`.
 
 Если `DISCORD_GUILD_ID` задан, команды синхронизируются только с этим тестовым сервером. Без него выполняется global sync.
 
@@ -116,4 +118,22 @@ python -m samseberpg.discord_bot
 
 ```bash
 python scripts/demo_consequences.py
+```
+
+## Minimal Economy + USE slice
+
+В деревне есть один намеренно маленький экономический loop. У игрока 10 стартовых монет, у Орена — канонический баланс, а `bottle_1` выставлена на площади за 3 монеты. Обычный `TAKE` не позволяет обойти продажу.
+
+```text
+идти village_square
+купить bottle_1 у npc_oren
+использовать bottle_1 на village_well
+```
+
+После покупки у игрока остаётся 7 монет, Орен получает 3, а бутылка становится собственностью игрока. Использование бутылки на колодце меняет её каноническое состояние на `filled_with=water`. Деньги, ownership и содержимое переживают restart; повтор одного Discord interaction ID не списывает оплату повторно.
+
+Проверочный сценарий:
+
+```bash
+python scripts/demo_economy_use.py
 ```
