@@ -51,3 +51,26 @@ def test_parser_rejects_malformed_throw_and_give_forms():
     assert parse_action("бросить stone_flat_1", "player_1") is None
     assert parse_action("throw stone_flat_1 tavern_sign", "player_1") is None
     assert parse_action("дать bread_1", "player_1") is None
+
+
+def test_parser_supports_explicit_buy_and_use_forms():
+    cases = [
+        ("купить bottle_1 у npc_oren", ActionType.BUY, "bottle_1", "npc_oren"),
+        ("buy bottle_1 from npc_oren", ActionType.BUY, "bottle_1", "npc_oren"),
+        ("использовать bottle_1 на village_well", ActionType.USE, "bottle_1", "village_well"),
+        ("use bottle_1 on village_well", ActionType.USE, "bottle_1", "village_well"),
+    ]
+    for text, action_type, item_id, target_id in cases:
+        action = parse_action(text, "player_1")
+        assert action is not None
+        assert action.action_type == action_type
+        assert action.item_id == item_id
+        assert action.target_id == target_id
+        assert action.source_text == text
+
+
+def test_parser_rejects_malformed_buy_and_use_forms():
+    assert parse_action("купить bottle_1", "player_1") is None
+    assert parse_action("buy bottle_1 npc_oren", "player_1") is None
+    assert parse_action("использовать bottle_1", "player_1") is None
+    assert parse_action("use bottle_1 village_well", "player_1") is None
