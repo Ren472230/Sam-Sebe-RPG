@@ -7,7 +7,7 @@ from pathlib import Path
 
 WORLD_ID = "village_1"
 START_LOCATION_ID = "workshop_yard"
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 
 
 class UnsupportedSchemaVersionError(RuntimeError):
@@ -28,7 +28,6 @@ CREATE TABLE IF NOT EXISTS worlds (
     created_at TEXT NOT NULL,
     last_simulated_at TEXT NOT NULL
 );
-
 CREATE TABLE IF NOT EXISTS locations (
     id TEXT PRIMARY KEY,
     world_id TEXT NOT NULL REFERENCES worlds(id) ON DELETE CASCADE,
@@ -36,14 +35,12 @@ CREATE TABLE IF NOT EXISTS locations (
     description TEXT NOT NULL,
     sort_order INTEGER NOT NULL
 );
-
 CREATE TABLE IF NOT EXISTS location_edges (
     world_id TEXT NOT NULL REFERENCES worlds(id) ON DELETE CASCADE,
     from_location_id TEXT NOT NULL REFERENCES locations(id) ON DELETE CASCADE,
     to_location_id TEXT NOT NULL REFERENCES locations(id) ON DELETE CASCADE,
     PRIMARY KEY (world_id, from_location_id, to_location_id)
 );
-
 CREATE TABLE IF NOT EXISTS actors (
     id TEXT PRIMARY KEY,
     world_id TEXT NOT NULL REFERENCES worlds(id) ON DELETE CASCADE,
@@ -52,21 +49,18 @@ CREATE TABLE IF NOT EXISTS actors (
     location_id TEXT NOT NULL REFERENCES locations(id),
     created_at TEXT NOT NULL
 );
-
 CREATE TABLE IF NOT EXISTS players (
     actor_id TEXT PRIMARY KEY REFERENCES actors(id) ON DELETE CASCADE,
     discord_user_id TEXT NOT NULL UNIQUE,
     joined_at TEXT NOT NULL,
     coins INTEGER NOT NULL DEFAULT 10 CHECK(coins >= 0)
 );
-
 CREATE TABLE IF NOT EXISTS npcs (
     actor_id TEXT PRIMARY KEY REFERENCES actors(id) ON DELETE CASCADE,
     role TEXT NOT NULL,
     current_activity TEXT NOT NULL,
     coins INTEGER NOT NULL DEFAULT 0 CHECK(coins >= 0)
 );
-
 CREATE TABLE IF NOT EXISTS npc_schedule (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     npc_actor_id TEXT NOT NULL REFERENCES npcs(actor_id) ON DELETE CASCADE,
@@ -76,7 +70,6 @@ CREATE TABLE IF NOT EXISTS npc_schedule (
     activity TEXT NOT NULL,
     priority INTEGER NOT NULL DEFAULT 0
 );
-
 CREATE TABLE IF NOT EXISTS entities (
     id TEXT PRIMARY KEY,
     world_id TEXT NOT NULL REFERENCES worlds(id) ON DELETE CASCADE,
@@ -89,7 +82,6 @@ CREATE TABLE IF NOT EXISTS entities (
     created_at TEXT NOT NULL,
     CHECK ((location_id IS NULL) != (owner_actor_id IS NULL))
 );
-
 CREATE TABLE IF NOT EXISTS relations (
     source_actor_id TEXT NOT NULL REFERENCES actors(id) ON DELETE CASCADE,
     target_actor_id TEXT NOT NULL REFERENCES actors(id) ON DELETE CASCADE,
@@ -103,7 +95,6 @@ CREATE TABLE IF NOT EXISTS relations (
     PRIMARY KEY (source_actor_id, target_actor_id),
     CHECK (source_actor_id != target_actor_id)
 );
-
 CREATE TABLE IF NOT EXISTS action_events (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     world_id TEXT NOT NULL REFERENCES worlds(id) ON DELETE CASCADE,
@@ -118,11 +109,9 @@ CREATE TABLE IF NOT EXISTS action_events (
     summary TEXT NOT NULL,
     evidence_json TEXT NOT NULL DEFAULT '{}'
 );
-
 CREATE INDEX IF NOT EXISTS idx_action_events_actor ON action_events(actor_id, id);
 CREATE INDEX IF NOT EXISTS idx_entities_location ON entities(location_id);
 CREATE INDEX IF NOT EXISTS idx_entities_owner ON entities(owner_actor_id);
-
 CREATE TABLE IF NOT EXISTS processed_interactions (
     external_id TEXT PRIMARY KEY,
     world_id TEXT NOT NULL REFERENCES worlds(id) ON DELETE CASCADE,
@@ -140,12 +129,7 @@ class GameDatabase:
 
     def connect(self) -> sqlite3.Connection:
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        conn = sqlite3.connect(
-            self.path,
-            timeout=5.0,
-            isolation_level=None,
-            check_same_thread=False,
-        )
+        conn = sqlite3.connect(self.path, timeout=5.0, isolation_level=None, check_same_thread=False)
         conn.row_factory = sqlite3.Row
         conn.execute("PRAGMA foreign_keys = ON")
         conn.execute("PRAGMA busy_timeout = 5000")
@@ -180,6 +164,9 @@ class GameDatabase:
         if target_version == 2:
             self._migrate_seed_affordances(conn)
             return
+        if target_version == 3:
+            self._migrate_add_progression_tables(conn)
+            return
         raise UnsupportedSchemaVersionError(f"no migration for schema version {target_version}")
 
     @staticmethod
@@ -187,11 +174,33 @@ class GameDatabase:
         columns = {row["name"] for row in conn.execute("PRAGMA table_info(npcs)")}
         if "coins" in columns:
             return
+        conn.execute("ALTER TABLE npcs ADD COLUMN coins INTEGER NOT NULL DEFAULT 0 CHECK(coins >= 0)")
+        conn.execute("UPDATE npcs SET coins = 20 WHERE actor_id = 'npc_oren'")
+
+    @staticmethod
+    def _migrate_add_progression_tables(conn: sqlite3.Connection) -> None:
         conn.execute(
-            "ALTER TABLE npcs ADD COLUMN coins INTEGER NOT NULL DEFAULT 0 CHECK(coins >= 0)"
+            """
+            CREATE TABLE IF NOT EXISTS player_achievements (
+                player_actor_id TEXT NOT NULL REFERENCES players(actor_id) ON DELETE CASCADE,
+                achievement_code TEXT NOT NULL,
+                unlocked_at TEXT NOT NULL,
+                trigger_event_id INTEGER NOT NULL REFERENCES action_events(id) ON DELETE RESTRICT,
+                evidence_json TEXT NOT NULL DEFAULT '{}',
+                PRIMARY KEY (player_actor_id, achievement_code)
+            )
+            """
         )
         conn.execute(
-            "UPDATE npcs SET coins = 20 WHERE actor_id = 'npc_oren'"
+            """
+            CREATE TABLE IF NOT EXISTS player_abilities (
+                player_actor_id TEXT NOT NULL REFERENCES players(actor_id) ON DELETE CASCADE,
+                ability_code TEXT NOT NULL,
+                unlocked_at TEXT NOT NULL,
+                source_achievement_code TEXT NOT NULL,
+                PRIMARY KEY (player_actor_id, ability_code)
+            )
+            """
         )
 
     @staticmethod
@@ -199,19 +208,11 @@ class GameDatabase:
         defaults = {
             "stone_flat_1": {"throwable": True, "impact_damage": 20},
             "stone_round_1": {"throwable": True, "impact_damage": 20},
-            "bottle_1": {
-                "price": 3,
-                "for_sale_by": "npc_oren",
-                "fillable": True,
-                "filled_with": None,
-            },
+            "bottle_1": {"price": 3, "for_sale_by": "npc_oren", "fillable": True, "filled_with": None},
             "village_well": {"water_source": True},
         }
         for entity_id, missing_defaults in defaults.items():
-            row = conn.execute(
-                "SELECT state_json FROM entities WHERE id = ?",
-                (entity_id,),
-            ).fetchone()
+            row = conn.execute("SELECT state_json FROM entities WHERE id = ?", (entity_id,)).fetchone()
             if row is None:
                 continue
             state = json.loads(row["state_json"])
@@ -232,7 +233,6 @@ class GameDatabase:
                 if conn.execute("SELECT 1 FROM worlds WHERE id = ?", (WORLD_ID,)).fetchone():
                     conn.commit()
                     return
-
                 conn.execute(
                     "INSERT INTO worlds(id, name, timezone, created_at, last_simulated_at) VALUES (?, ?, ?, ?, ?)",
                     (WORLD_ID, "Пограничная деревня", "UTC", timestamp, timestamp),
@@ -242,20 +242,14 @@ class GameDatabase:
                     ("village_square", WORLD_ID, "Деревенская площадь", "Небольшая площадь перед таверной и колодцем.", 2),
                     ("river_edge", WORLD_ID, "Берег реки", "Тихий берег у лесной кромки, где собирают травы и камни.", 3),
                 ]
-                conn.executemany(
-                    "INSERT INTO locations(id, world_id, name, description, sort_order) VALUES (?, ?, ?, ?, ?)",
-                    locations,
-                )
+                conn.executemany("INSERT INTO locations(id, world_id, name, description, sort_order) VALUES (?, ?, ?, ?, ?)", locations)
                 edges = [
                     (WORLD_ID, "workshop_yard", "village_square"),
                     (WORLD_ID, "village_square", "workshop_yard"),
                     (WORLD_ID, "village_square", "river_edge"),
                     (WORLD_ID, "river_edge", "village_square"),
                 ]
-                conn.executemany(
-                    "INSERT INTO location_edges(world_id, from_location_id, to_location_id) VALUES (?, ?, ?)",
-                    edges,
-                )
+                conn.executemany("INSERT INTO location_edges(world_id, from_location_id, to_location_id) VALUES (?, ?, ?)", edges)
                 npc_rows = [
                     ("npc_mira", WORLD_ID, "npc", "Мира", "workshop_yard", timestamp, "ремесленница", "работает за верстаком"),
                     ("npc_oren", WORLD_ID, "npc", "Орен", "village_square", timestamp, "трактирщик", "готовит таверну к посетителям"),
@@ -267,10 +261,7 @@ class GameDatabase:
                 )
                 conn.executemany(
                     "INSERT INTO npcs(actor_id, role, current_activity, coins) VALUES (?, ?, ?, ?)",
-                    [
-                        (row[0], row[6], row[7], 20 if row[0] == "npc_oren" else 0)
-                        for row in npc_rows
-                    ],
+                    [(row[0], row[6], row[7], 20 if row[0] == "npc_oren" else 0) for row in npc_rows],
                 )
                 schedules = [
                     ("npc_mira", 360, 1080, "workshop_yard", "работает за верстаком", 10),
@@ -300,10 +291,7 @@ class GameDatabase:
                 ]
                 conn.executemany(
                     "INSERT INTO entities(id, world_id, name, entity_type, location_id, owner_actor_id, portable, state_json, created_at) VALUES (?, ?, ?, ?, ?, NULL, ?, ?, ?)",
-                    [
-                        (entity_id, WORLD_ID, name, entity_type, location_id, portable, json.dumps(state, ensure_ascii=False), timestamp)
-                        for entity_id, name, entity_type, location_id, portable, state in entities
-                    ],
+                    [(entity_id, WORLD_ID, name, entity_type, location_id, portable, json.dumps(state, ensure_ascii=False), timestamp) for entity_id, name, entity_type, location_id, portable, state in entities],
                 )
                 conn.commit()
             except Exception:
