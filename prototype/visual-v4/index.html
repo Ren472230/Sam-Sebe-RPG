@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Сам-себе-RPG — Visual v4</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <main id="game" class="game-shell" data-theme="day">
+      <header class="context-bar" aria-label="Контекст мира">
+        <div class="world-context">
+          <span id="theme-label">День</span>
+          <span aria-hidden="true">•</span>
+          <span id="weather-label">Лёгкий ветер</span>
+          <span aria-hidden="true">•</span>
+          <strong>Деревня Пепельный Брод</strong>
+        </div>
+        <div class="status-row" aria-label="Состояние игрока">
+          <span>Доверие: 1</span>
+          <span>Монеты: 10</span>
+          <span>Репутация: нейтральная</span>
+          <button id="theme-toggle" class="theme-toggle" type="button" aria-pressed="false">☾ Ночь</button>
+        </div>
+      </header>
+
+      <section class="world-stage" aria-label="Деревенская площадь">
+        <div id="scene" class="ascii-scene" role="img" aria-label="ASCII-сцена деревни Пепельный Брод"></div>
+      </section>
+
+      <section class="dialogue-panel" aria-labelledby="speaker-name">
+        <aside class="portrait" aria-hidden="true">
+          <pre>   .-'''-.
+  / .===. \
+ / /_   _\ \
+ |  o) (o  |
+ \     ^   /
+  '.  -  .'
+   /|===|\
+  /_|___|_\</pre>
+        </aside>
+
+        <div class="dialogue-copy">
+          <p class="speaker-kicker">У мастерской</p>
+          <h1 id="speaker-name">Мира</h1>
+          <p>Ты снова пришёл к мастерской так поздно. В деревне говорят, что вороны что-то чувствуют перед переменами.</p>
+        </div>
+
+        <div class="choices" aria-label="Ответы игрока">
+          <button class="choice is-selected" type="button" data-choice="ravens" aria-pressed="true"><span class="choice-marker">›</span><span>Спросить о воронах</span></button>
+          <button class="choice" type="button" data-choice="stone" aria-pressed="false"><span class="choice-marker">›</span><span>Показать найденный камень</span></button>
+          <button class="choice" type="button" data-choice="square" aria-pressed="false"><span class="choice-marker">›</span><span>Осмотреть площадь</span></button>
+        </div>
+      </section>
+
+      <footer class="memory-line">Память мира: вчера ты кормил ворона у колодца</footer>
+    </main>
+    <script src="app.js"></script>
+  </body>
+</html>
