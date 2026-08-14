@@ -7,7 +7,7 @@
 - одна деревня: 3 локации, 3 NPC, 12 стартовых объектов;
 - несколько игроков в одном каноническом мире;
 - Discord user ID -> стабильный player actor;
-- LOOK / MOVE / TAKE / DROP;
+- LOOK / MOVE / TAKE / DROP / THROW / GIVE;
 - атомарные SQLite-транзакции и append-only action events;
 - idempotency по external interaction ID;
 - persistence после перезапуска;
@@ -48,7 +48,7 @@ adapter -> CanonicalAction -> GameService -> deterministic rules -> SQLite trans
 
 ## Текущий scope
 
-Сейчас намеренно отсутствуют combat, crafting, большой мир, dynamic lighting, автономные LLM-NPC, vector DB/RAG, PostgreSQL/Redis и Discord Activity. Следующий слой — persistent consequences, затем richer actions и emergent progression.
+Сейчас намеренно отсутствуют combat, crafting, большой мир, dynamic lighting, автономные LLM-NPC, vector DB/RAG, PostgreSQL/Redis и Discord Activity. Discord adapter, THROW/GIVE и persistent consequences уже есть. Следующий продуктовый слой — USE/BUY и минимальный экономический loop.
 
 ## Discord founder build
 
@@ -82,6 +82,38 @@ python -m samseberpg.discord_bot
 - `/act text:осмотреться`;
 - `/act text:идти village_square`;
 - `/act text:взять stone_flat_1`;
-- `/act text:положить stone_flat_1`.
+- `/act text:положить stone_flat_1`;
+- `/act text:бросить stone_flat_1 в tavern_sign`;
+- `/act text:дать bread_1 npc_oren`.
 
 Если `DISCORD_GUILD_ID` задан, команды синхронизируются только с этим тестовым сервером. Без него выполняется global sync.
+
+## Persistent consequences slice
+
+Ядро уже поддерживает два действия, которые создают наблюдаемые последствия:
+
+- `THROW` — принадлежащий игроку throwable-предмет может детерминированно повредить объект с `condition`; предмет после броска остаётся в локации;
+- `GIVE` — предмет передаётся присутствующему actor; еда, подаренная NPC, меняет его отношение к игроку.
+
+Пример для текущей деревни:
+
+```text
+взять stone_flat_1
+идти village_square
+бросить stone_flat_1 в tavern_sign
+```
+
+После этого другой игрок на площади увидит у вывески `состояние: 80%`. Если Орен находился на площади и видел бросок, его `trust` к игроку уменьшается, а `conflict` растёт. Эти изменения хранятся в SQLite и переживают restart.
+
+Позитивный пример:
+
+```text
+взять bread_1
+дать bread_1 npc_oren
+```
+
+Запустить автономный сценарий проверки:
+
+```bash
+python scripts/demo_consequences.py
+```
