@@ -12,6 +12,8 @@ class ActionType(StrEnum):
     DROP = "DROP"
     THROW = "THROW"
     GIVE = "GIVE"
+    BUY = "BUY"
+    USE = "USE"
 
 
 @dataclass(frozen=True, slots=True)
@@ -54,6 +56,7 @@ class VisibleEntity:
 @dataclass(frozen=True, slots=True)
 class WorldView:
     player_id: str
+    coins: int
     location_id: str
     location_name: str
     location_description: str
