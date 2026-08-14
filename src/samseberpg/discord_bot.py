@@ -136,6 +136,14 @@ def run() -> None:
         text = application.handle_me(user_id, display_name)
         await interaction.response.send_message(text, ephemeral=True)
 
+    @bot.tree.command(name="news", description="Что изменилось в деревне после вашей активности")
+    async def news(interaction: discord.Interaction) -> None:
+        if not await guild_only_guard(interaction):
+            return
+        user_id, display_name = identity(interaction)
+        text = application.handle_news(user_id, display_name)
+        await interaction.response.send_message(text, ephemeral=True)
+
     @bot.tree.command(name="act", description="Совершить действие в мире")
     async def act(interaction: discord.Interaction, text: str) -> None:
         if not await guild_only_guard(interaction):
