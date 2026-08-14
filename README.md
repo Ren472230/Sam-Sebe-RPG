@@ -29,6 +29,8 @@ pytest -q
 
 ## Демо ядра
 
+После editable install:
+
 ```bash
 python scripts/demo_shared_world.py
 ```
@@ -46,4 +48,40 @@ adapter -> CanonicalAction -> GameService -> deterministic rules -> SQLite trans
 
 ## Текущий scope
 
-Сейчас намеренно отсутствуют combat, crafting, большой мир, dynamic lighting, автономные LLM-NPC, vector DB/RAG, PostgreSQL/Redis и Discord Activity. Следующий слой — тонкий Discord adapter, затем GIVE/THROW/USE/BUY и видимые последствия.
+Сейчас намеренно отсутствуют combat, crafting, большой мир, dynamic lighting, автономные LLM-NPC, vector DB/RAG, PostgreSQL/Redis и Discord Activity. Следующий слой — persistent consequences, затем richer actions и emergent progression.
+
+## Discord founder build
+
+Discord слой использует slash commands и не читает обычные сообщения сервера.
+
+1. Создайте Application/Bot в Discord Developer Portal и добавьте его на тестовый сервер с правом использования application commands.
+2. Установите optional extra:
+
+```bash
+pip install -e '.[dev,discord]'
+```
+
+3. Задайте переменные окружения:
+
+```bash
+export DISCORD_BOT_TOKEN='...'
+export DISCORD_GUILD_ID='123456789012345678'  # рекомендуется для быстрого dev-sync
+export SAM_SEBE_DB='./game.db'                 # необязательно
+```
+
+4. Запустите:
+
+```bash
+python -m samseberpg.discord_bot
+```
+
+Команды MVP:
+
+- `/look` — осмотреть текущее место;
+- `/me` — показать локацию и инвентарь;
+- `/act text:осмотреться`;
+- `/act text:идти village_square`;
+- `/act text:взять stone_flat_1`;
+- `/act text:положить stone_flat_1`.
+
+Если `DISCORD_GUILD_ID` задан, команды синхронизируются только с этим тестовым сервером. Без него выполняется global sync.
