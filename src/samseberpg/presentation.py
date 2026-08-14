@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from .digest import WorldDigest
 from .domain import ActionResult, WorldView
 from .progression import ABILITIES, ACHIEVEMENTS
 
@@ -58,22 +59,16 @@ def render_me(view: WorldView) -> str:
         state_suffix = f" — внутри: {filled_with}" if filled_with else ""
         inventory_lines.append(f"- {entity.name} (`{entity.id}`){state_suffix}")
     inventory = "\n".join(inventory_lines) if inventory_lines else "- пусто"
-
     achievement_lines = [
-        f"- {ACHIEVEMENTS[code].name} (`{code}`)"
-        if code in ACHIEVEMENTS
-        else f"- `{code}`"
+        f"- {ACHIEVEMENTS[code].name} (`{code}`)" if code in ACHIEVEMENTS else f"- `{code}`"
         for code in view.achievement_codes
     ]
     ability_lines = [
-        f"- {ABILITIES[code].name} (`{code}`)"
-        if code in ABILITIES
-        else f"- `{code}`"
+        f"- {ABILITIES[code].name} (`{code}`)" if code in ABILITIES else f"- `{code}`"
         for code in view.ability_codes
     ]
     achievements = "\n".join(achievement_lines) if achievement_lines else "- пока нет"
     abilities = "\n".join(ability_lines) if ability_lines else "- пока нет"
-
     return limit_message(
         f"**Ты:** `{view.player_id}`\n"
         f"**Место:** {view.location_name} (`{view.location_id}`)\n"
@@ -94,3 +89,36 @@ def render_action_result(result: ActionResult) -> str:
                 lines.append(f"✨ Новый навык: {unlock.get('name', unlock.get('code', ''))}")
         return "\n".join(lines)
     return f"⚠️ {result.summary} (`{result.code}`)"
+
+
+def render_world_digest(digest: WorldDigest) -> str:
+    event_lines = []
+    for event in digest.events:
+        stamp = event.occurred_at[11:16] if len(event.occurred_at) >= 16 else event.occurred_at
+        location = f" в `{event.location_id}`" if event.location_id else ""
+        event_lines.append(
+            f"- {stamp} — **{event.actor_name}**: {event.summary}{location}"
+        )
+    if digest.omitted_event_count:
+        event_lines.insert(0, f"- …ещё событий: {digest.omitted_event_count}")
+    events = "\n".join(event_lines) if event_lines else "- заметных новых событий нет"
+
+    damage_lines = [
+        f"- {entity.name} (`{entity.id}`) — состояние: {entity.condition}%"
+        for entity in digest.damaged_entities
+    ]
+    damage = "\n".join(damage_lines) if damage_lines else "- значимых повреждений нет"
+
+    npc_lines = [
+        f"- **{npc.name}** (`{npc.id}`) — `{npc.location_id}`; {npc.activity}"
+        for npc in digest.npcs
+    ]
+    npcs = "\n".join(npc_lines) if npc_lines else "- никого"
+
+    return limit_message(
+        "# 📰 Деревенская сводка\n"
+        f"После вашей последней активности (event `{digest.since_event_id}`).\n\n"
+        f"**Что произошло:**\n{events}\n\n"
+        f"**Состояние мира:**\n{damage}\n\n"
+        f"**Где сейчас жители:**\n{npcs}"
+    )
