@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from .digest import WorldDigestService
 from .domain import ActionType
 from .game import GameService
 from .intent import (
@@ -9,7 +10,14 @@ from .intent import (
     canonicalize_proposal,
 )
 from .parser import parse_action
-from .presentation import HELP_TEXT, limit_message, render_action_result, render_me, render_world
+from .presentation import (
+    HELP_TEXT,
+    limit_message,
+    render_action_result,
+    render_me,
+    render_world,
+    render_world_digest,
+)
 
 
 class DiscordGameApplication:
@@ -24,6 +32,10 @@ class DiscordGameApplication:
     def handle_me(self, discord_user_id: str, display_name: str) -> str:
         player_id = self.game.register_player(discord_user_id, display_name)
         return render_me(self.game.observe(player_id))
+
+    def handle_news(self, discord_user_id: str, display_name: str) -> str:
+        player_id = self.game.register_player(discord_user_id, display_name)
+        return render_world_digest(WorldDigestService(self.game).build(player_id))
 
     def handle_act(
         self,
