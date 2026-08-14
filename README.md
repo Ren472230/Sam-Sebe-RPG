@@ -147,3 +147,31 @@ python scripts/demo_economy_use.py
 ```bash
 python scripts/demo_migration.py
 ```
+
+## Natural-language intent provider
+
+`/act` теперь имеет два уровня интерпретации:
+
+1. точная grammar (`взять stone_flat_1`, `идти village_square` и т. п.) всегда проверяется первой и не требует AI;
+2. если точная grammar не подошла и явно задан `OLLAMA_MODEL`, обычная фраза передаётся optional semantic provider.
+
+LLM получает только компактный canonical context: текущую локацию, доступные выходы, видимых actors/entities, inventory и баланс. Его structured proposal ещё раз локально проверяется по allow-list текущего контекста и только после этого превращается в `CanonicalAction`. Любой выдуманный ID, неподдерживаемая механика или ошибка провайдера не создаёт gameplay event и не меняет каноническое состояние.
+
+Для локального Ollama runtime:
+
+```bash
+export OLLAMA_MODEL='<имя уже установленной локальной модели>'
+export OLLAMA_URL='http://127.0.0.1:11434'       # необязательно
+export OLLAMA_TIMEOUT_SECONDS='5'                # необязательно, максимум 30
+python -m samseberpg.discord_bot
+```
+
+Если `OLLAMA_MODEL` не задан, Discord build продолжает работать только на deterministic grammar.
+
+Проверить semantic integration без сети и без притворного LLM-вызова:
+
+```bash
+python scripts/demo_natural_language.py
+```
+
+Этот demo использует deterministic fake resolver только для проверки контракта `natural phrase -> proposal -> context guard -> GameService`. В текущей среде разработки бинарник/model Ollama отсутствует, поэтому реальная inference здесь не заявляется как проверенная.
