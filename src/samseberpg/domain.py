@@ -60,6 +60,7 @@ class WorldView:
     location_id: str
     location_name: str
     location_description: str
+    exits: tuple[str, ...]
     actors: tuple[VisibleActor, ...]
     entities: tuple[VisibleEntity, ...]
     inventory: tuple[VisibleEntity, ...]
