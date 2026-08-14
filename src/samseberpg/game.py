@@ -101,6 +101,10 @@ class GameService:
                     result = self._throw(conn, action, actor["location_id"], now_text)
                 elif action.action_type == ActionType.GIVE:
                     result = self._give(conn, action, actor["location_id"], now_text)
+                elif action.action_type == ActionType.BUY:
+                    result = self._buy(conn, action, actor["location_id"])
+                elif action.action_type == ActionType.USE:
+                    result = self._use(conn, action, actor["location_id"])
                 else:
                     raise ValueError(f"unsupported action type: {action.action_type}")
 
@@ -148,7 +152,7 @@ class GameService:
         if action.target_id is None:
             return ActionResult(False, "TARGET_NOT_FOUND", "Не указано, что взять.")
         entity = conn.execute(
-            "SELECT id, name, location_id, owner_actor_id, portable FROM entities WHERE id = ?",
+            "SELECT id, name, location_id, owner_actor_id, portable, state_json FROM entities WHERE id = ?",
             (action.target_id,),
         ).fetchone()
         if entity is None:
@@ -157,6 +161,9 @@ class GameService:
             return ActionResult(False, "ALREADY_OWNED", "Этот предмет уже у кого-то.")
         if entity["location_id"] != location_id:
             return ActionResult(False, "TARGET_NOT_PRESENT", "Этого предмета здесь нет.")
+        state = json.loads(entity["state_json"])
+        if state.get("for_sale_by"):
+            return ActionResult(False, "FOR_SALE_ONLY", "Этот предмет выставлен на продажу.")
         if not entity["portable"]:
             return ActionResult(False, "NOT_PORTABLE", "Этот объект нельзя поднять.")
         conn.execute(
@@ -360,6 +367,132 @@ class GameService:
             data=evidence,
         )
 
+    def _buy(self, conn, action: CanonicalAction, location_id: str) -> ActionResult:
+        if action.item_id is None:
+            return ActionResult(False, "TARGET_NOT_FOUND", "Не указано, что купить.")
+        item = conn.execute(
+            "SELECT id, name, location_id, owner_actor_id, state_json FROM entities WHERE id = ?",
+            (action.item_id,),
+        ).fetchone()
+        if item is None:
+            return ActionResult(False, "TARGET_NOT_FOUND", "Такого товара нет.")
+        if item["owner_actor_id"] is not None or item["location_id"] != location_id:
+            return ActionResult(False, "TARGET_NOT_PRESENT", "Этого товара здесь нет.")
+
+        state = json.loads(item["state_json"])
+        price = state.get("price")
+        seller_id = state.get("for_sale_by")
+        if (
+            isinstance(price, bool)
+            or not isinstance(price, int)
+            or price <= 0
+            or not isinstance(seller_id, str)
+            or not seller_id
+        ):
+            return ActionResult(False, "ITEM_NOT_FOR_SALE", "Этот предмет не продаётся.")
+        if action.target_id != seller_id:
+            return ActionResult(False, "WRONG_SELLER", "Этот товар продаёт другой персонаж.")
+
+        seller = conn.execute(
+            """
+            SELECT a.id, a.location_id, n.coins
+            FROM actors a
+            JOIN npcs n ON n.actor_id = a.id
+            WHERE a.id = ?
+            """,
+            (seller_id,),
+        ).fetchone()
+        if seller is None:
+            return ActionResult(False, "TARGET_NOT_FOUND", "Продавец не найден.")
+        if seller["location_id"] != location_id:
+            return ActionResult(False, "SELLER_NOT_PRESENT", "Продавца сейчас здесь нет.")
+
+        buyer = conn.execute(
+            "SELECT coins FROM players WHERE actor_id = ?",
+            (action.actor_id,),
+        ).fetchone()
+        buyer_before = int(buyer["coins"])
+        seller_before = int(seller["coins"])
+        if buyer_before < price:
+            return ActionResult(False, "INSUFFICIENT_FUNDS", "Недостаточно монет.")
+
+        buyer_after = buyer_before - price
+        seller_after = seller_before + price
+        conn.execute(
+            "UPDATE players SET coins = ? WHERE actor_id = ?",
+            (buyer_after, action.actor_id),
+        )
+        conn.execute(
+            "UPDATE npcs SET coins = ? WHERE actor_id = ?",
+            (seller_after, seller_id),
+        )
+        conn.execute(
+            "UPDATE entities SET location_id = NULL, owner_actor_id = ? WHERE id = ?",
+            (action.actor_id, action.item_id),
+        )
+        evidence = {
+            "item_id": action.item_id,
+            "seller_id": seller_id,
+            "price": price,
+            "buyer_coins_before": buyer_before,
+            "buyer_coins_after": buyer_after,
+            "seller_coins_before": seller_before,
+            "seller_coins_after": seller_after,
+        }
+        return ActionResult(
+            True,
+            "OK",
+            f"Вы покупаете {item['name']} за {price} монеты.",
+            data=evidence,
+        )
+
+    def _use(self, conn, action: CanonicalAction, location_id: str) -> ActionResult:
+        if action.item_id is None:
+            return ActionResult(False, "ITEM_NOT_OWNED", "Не указано, что использовать.")
+        item = conn.execute(
+            "SELECT id, name, owner_actor_id, state_json FROM entities WHERE id = ?",
+            (action.item_id,),
+        ).fetchone()
+        if item is None or item["owner_actor_id"] != action.actor_id:
+            return ActionResult(False, "ITEM_NOT_OWNED", "У вас нет этого предмета.")
+
+        if action.target_id is None:
+            return ActionResult(False, "TARGET_NOT_FOUND", "Не указана цель использования.")
+        target = conn.execute(
+            "SELECT id, name, location_id, state_json FROM entities WHERE id = ?",
+            (action.target_id,),
+        ).fetchone()
+        if target is None:
+            return ActionResult(False, "TARGET_NOT_FOUND", "Такой цели нет.")
+        if target["location_id"] != location_id:
+            return ActionResult(False, "TARGET_NOT_PRESENT", "Этой цели здесь нет.")
+
+        item_state = json.loads(item["state_json"])
+        target_state = json.loads(target["state_json"])
+        if item_state.get("fillable") is not True or target_state.get("water_source") is not True:
+            return ActionResult(False, "UNSUPPORTED_USE", "Так использовать этот предмет пока нельзя.")
+        filled_before = item_state.get("filled_with")
+        if filled_before is not None:
+            return ActionResult(False, "ITEM_ALREADY_FILLED", "Ёмкость уже наполнена.")
+
+        item_state["filled_with"] = "water"
+        conn.execute(
+            "UPDATE entities SET state_json = ? WHERE id = ?",
+            (json.dumps(item_state, ensure_ascii=False, sort_keys=True), action.item_id),
+        )
+        evidence = {
+            "item_id": action.item_id,
+            "target_id": action.target_id,
+            "filled_before": filled_before,
+            "filled_after": "water",
+        }
+        return ActionResult(
+            True,
+            "OK",
+            f"Вы наполняете {item['name']} водой из {target['name']}.",
+            data=evidence,
+        )
+
     def _drop(self, conn, action: CanonicalAction, location_id: str) -> ActionResult:
         if action.target_id is None:
             return ActionResult(False, "ITEM_NOT_OWNED", "Не указано, что положить.")
@@ -433,7 +566,7 @@ class GameService:
                 self.synchronizer.catch_up(conn, WORLD_ID, self.clock.now())
                 player = conn.execute(
                     """
-                    SELECT a.id, a.location_id, l.name AS location_name, l.description
+                    SELECT a.id, a.location_id, l.name AS location_name, l.description, p.coins
                     FROM actors a
                     JOIN players p ON p.actor_id = a.id
                     JOIN locations l ON l.id = a.location_id
@@ -479,6 +612,7 @@ class GameService:
 
         return WorldView(
             player_id=player_id,
+            coins=int(player["coins"]),
             location_id=player["location_id"],
             location_name=player["location_name"],
             location_description=player["description"],
