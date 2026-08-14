@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from .dialogue import DialogueService
 from .digest import WorldDigestService
 from .domain import ActionType
 from .game import GameService
@@ -61,6 +62,11 @@ class DiscordGameApplication:
         result = self.game.execute(action, external_id=interaction_id)
         if result.success and action.action_type == ActionType.LOOK:
             return render_world(self.game.observe(player_id))
+        if result.success and action.action_type == ActionType.TALK:
+            dialogue = DialogueService(self.game).render(player_id, result)
+            return limit_message(
+                f"{render_action_result(result)}\n\n{dialogue}\n\n{render_world(self.game.observe(player_id))}"
+            )
         if result.success:
             return limit_message(
                 f"{render_action_result(result)}\n\n{render_world(self.game.observe(player_id))}"
