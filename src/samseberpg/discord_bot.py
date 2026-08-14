@@ -10,6 +10,7 @@ from .clock import SystemClock
 from .db import GameDatabase
 from .discord_app import DiscordGameApplication
 from .game import GameService
+from .ollama_intent import OllamaIntentResolver
 
 logger = logging.getLogger(__name__)
 
@@ -19,6 +20,9 @@ class RuntimeConfig:
     token: str
     db_path: Path
     guild_id: int | None = None
+    ollama_model: str | None = None
+    ollama_url: str = "http://127.0.0.1:11434"
+    ollama_timeout_seconds: float = 5.0
 
 
 def load_runtime_config(env: Mapping[str, str] | None = None) -> RuntimeConfig:
@@ -36,7 +40,25 @@ def load_runtime_config(env: Mapping[str, str] | None = None) -> RuntimeConfig:
             raise RuntimeError("DISCORD_GUILD_ID must be an integer") from exc
 
     db_path = Path(values.get("SAM_SEBE_DB", "game.db")).expanduser()
-    return RuntimeConfig(token=token, db_path=db_path, guild_id=guild_id)
+    ollama_model = values.get("OLLAMA_MODEL", "").strip() or None
+    ollama_url = values.get("OLLAMA_URL", "http://127.0.0.1:11434").strip()
+    if not ollama_url:
+        ollama_url = "http://127.0.0.1:11434"
+    timeout_raw = values.get("OLLAMA_TIMEOUT_SECONDS", "5").strip()
+    try:
+        ollama_timeout_seconds = float(timeout_raw)
+    except ValueError as exc:
+        raise RuntimeError("OLLAMA_TIMEOUT_SECONDS must be a positive number") from exc
+    if ollama_timeout_seconds <= 0 or ollama_timeout_seconds > 30:
+        raise RuntimeError("OLLAMA_TIMEOUT_SECONDS must be > 0 and <= 30")
+    return RuntimeConfig(
+        token=token,
+        db_path=db_path,
+        guild_id=guild_id,
+        ollama_model=ollama_model,
+        ollama_url=ollama_url,
+        ollama_timeout_seconds=ollama_timeout_seconds,
+    )
 
 
 def _build_application(config: RuntimeConfig) -> DiscordGameApplication:
@@ -44,7 +66,14 @@ def _build_application(config: RuntimeConfig) -> DiscordGameApplication:
     db = GameDatabase(config.db_path)
     db.initialize()
     db.bootstrap_if_empty(clock.now())
-    return DiscordGameApplication(GameService(db, clock))
+    resolver = None
+    if config.ollama_model is not None:
+        resolver = OllamaIntentResolver(
+            model=config.ollama_model,
+            base_url=config.ollama_url,
+            timeout=config.ollama_timeout_seconds,
+        )
+    return DiscordGameApplication(GameService(db, clock), intent_resolver=resolver)
 
 
 def run() -> None:
