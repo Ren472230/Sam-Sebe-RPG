@@ -66,7 +66,7 @@ def test_unknown_act_input_returns_help_without_event(tmp_path):
     )
 
     assert "Пока понимаю" in text
-    assert "идти village_square" in text
+    assert "бросить stone_flat_1 в tavern_sign" in text
     with db.connect() as conn:
         assert conn.execute("SELECT COUNT(*) FROM action_events").fetchone()[0] == 0
 
@@ -75,3 +75,65 @@ def test_limit_message_bounds_long_discord_output():
     text = limit_message("x" * 3000, limit=1900)
     assert len(text) <= 1900
     assert text.endswith("…")
+
+
+def test_discord_app_throw_is_visible_to_second_player_and_retry_safe(tmp_path):
+    import json
+
+    db, app = make_app(tmp_path)
+    assert "Вы берёте" in app.handle_act(
+        "discord-a", "Ren", "взять stone_flat_1", "take-stone"
+    )
+    assert "переходите" in app.handle_act(
+        "discord-a", "Ren", "идти village_square", "move-a-square"
+    )
+
+    first = app.handle_act(
+        "discord-a",
+        "Ren",
+        "бросить stone_flat_1 в tavern_sign",
+        "throw-sign-same",
+    )
+    second = app.handle_act(
+        "discord-a",
+        "Ren",
+        "бросить stone_flat_1 в tavern_sign",
+        "throw-sign-same",
+    )
+    assert first == second
+
+    app.handle_act(
+        "discord-b", "Other", "идти village_square", "move-b-square"
+    )
+    other_view = app.handle_look("discord-b", "Other")
+    assert "Вывеска таверны" in other_view
+    assert "состояние: 80%" in other_view
+
+    with db.connect() as conn:
+        state = json.loads(
+            conn.execute(
+                "SELECT state_json FROM entities WHERE id = 'tavern_sign'"
+            ).fetchone()[0]
+        )
+        throw_events = conn.execute(
+            "SELECT COUNT(*) FROM action_events WHERE action_type = 'THROW'"
+        ).fetchone()[0]
+    assert state["condition"] == 80
+    assert throw_events == 1
+
+
+def test_discord_app_can_give_food_to_present_npc(tmp_path):
+    db, app = make_app(tmp_path)
+    app.handle_act("discord-a", "Ren", "идти village_square", "move-square")
+    app.handle_act("discord-a", "Ren", "взять bread_1", "take-bread")
+
+    response = app.handle_act(
+        "discord-a", "Ren", "дать bread_1 npc_oren", "give-bread"
+    )
+
+    assert "передаёте Каравай хлеба" in response
+    with db.connect() as conn:
+        owner = conn.execute(
+            "SELECT owner_actor_id FROM entities WHERE id = 'bread_1'"
+        ).fetchone()[0]
+    assert owner == "npc_oren"
