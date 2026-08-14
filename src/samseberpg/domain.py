@@ -14,6 +14,7 @@ class ActionType(StrEnum):
     GIVE = "GIVE"
     BUY = "BUY"
     USE = "USE"
+    TALK = "TALK"
 
 
 @dataclass(frozen=True, slots=True)
@@ -64,3 +65,5 @@ class WorldView:
     actors: tuple[VisibleActor, ...]
     entities: tuple[VisibleEntity, ...]
     inventory: tuple[VisibleEntity, ...]
+    achievement_codes: tuple[str, ...] = ()
+    ability_codes: tuple[str, ...] = ()
