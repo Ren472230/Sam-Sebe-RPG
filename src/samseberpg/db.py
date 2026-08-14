@@ -7,6 +7,11 @@ from pathlib import Path
 
 WORLD_ID = "village_1"
 START_LOCATION_ID = "workshop_yard"
+SCHEMA_VERSION = 2
+
+
+class UnsupportedSchemaVersionError(RuntimeError):
+    pass
 
 
 def to_utc_text(value: datetime) -> str:
@@ -149,7 +154,75 @@ class GameDatabase:
 
     def initialize(self) -> None:
         with self.connect() as conn:
-            conn.executescript(SCHEMA)
+            conn.execute("BEGIN IMMEDIATE")
+            try:
+                current_version = int(conn.execute("PRAGMA user_version").fetchone()[0])
+                if current_version > SCHEMA_VERSION:
+                    raise UnsupportedSchemaVersionError(
+                        f"database schema version {current_version} is newer than supported {SCHEMA_VERSION}"
+                    )
+                for statement in SCHEMA.split(";"):
+                    statement = statement.strip()
+                    if statement:
+                        conn.execute(statement)
+                for target_version in range(current_version + 1, SCHEMA_VERSION + 1):
+                    self._apply_migration(conn, target_version)
+                    conn.execute(f"PRAGMA user_version = {target_version}")
+                conn.commit()
+            except Exception:
+                conn.rollback()
+                raise
+
+    def _apply_migration(self, conn: sqlite3.Connection, target_version: int) -> None:
+        if target_version == 1:
+            self._migrate_add_npc_currency(conn)
+            return
+        if target_version == 2:
+            self._migrate_seed_affordances(conn)
+            return
+        raise UnsupportedSchemaVersionError(f"no migration for schema version {target_version}")
+
+    @staticmethod
+    def _migrate_add_npc_currency(conn: sqlite3.Connection) -> None:
+        columns = {row["name"] for row in conn.execute("PRAGMA table_info(npcs)")}
+        if "coins" in columns:
+            return
+        conn.execute(
+            "ALTER TABLE npcs ADD COLUMN coins INTEGER NOT NULL DEFAULT 0 CHECK(coins >= 0)"
+        )
+        conn.execute(
+            "UPDATE npcs SET coins = 20 WHERE actor_id = 'npc_oren'"
+        )
+
+    @staticmethod
+    def _migrate_seed_affordances(conn: sqlite3.Connection) -> None:
+        defaults = {
+            "stone_flat_1": {"throwable": True, "impact_damage": 20},
+            "stone_round_1": {"throwable": True, "impact_damage": 20},
+            "bottle_1": {
+                "price": 3,
+                "for_sale_by": "npc_oren",
+                "fillable": True,
+                "filled_with": None,
+            },
+            "village_well": {"water_source": True},
+        }
+        for entity_id, missing_defaults in defaults.items():
+            row = conn.execute(
+                "SELECT state_json FROM entities WHERE id = ?",
+                (entity_id,),
+            ).fetchone()
+            if row is None:
+                continue
+            state = json.loads(row["state_json"])
+            before = dict(state)
+            for key, value in missing_defaults.items():
+                state.setdefault(key, value)
+            if state != before:
+                conn.execute(
+                    "UPDATE entities SET state_json = ? WHERE id = ?",
+                    (json.dumps(state, ensure_ascii=False, sort_keys=True), entity_id),
+                )
 
     def bootstrap_if_empty(self, now: datetime) -> None:
         timestamp = to_utc_text(now)
