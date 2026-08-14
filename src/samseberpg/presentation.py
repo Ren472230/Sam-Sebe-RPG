@@ -39,9 +39,11 @@ def render_world(view: WorldView) -> str:
         entity_lines.append(f"- {entity.name} (`{entity.id}`){state_suffix}")
     actors = "\n".join(actor_lines) if actor_lines else "- никого"
     entities = "\n".join(entity_lines) if entity_lines else "- ничего заметного"
+    exits = ", ".join(f"`{location_id}`" for location_id in view.exits) or "нет"
     return limit_message(
         f"## {view.location_name}\n"
         f"{view.location_description}\n\n"
+        f"**Выходы:** {exits}\n\n"
         f"**Здесь:**\n{actors}\n\n"
         f"**Предметы:**\n{entities}"
     )
