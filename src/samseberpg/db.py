@@ -58,7 +58,8 @@ CREATE TABLE IF NOT EXISTS players (
 CREATE TABLE IF NOT EXISTS npcs (
     actor_id TEXT PRIMARY KEY REFERENCES actors(id) ON DELETE CASCADE,
     role TEXT NOT NULL,
-    current_activity TEXT NOT NULL
+    current_activity TEXT NOT NULL,
+    coins INTEGER NOT NULL DEFAULT 0 CHECK(coins >= 0)
 );
 
 CREATE TABLE IF NOT EXISTS npc_schedule (
@@ -192,8 +193,11 @@ class GameDatabase:
                     [row[:6] for row in npc_rows],
                 )
                 conn.executemany(
-                    "INSERT INTO npcs(actor_id, role, current_activity) VALUES (?, ?, ?)",
-                    [(row[0], row[6], row[7]) for row in npc_rows],
+                    "INSERT INTO npcs(actor_id, role, current_activity, coins) VALUES (?, ?, ?, ?)",
+                    [
+                        (row[0], row[6], row[7], 20 if row[0] == "npc_oren" else 0)
+                        for row in npc_rows
+                    ],
                 )
                 schedules = [
                     ("npc_mira", 360, 1080, "workshop_yard", "работает за верстаком", 10),
@@ -212,13 +216,13 @@ class GameDatabase:
                     ("stone_round_1", "Круглый камень", "stone", "workshop_yard", 1, {"throwable": True, "impact_damage": 20}),
                     ("bread_1", "Каравай хлеба", "food", "village_square", 1, {"edible": True}),
                     ("apple_1", "Красное яблоко", "food", "village_square", 1, {"edible": True}),
-                    ("bottle_1", "Пустая бутылка", "container", "village_square", 1, {}),
+                    ("bottle_1", "Пустая бутылка", "container", "village_square", 1, {"price": 3, "for_sale_by": "npc_oren", "fillable": True, "filled_with": None}),
                     ("bucket_1", "Деревянное ведро", "tool", "workshop_yard", 1, {}),
                     ("rope_1", "Короткая верёвка", "tool", "workshop_yard", 1, {}),
                     ("herb_bundle_1", "Пучок речных трав", "resource", "river_edge", 1, {}),
                     ("driftwood_1", "Сухая коряга", "resource", "river_edge", 1, {}),
                     ("tavern_sign", "Вывеска таверны", "fixture", "village_square", 0, {"condition": 100}),
-                    ("village_well", "Колодец", "fixture", "village_square", 0, {}),
+                    ("village_well", "Колодец", "fixture", "village_square", 0, {"water_source": True}),
                     ("workbench", "Верстак Миры", "fixture", "workshop_yard", 0, {}),
                 ]
                 conn.executemany(
