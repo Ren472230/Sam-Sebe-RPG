@@ -1,0 +1,24 @@
+name: Founder MVP CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+      - name: Install dependencies
+        run: python -m pip install -e '.[dev,discord]'
+      - name: Compile
+        run: python -m compileall -q src scripts
+      - name: Test
+        run: python -m pytest -q
