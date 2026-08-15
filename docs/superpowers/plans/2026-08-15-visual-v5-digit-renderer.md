@@ -70,7 +70,7 @@ test('computeGridGeometry preserves source aspect using measured cell aspect', (
   assert.equal(g.rows, 135);
 });
 
-test('sampleImageGrid averages more than one source pixel per cell', () => {
+test('sampleImageGrid averages more than one source pixel per cell in linear light', () => {
   const rgba = new Uint8ClampedArray([
     255,0,0,255, 0,255,0,255,
     0,0,255,255, 255,255,255,255,
@@ -81,7 +81,7 @@ test('sampleImageGrid averages more than one source pixel per cell', () => {
     { patchWidth: 2, patchHeight: 2 }
   );
   assert.equal(cells.length, 1);
-  assert.ok(cells[0].rgb[0] > 100 && cells[0].rgb[0] < 155);
+  assert.ok(cells[0].rgb[0] > 180 && cells[0].rgb[0] < 195);
   assert.ok(cells[0].variance > 0);
   assert.equal(cells[0].patch.length, 4);
 });
@@ -89,13 +89,12 @@ test('sampleImageGrid averages more than one source pixel per cell', () => {
 
 - [ ] **Step 2: Run tests and verify failure.**
 
-Run:
 ```bash
 node --test prototype/visual-v5-digit-renderer/tests/image-sampler.test.cjs
 ```
 Expected: FAIL because `image-sampler.js` does not exist.
 
-- [ ] **Step 3: Implement the pure sampling API.** Use linear-light RGB averaging, Rec.709 luminance weights, finite-difference gradients from the normalized patch, and the exact row formula below.
+- [ ] **Step 3: Implement the pure sampling API.** Use sRGB -> linear conversion before averaging, convert the averaged channels back to sRGB for `rgb`, use Rec.709 luminance weights in linear light, finite-difference gradients from the normalized patch, and the exact row formula below.
 
 ```js
 function computeGridGeometry({ sourceWidth, sourceHeight, columns = 240, cellAspect }) {
@@ -130,7 +129,8 @@ git commit -m "feat: add digit renderer image sampler"
 - Allowed glyph constant: `ALLOWED_GLYPHS = ['0','1','2','3','4','5','6','7','8','9','.',':','-']`.
 - Produces pure `analyzeMask(mask, width, height) -> GlyphFeatures`.
 - `GlyphFeatures`: `{ density, centerX, centerY, horizontal, vertical, edgeX, edgeY, patch }`.
-- Browser-only `profileFont({ fontFamily, fontSize, glyphs = ALLOWED_GLYPHS, patchWidth = 4, patchHeight = 6 }) -> { cellWidth, cellHeight, cellAspect, profiles }`.
+- Browser-only `profileFont({ fontFamily, fontSize, lineHeight, glyphs = ALLOWED_GLYPHS, patchWidth = 4, patchHeight = 6 }) -> { fontFamily, fontSize, lineHeight, cellWidth, cellHeight, cellAspect, profiles }`.
+- `cellAspect = cellWidth / cellHeight`.
 - `profiles` maps each glyph to `GlyphFeatures` plus its original mask.
 
 - [ ] **Step 1: Write failing pure mask tests.**
@@ -158,9 +158,9 @@ test('allowed glyph set contains only the approved characters', () => {
 node --test prototype/visual-v5-digit-renderer/tests/glyph-profiler.test.cjs
 ```
 
-- [ ] **Step 3: Implement `analyzeMask` and browser-only `profileFont`.** Rasterize each glyph as white ink on transparent black in an offscreen Canvas 2D context, read alpha as the mask, and measure cell width with `ctx.measureText('0').width`; use the configured CSS line-height as `cellHeight` so the geometry matches the visible renderer.
+- [ ] **Step 3: Implement `analyzeMask` and browser-only `profileFont`.** Rasterize each glyph as white ink on transparent black in an offscreen Canvas 2D context, read alpha as the mask, measure cell width with `ctx.measureText('0').width`, use the supplied `lineHeight` as `cellHeight`, and profile the same font metrics that the visible DOM renderer will use.
 
-- [ ] **Step 4: Ensure module works in browser and Node.** Follow the existing project prototype pattern: IIFE exposing `window.DigitGlyphProfiler` in browser and `module.exports` in Node.
+- [ ] **Step 4: Ensure module works in browser and Node.** Use an IIFE exposing `window.DigitGlyphProfiler` in browser and `module.exports` in Node.
 
 - [ ] **Step 5: Run focused tests and commit.**
 
@@ -186,6 +186,7 @@ git commit -m "feat: profile real digit glyph shapes"
 - Produces `correctForegroundColor([r,g,b], tuning) -> [r,g,b]`.
 - Produces `mapSamples(samples, profiles, options) -> RenderCell[]`.
 - `RenderCell`: `{ x, y, glyph, color: [r,g,b] }`.
+- `options` shape: `{ weights, color, columns, rows, marker }`.
 - `options.marker` may be `{ normalizedX, normalizedY, glyph: '@', color: [255,240,170] }`.
 
 - [ ] **Step 1: Write failing scoring/determinism/color tests.**
@@ -222,11 +223,11 @@ test('minimum foreground brightness lifts dark source colors without adding a ba
 node --test prototype/visual-v5-digit-renderer/tests/glyph-mapper.test.cjs
 ```
 
-- [ ] **Step 3: Implement mapper.** Compute mean absolute patch error, density error, gradient-direction error and continuity penalty. Iterate glyphs in `ALLOWED_GLYPHS` order so ties are deterministic.
+- [ ] **Step 3: Implement mapper.** Compute mean absolute patch error, density error, gradient-direction error and continuity penalty. Iterate glyphs in the canonical allowed-glyph order so ties are deterministic.
 
 - [ ] **Step 4: Implement color correction in normalized RGB.** Saturation operates around luminance, contrast around 0.5, gamma on each channel, then scale upward only when maximum channel is below `minBrightness`.
 
-- [ ] **Step 5: Implement marker override by converting normalized coordinates to one exact grid cell after the normal map pass.** Do not use image recognition for the player.
+- [ ] **Step 5: Implement marker override.** Convert normalized marker coordinates to one exact grid cell using `columns` and `rows` after the normal map pass. Do not use image recognition for the player.
 
 - [ ] **Step 6: Run tests and commit.**
 
@@ -246,7 +247,7 @@ git commit -m "feat: map image samples to real colored digits"
 
 **Interfaces:**
 - Produces `groupCellsIntoRows(cells, columns) -> RenderCell[][]`.
-- Browser-only `renderTextGrid(root, cells, { columns, rows, cellWidth, cellHeight, fontFamily, fontSize, background })`.
+- Browser-only `renderTextGrid(root, cells, { columns, rows, cellWidth, cellHeight, fontFamily, fontSize, lineHeight, background })`.
 - Visible output uses `.glyph-row` elements containing `.glyph-cell` spans whose `textContent` is one actual glyph.
 - `.glyph-cell` receives foreground `style.color` only; no per-cell background property.
 
@@ -300,11 +301,12 @@ git commit -m "feat: render digit grid as real DOM glyphs"
 
 **Interfaces:**
 - `app.js` exports pure `buildSettings(formValues)` and browser `initDigitLab(document)`.
-- Default settings: `columns=240`, mapper weights from Task 3, color tuning from Task 3.
+- Default settings: `columns=240`, mapper weights and color tuning from Task 3.
 - Default marker normalized position for benchmark: `{ normalizedX: 0.68, normalizedY: 0.76 }`; UI can toggle marker off.
-- Source image is hidden by default and appears only when the debug checkbox `#show-source` is enabled.
+- Source image is hidden by default and appears only when debug checkbox `#show-source` is enabled.
+- Status UI shows measured `rows`, `cellAspect`, active font, and conversion duration.
 
-- [ ] **Step 1: Extend static tests for the visual-lab contract.** Assert the page contains `#digit-output`, file input, bundled benchmark source, 240-column control, tuning controls, zoom, reset, and hidden-by-default source debug panel. Assert no `<img>` exists inside `#digit-output`.
+- [ ] **Step 1: Extend static tests for the visual-lab contract.** Assert the page contains `#digit-output`, file input, bundled benchmark source, 240-column control, tuning controls, zoom, reset, font/aspect/row status fields, and hidden-by-default source debug panel. Assert no `<img>` exists inside `#digit-output`.
 
 - [ ] **Step 2: Run contract tests and verify failure.**
 
@@ -314,7 +316,7 @@ node --test prototype/visual-v5-digit-renderer/tests/contracts.test.cjs
 
 - [ ] **Step 3: Add the approved daytime village benchmark image as `assets/benchmark-day.png`.** This asset is input material only and must never be placed inside the digit output container.
 
-- [ ] **Step 4: Build the page shell.** The digit image must occupy the main central area. Put the compact tuning controls in a narrow side panel. Keep UI neutral and subordinate; no terminal chrome, scanlines or decorative ASCII.
+- [ ] **Step 4: Build the page shell.** The digit image must occupy the main central area. Put compact tuning controls in a narrow side panel. Keep UI neutral and subordinate; no terminal chrome, scanlines or decorative ASCII.
 
 - [ ] **Step 5: Wire the conversion pipeline in `app.js`.** Exact orchestration:
 
@@ -326,14 +328,27 @@ const geometry = DigitImageSampler.computeGridGeometry({
   columns: settings.columns,
   cellAspect: font.cellAspect,
 });
-const samples = DigitImageSampler.sampleImageGrid(imageData, geometry, settings.patch);
-const cells = DigitGlyphMapper.mapSamples(samples, font.profiles, settings.mapper);
-DigitTextRenderer.renderTextGrid(output, cells, { ...geometry, ...font });
+const imageData = sourceContext.getImageData(0, 0, sourceCanvas.width, sourceCanvas.height);
+const samples = DigitImageSampler.sampleImageGrid(
+  { data: imageData.data, width: imageData.width, height: imageData.height },
+  geometry,
+  settings.patch
+);
+const cells = DigitGlyphMapper.mapSamples(samples, font.profiles, {
+  weights: settings.weights,
+  color: settings.color,
+  columns: geometry.columns,
+  rows: geometry.rows,
+  marker: settings.marker,
+});
+DigitTextRenderer.renderTextGrid(output, cells, {
+  ...geometry,
+  ...font,
+  background: settings.background,
+});
 ```
 
-The actual implementation may pass the source as `{ data, width, height }`; keep the interface names from Tasks 1–4 unchanged.
-
-- [ ] **Step 6: Debounce tuning changes by 120 ms and reuse cached source sampling when only mapper/color weights change.** Reprofile/resample only when font, columns or source changes.
+- [ ] **Step 6: Debounce tuning changes by 120 ms and reuse cached source sampling when only mapper/color weights change.** Reprofile/resample only when font, line-height, columns or source changes.
 
 - [ ] **Step 7: Run all Node tests.**
 
@@ -373,14 +388,9 @@ python3 -m http.server 4173 --directory prototype/visual-v5-digit-renderer
 
 - [ ] **Step 4: Capture a normal-view screenshot and a 300% zoom screenshot.** At normal view judge scene readability; at 300% verify the digits are unmistakably actual text.
 
-- [ ] **Step 5: Compare against the quality gates in the spec.** Specifically inspect sky, red forge roof, blue tavern roof, road, well, vegetation, Mira/player silhouette, and dark structural details. Record failures as mapper/color/font issues rather than changing the game composition.
+- [ ] **Step 5: Compare against the quality gates in the spec.** Inspect sky, red forge roof, blue tavern roof, road, well, vegetation, Mira/player silhouette, and dark structural details. Record failures as mapper/color/font issues rather than changing the game composition.
 
-- [ ] **Step 6: Tune only these initial constants, one variable at a time, if visual evidence requires it:**
-  - mapper weights `density`, `shape`, `edge`, `continuity`;
-  - `saturation`, `contrast`, `gamma`, `minBrightness`;
-  - CSS font size/line-height while preserving measured geometry.
-
-After each change, rerun the same screenshot pair and keep the change only if scene readability improves without making glyphs look like colored rectangles.
+- [ ] **Step 6: Tune one variable at a time only when screenshot evidence requires it:** mapper weights (`density`, `shape`, `edge`, `continuity`), color tuning (`saturation`, `contrast`, `gamma`, `minBrightness`), or font size/line-height while preserving measured geometry. After each change, rerun the same screenshot pair and keep the change only if scene readability improves without creating colored rectangle-like cells.
 
 - [ ] **Step 7: Re-run all tests after visual tuning.**
 
