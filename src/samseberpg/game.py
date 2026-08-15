@@ -236,6 +236,29 @@ class GameService:
             )
             return True, "OK", f"Dropped {action.target_id}.", location_id
 
+        if action.action_type is ActionType.GIVE:
+            item = conn.execute(
+                "SELECT owner_actor_id FROM entities WHERE id = ?",
+                (action.item_id,),
+            ).fetchone()
+            if item is None or item[0] != action.actor_id:
+                return False, "ITEM_NOT_OWNED", "Item is not owned by this player.", location_id
+
+            target = conn.execute(
+                "SELECT location_id FROM actors WHERE id = ? AND id <> ?",
+                (action.target_id, action.actor_id),
+            ).fetchone()
+            if target is None:
+                return False, "TARGET_NOT_FOUND", "Recipient does not exist.", location_id
+            if target[0] != location_id:
+                return False, "TARGET_NOT_PRESENT", "Recipient is not present here.", location_id
+
+            conn.execute(
+                "UPDATE entities SET location_id = NULL, owner_actor_id = ? WHERE id = ?",
+                (action.target_id, action.item_id),
+            )
+            return True, "OK", f"Gave {action.item_id} to {action.target_id}.", location_id
+
         raise ValueError(f"unsupported action type: {action.action_type}")
 
     def _record_result(
@@ -254,6 +277,7 @@ class GameService:
             key: value
             for key, value in {
                 "destination_id": action.destination_id,
+                "item_id": action.item_id,
                 "source_text": action.source_text,
             }.items()
             if value is not None
