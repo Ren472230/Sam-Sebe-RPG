@@ -61,7 +61,7 @@ class GameService:
             conn.execute("BEGIN IMMEDIATE")
             self.synchronizer.catch_up(conn, DEFAULT_WORLD_ID, self.clock.now())
             player = conn.execute(
-                "SELECT actors.location_id, locations.name, locations.description "
+                "SELECT actors.location_id, locations.name, locations.description, players.coins "
                 "FROM players "
                 "JOIN actors ON actors.id = players.actor_id "
                 "JOIN locations ON locations.id = actors.location_id "
@@ -73,19 +73,26 @@ class GameService:
 
             location_id = str(player[0])
             actor_rows = conn.execute(
-                "SELECT id, name, actor_type FROM actors "
-                "WHERE location_id = ? AND id <> ? ORDER BY actor_type, name, id",
+                "SELECT actors.id, actors.name, actors.actor_type, npcs.current_activity "
+                "FROM actors LEFT JOIN npcs ON npcs.actor_id = actors.id "
+                "WHERE actors.location_id = ? AND actors.id <> ? "
+                "ORDER BY actors.actor_type, actors.name, actors.id",
                 (location_id, player_id),
             ).fetchall()
             entity_rows = conn.execute(
-                "SELECT id, name, entity_type, portable FROM entities "
+                "SELECT id, name, entity_type, portable, state_json FROM entities "
                 "WHERE location_id = ? AND owner_actor_id IS NULL ORDER BY name, id",
                 (location_id,),
             ).fetchall()
             inventory_rows = conn.execute(
-                "SELECT id, name, entity_type, portable FROM entities "
+                "SELECT id, name, entity_type, portable, state_json FROM entities "
                 "WHERE owner_actor_id = ? ORDER BY name, id",
                 (player_id,),
+            ).fetchall()
+            exit_rows = conn.execute(
+                "SELECT to_location_id FROM location_edges "
+                "WHERE from_location_id = ? ORDER BY to_location_id",
+                (location_id,),
             ).fetchall()
             conn.execute("COMMIT")
         except Exception:
@@ -103,6 +110,8 @@ class GameService:
             visible_actors=tuple(_visible_actor(row) for row in actor_rows),
             visible_entities=tuple(_visible_entity(row) for row in entity_rows),
             inventory=tuple(_visible_entity(row) for row in inventory_rows),
+            coins=int(player[3]),
+            exits=tuple(str(row[0]) for row in exit_rows),
         )
 
     def execute(self, action: CanonicalAction, external_id: str | None = None) -> ActionResult:
@@ -302,7 +311,12 @@ class GameService:
 
 
 def _visible_actor(row) -> VisibleActor:
-    return VisibleActor(actor_id=str(row[0]), name=str(row[1]), actor_type=str(row[2]))
+    return VisibleActor(
+        actor_id=str(row[0]),
+        name=str(row[1]),
+        actor_type=str(row[2]),
+        activity=None if row[3] is None else str(row[3]),
+    )
 
 
 def _visible_entity(row) -> VisibleEntity:
@@ -311,6 +325,7 @@ def _visible_entity(row) -> VisibleEntity:
         name=str(row[1]),
         entity_type=str(row[2]),
         portable=bool(row[3]),
+        state=json.loads(str(row[4])),
     )
 
 
