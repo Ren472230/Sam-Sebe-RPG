@@ -184,6 +184,27 @@ _ENTITIES = (
     ("river_marker_1", "River Marker", "fixture", "river_edge", 0, {}),
 )
 
+_GAMEPLAY_ENTITIES = (
+    (
+        "bottle_1",
+        "Glass Bottle",
+        "container",
+        "village_square",
+        1,
+        {"fillable": True, "filled_with": None, "for_sale_by": "npc_oren", "price": 3},
+    ),
+    ("village_well", "Village Well", "fixture", "village_square", 0, {"water_source": True}),
+    ("tavern_sign", "Tavern Sign", "fixture", "village_square", 0, {"condition": 100}),
+)
+
+_GAMEPLAY_AFFORDANCE_DEFAULTS = {
+    "stone_flat_1": {"throwable": True, "impact_damage": 20},
+    "smooth_pebble_1": {"throwable": True, "impact_damage": 20},
+    "bottle_1": {"fillable": True, "filled_with": None, "for_sale_by": "npc_oren", "price": 3},
+    "village_well": {"water_source": True},
+    "tavern_sign": {"condition": 100},
+}
+
 
 class GameDatabase:
     def __init__(self, path: str | Path) -> None:
@@ -279,6 +300,48 @@ class GameDatabase:
                 for entity_id, name, entity_type, location_id, portable, state in _ENTITIES
             ],
         )
+        self._ensure_gameplay_affordances(conn, created_at)
+
+    def _ensure_gameplay_affordances(self, conn: sqlite3.Connection, created_at: str) -> None:
+        conn.executemany(
+            "INSERT OR IGNORE INTO entities "
+            "(id, world_id, name, entity_type, location_id, owner_actor_id, portable, state_json, created_at) "
+            "VALUES (?, ?, ?, ?, ?, NULL, ?, ?, ?)",
+            [
+                (
+                    entity_id,
+                    DEFAULT_WORLD_ID,
+                    name,
+                    entity_type,
+                    location_id,
+                    portable,
+                    json.dumps(state, separators=(",", ":"), sort_keys=True),
+                    created_at,
+                )
+                for entity_id, name, entity_type, location_id, portable, state in _GAMEPLAY_ENTITIES
+            ],
+        )
+
+        for entity_id, defaults in _GAMEPLAY_AFFORDANCE_DEFAULTS.items():
+            row = conn.execute(
+                "SELECT state_json FROM entities WHERE id = ?",
+                (entity_id,),
+            ).fetchone()
+            if row is None:
+                continue
+            state = json.loads(str(row[0]))
+            if not isinstance(state, dict):
+                raise ValueError(f"entity state must be an object: {entity_id}")
+            changed = False
+            for key, value in defaults.items():
+                if key not in state:
+                    state[key] = value
+                    changed = True
+            if changed:
+                conn.execute(
+                    "UPDATE entities SET state_json = ? WHERE id = ?",
+                    (json.dumps(state, separators=(",", ":"), sort_keys=True), entity_id),
+                )
 
 
 def _sqlite_utc_now(conn: sqlite3.Connection) -> str:
