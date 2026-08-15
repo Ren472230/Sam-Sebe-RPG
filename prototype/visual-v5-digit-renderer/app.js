@@ -48,7 +48,7 @@
     const showMarker = bool(get('showMarker', DEFAULTS.showMarker), DEFAULTS.showMarker);
     return {
       columns: Math.max(1, Math.round(number(get('columns', DEFAULTS.columns), DEFAULTS.columns))),
-      zoom: Math.max(0.5, Math.min(3, number(get('zoom', DEFAULTS.zoom * 100), DEFAULTS.zoom * 100) / 100)),
+      zoom: Math.max(0.2, Math.min(3, number(get('zoom', DEFAULTS.zoom * 100), DEFAULTS.zoom * 100) / 100)),
       font: {
         fontFamily: String(get('fontFamily', DEFAULTS.fontFamily)),
         fontSize: number(get('fontSize', DEFAULTS.fontSize), DEFAULTS.fontSize),
@@ -71,6 +71,33 @@
       showSource: bool(get('showSource', DEFAULTS.showSource), DEFAULTS.showSource),
       background: DEFAULTS.background,
     };
+  }
+
+  function resolveBenchmarkUrl(options = {}) {
+    return options && options.benchmarkUrl
+      ? String(options.benchmarkUrl)
+      : 'assets/benchmark-day.png';
+  }
+
+  function computeFitZoom({ availableWidth, outputWidth, minZoom = 0.2, maxZoom = 1 }) {
+    if (!Number.isFinite(availableWidth) || availableWidth <= 0) {
+      throw new TypeError('availableWidth must be positive');
+    }
+    if (!Number.isFinite(outputWidth) || outputWidth <= 0) {
+      throw new TypeError('outputWidth must be positive');
+    }
+    return Math.max(minZoom, Math.min(maxZoom, availableWidth / outputWidth));
+  }
+
+  function computeStageAvailableWidth({ rectWidth, paddingLeft = 0, paddingRight = 0 }) {
+    if (!Number.isFinite(rectWidth) || rectWidth <= 0) {
+      throw new TypeError('rectWidth must be positive');
+    }
+    return Math.max(1, rectWidth - Math.max(0, paddingLeft) - Math.max(0, paddingRight));
+  }
+
+  function selectPreRenderZoom({ autoFit, isMobile, requestedZoom }) {
+    return autoFit && isMobile ? 1 : requestedZoom;
   }
 
   function formObject(form) {
@@ -116,7 +143,7 @@
     setText(doc, 'min-brightness-value', settings.color.minBrightness.toFixed(2));
   }
 
-  function initDigitLab(doc) {
+  function initDigitLab(doc, options = {}) {
     if (!doc) throw new TypeError('document is required');
     const required = ['DigitGlyphProfiler', 'DigitImageSampler', 'DigitGlyphMapper', 'DigitTextRenderer'];
     for (const name of required) {
@@ -125,11 +152,12 @@
 
     const form = doc.getElementById('controls');
     const output = doc.getElementById('digit-output');
+    const stageScroll = doc.getElementById('stage-scroll');
     const debugPanel = doc.getElementById('source-debug-panel');
     const sourcePreview = doc.getElementById('source-preview');
     const fileInput = doc.getElementById('source-file');
     const renderButton = doc.getElementById('render-now');
-    if (!form || !output || !debugPanel || !sourcePreview || !fileInput || !renderButton) {
+    if (!form || !output || !stageScroll || !debugPanel || !sourcePreview || !fileInput || !renderButton) {
       throw new Error('Digit lab markup is incomplete');
     }
 
@@ -144,6 +172,7 @@
       samplingKey: null,
       geometry: null,
       samples: null,
+      autoFit: true,
     };
 
     function currentSettings() {
@@ -222,7 +251,12 @@
       const settings = currentSettings();
       updateControlOutputs(doc, settings);
       debugPanel.hidden = !settings.showSource;
-      output.style.zoom = String(settings.zoom);
+      const isMobile = Boolean(root.matchMedia && root.matchMedia('(max-width: 940px)').matches);
+      output.style.zoom = String(selectPreRenderZoom({
+        autoFit: cache.autoFit,
+        isMobile,
+        requestedZoom: settings.zoom,
+      }));
       setText(doc, 'render-status', 'Rendering real glyphs…');
       const started = performance.now();
       try {
@@ -240,6 +274,19 @@
           ...font,
           background: settings.background,
         });
+        if (cache.autoFit && isMobile) {
+          const stageStyle = root.getComputedStyle(stageScroll);
+          const availableWidth = computeStageAvailableWidth({
+            rectWidth: stageScroll.getBoundingClientRect().width,
+            paddingLeft: parseFloat(stageStyle.paddingLeft) || 0,
+            paddingRight: parseFloat(stageStyle.paddingRight) || 0,
+          });
+          const fitZoom = computeFitZoom({ availableWidth, outputWidth: output.offsetWidth });
+          const zoomControl = doc.getElementById('zoom');
+          output.style.zoom = String(fitZoom);
+          if (zoomControl) zoomControl.value = String(Math.floor(fitZoom * 100));
+          setText(doc, 'zoom-value', `${Math.floor(fitZoom * 100)}%`);
+        }
         const elapsed = performance.now() - started;
         setText(doc, 'status-columns', geometry.columns);
         setText(doc, 'status-rows', geometry.rows);
@@ -262,6 +309,7 @@
       if (target && (target.name === 'fontSize' || target.name === 'lineHeight')) invalidateProfile();
       if (target && target.name === 'columns') invalidateSampling();
       if (target && target.name === 'zoom') {
+        cache.autoFit = false;
         output.style.zoom = String(settings.zoom);
         return;
       }
@@ -272,6 +320,7 @@
     renderButton.addEventListener('click', () => render());
     form.addEventListener('reset', () => {
       setTimeout(() => {
+        cache.autoFit = true;
         invalidateProfile();
         render();
       }, 0);
@@ -284,7 +333,7 @@
       await setSource(url, true);
     });
 
-    setSource('assets/benchmark-day.png').catch((error) => {
+    setSource(resolveBenchmarkUrl(options)).catch((error) => {
       console.error(error);
       setText(doc, 'render-status', error.message);
     });
@@ -292,5 +341,13 @@
     return { render, setSource, cache };
   }
 
-  return { DEFAULTS, buildSettings, initDigitLab };
+  return {
+    DEFAULTS,
+    buildSettings,
+    initDigitLab,
+    resolveBenchmarkUrl,
+    computeFitZoom,
+    computeStageAvailableWidth,
+    selectPreRenderZoom,
+  };
 });

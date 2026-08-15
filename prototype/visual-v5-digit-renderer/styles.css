@@ -102,7 +102,7 @@ h1 {
 }
 
 .stage-scroll {
-  min-height: 72vh;
+  max-height: calc(100vh - 170px);
   overflow: auto;
   padding: 18px;
   background: #101315;
@@ -245,7 +245,7 @@ code {
   .lab-header { align-items: start; flex-direction: column; }
   .status-strip { justify-content: start; }
   .lab-grid { grid-template-columns: 1fr; }
-  .control-card { position: static; max-height: none; order: -1; }
-  .stage-scroll { min-height: 64vh; padding: 8px; }
+  .control-card { position: static; max-height: none; }
+  .stage-scroll { max-height: 64vh; padding: 8px; }
   .glyph-contract { display: none; }
 }

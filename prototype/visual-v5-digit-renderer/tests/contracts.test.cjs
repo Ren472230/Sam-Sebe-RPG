@@ -54,3 +54,18 @@ test('glyph cells never receive CSS backgrounds', () => {
   assert.ok(block);
   assert.doesNotMatch(block[1], /background/i);
 });
+
+test('stage scroll contains zoomed glyph surface instead of stretching the page', () => {
+  const css = read('styles.css');
+  const block = css.match(/\.stage-scroll\s*\{([\s\S]*?)\}/);
+  assert.ok(block);
+  assert.match(block[1], /max-height\s*:/);
+  assert.doesNotMatch(block[1], /min-height\s*:\s*72vh/);
+});
+
+test('mobile lab keeps the image first and allows a fit-width zoom', () => {
+  const css = read('styles.css');
+  const html = read('index.html');
+  assert.doesNotMatch(css, /order\s*:\s*-1/);
+  assert.match(html, /id="zoom"[^>]*min="20"/);
+});

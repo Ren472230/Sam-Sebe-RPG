@@ -27,3 +27,28 @@ test('buildSettings parses form-style strings deterministically', () => {
 test('default font remains dependency-free browser native stack', () => {
   assert.match(DEFAULTS.fontFamily, /monospace/);
 });
+
+test('resolveBenchmarkUrl uses explicit browser-QA source without changing the bundled default', () => {
+  const { resolveBenchmarkUrl } = require('../app.js');
+  assert.equal(resolveBenchmarkUrl(), 'assets/benchmark-day.png');
+  assert.equal(resolveBenchmarkUrl({ benchmarkUrl: 'blob:qa-source' }), 'blob:qa-source');
+});
+
+test('computeFitZoom scales a wide glyph surface to the available mobile width', () => {
+  const { computeFitZoom } = require('../app.js');
+  const zoom = computeFitZoom({ availableWidth: 322, outputWidth: 1155 });
+  assert.ok(Math.abs(zoom - (322 / 1155)) < 1e-9);
+  assert.equal(computeFitZoom({ availableWidth: 1600, outputWidth: 1155 }), 1);
+});
+
+test('computeStageAvailableWidth ignores transient scrollbar width during mobile fit', () => {
+  const { computeStageAvailableWidth } = require('../app.js');
+  assert.equal(computeStageAvailableWidth({ rectWidth: 353, paddingLeft: 8, paddingRight: 8 }), 337);
+});
+
+test('selectPreRenderZoom measures mobile auto-fit from an unzoomed grid', () => {
+  const { selectPreRenderZoom } = require('../app.js');
+  assert.equal(selectPreRenderZoom({ autoFit: true, isMobile: true, requestedZoom: 0.29 }), 1);
+  assert.equal(selectPreRenderZoom({ autoFit: false, isMobile: true, requestedZoom: 0.29 }), 0.29);
+  assert.equal(selectPreRenderZoom({ autoFit: true, isMobile: false, requestedZoom: 1.5 }), 1.5);
+});
