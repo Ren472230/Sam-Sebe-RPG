@@ -6,7 +6,7 @@
   const CANONICAL_GLYPHS = Object.freeze(['0','1','2','3','4','5','6','7','8','9','.',':','-']);
   const DEFAULT_WEIGHTS = Object.freeze({ density: 0.40, shape: 0.35, edge: 0.20, continuity: 0.05 });
   const DEFAULT_COLOR = Object.freeze({ saturation: 1.20, contrast: 1.08, gamma: 1.00, minBrightness: 0.16 });
-  const DEFAULT_DIVERSITY = Object.freeze({ scoreTolerance: 0.08, maxVariance: 0.01, maxGradient: 0.015 });
+  const DEFAULT_DIVERSITY = Object.freeze({ scoreTolerance: 0.028, maxVariance: 0.003, maxGradient: 0.006 });
   const REC709 = [0.2126, 0.7152, 0.0722];
 
   function clamp(value, min = 0, max = 1) {
@@ -58,8 +58,7 @@
     }));
   }
 
-  function chooseGlyph(sample, profiles, previousGlyph = null, weights = DEFAULT_WEIGHTS) {
-    const scored = scoreOrderedGlyphs(sample, profiles, previousGlyph, weights);
+  function bestScoredGlyph(scored) {
     if (!scored.length) throw new Error('profiles must contain at least one glyph');
     let bestGlyph = scored[0].glyph;
     let bestScore = Number.POSITIVE_INFINITY;
@@ -69,7 +68,11 @@
         bestGlyph = candidate.glyph;
       }
     }
-    return bestGlyph;
+    return { glyph: bestGlyph, score: bestScore };
+  }
+
+  function chooseGlyph(sample, profiles, previousGlyph = null, weights = DEFAULT_WEIGHTS) {
+    return bestScoredGlyph(scoreOrderedGlyphs(sample, profiles, previousGlyph, weights)).glyph;
   }
 
   function isFlatSample(sample, diversity = DEFAULT_DIVERSITY) {
@@ -83,33 +86,30 @@
 
   function deterministicIndex(x, y, length) {
     if (length <= 1) return 0;
-    let value = Math.imul((Number(x) || 0) + 1, 73856093) ^ Math.imul((Number(y) || 0) + 1, 19349663);
+    let value = Math.imul((Number(x) || 0) + 1, 0x9e3779b1) ^ Math.imul((Number(y) || 0) + 1, 0x85ebca77);
+    value ^= value >>> 16;
+    value = Math.imul(value, 0x7feb352d);
+    value ^= value >>> 15;
+    value = Math.imul(value, 0x846ca68b);
     value ^= value >>> 16;
     return (value >>> 0) % length;
   }
 
   function chooseGlyphForCell(sample, profiles, previousGlyph = null, weights = DEFAULT_WEIGHTS, diversity = DEFAULT_DIVERSITY) {
-    const scored = scoreOrderedGlyphs(sample, profiles, previousGlyph, weights);
-    if (!scored.length) throw new Error('profiles must contain at least one glyph');
-
-    let bestScore = Number.POSITIVE_INFINITY;
-    let bestGlyph = scored[0].glyph;
-    for (const candidate of scored) {
-      if (candidate.score < bestScore - 1e-12) {
-        bestScore = candidate.score;
-        bestGlyph = candidate.glyph;
-      }
-    }
-
-    if (!isFlatSample(sample, diversity)) return bestGlyph;
+    const strictScored = scoreOrderedGlyphs(sample, profiles, previousGlyph, weights);
+    const strictBest = bestScoredGlyph(strictScored);
+    if (!isFlatSample(sample, diversity)) return strictBest.glyph;
 
     const d = { ...DEFAULT_DIVERSITY, ...(diversity || {}) };
     const tolerance = Math.max(0, Number(d.scoreTolerance) || 0);
-    const candidates = scored
-      .filter((candidate) => candidate.score <= bestScore + tolerance + 1e-12)
+    const flatWeights = { ...normalizedWeights(weights), continuity: 0 };
+    const flatScored = scoreOrderedGlyphs(sample, profiles, null, flatWeights);
+    const flatBest = bestScoredGlyph(flatScored);
+    const candidates = flatScored
+      .filter((candidate) => candidate.score <= flatBest.score + tolerance + 1e-12)
       .map((candidate) => candidate.glyph);
 
-    if (candidates.length < 2) return bestGlyph;
+    if (candidates.length < 2) return strictBest.glyph;
     return candidates[deterministicIndex(sample && sample.x, sample && sample.y, candidates.length)];
   }
 
