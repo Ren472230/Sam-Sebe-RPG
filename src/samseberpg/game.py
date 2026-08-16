@@ -237,6 +237,14 @@ class GameService:
             return True, "OK", f"Dropped {action.target_id}.", location_id, {}
 
         if action.action_type is ActionType.THROW:
+            modifiers = action.modifiers or {}
+            if not isinstance(modifiers, dict):
+                return False, "INVALID_MODIFIER", "Throw modifiers must be a mapping.", location_id, {}
+            unknown_modifiers = set(modifiers) - {"aimed"}
+            aimed_value = modifiers.get("aimed", False)
+            if unknown_modifiers or not isinstance(aimed_value, bool):
+                return False, "INVALID_MODIFIER", "Unsupported throw modifier.", location_id, {}
+
             if action.item_id is None:
                 return False, "ITEM_REQUIRED", "A projectile item is required.", location_id, {}
             entity = conn.execute(
@@ -259,7 +267,7 @@ class GameService:
             if target[0] != location_id:
                 return False, "TARGET_NOT_PRESENT", "Target is not present here.", location_id, {}
 
-            aimed = bool(action.modifiers and action.modifiers.get("aimed") is True)
+            aimed = aimed_value
             accuracy_bonus = 0.0
             if aimed:
                 ability = conn.execute(
