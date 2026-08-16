@@ -85,6 +85,44 @@ test('flat near-tied regions use deterministic glyph diversity instead of one re
   assert.ok(new Set(firstGlyphs).size > 1, 'flat region should not collapse to a single repeated glyph');
 });
 
+test('two near-tied glyph candidates both appear across flat coordinates', () => {
+  const profiles = {
+    '0': { density: 0.80, edgeX: 0, edgeY: 0, patch: [1,1,1,1] },
+    '8': { density: 0.77, edgeX: 0, edgeY: 0, patch: [0.98,0.98,0.98,0.98] },
+  };
+  const samples = Array.from({ length: 24 }, (_, i) => ({
+    x: i % 8,
+    y: Math.floor(i / 8),
+    rgb: [130,190,220],
+    luminance: 0.80,
+    variance: 0.001,
+    gradientX: 0.001,
+    gradientY: 0.001,
+    patch: [1,1,1,1],
+  }));
+  const glyphs = mapper.mapSamples(samples, profiles, { columns: 8, rows: 3 }).map((cell) => cell.glyph);
+  assert.deepEqual(new Set(glyphs), new Set(['0', '8']));
+});
+
+test('flat diversity excludes a glyph whose score is outside a tight near-best tolerance', () => {
+  const profiles = {
+    '0': { density: 0.80, edgeX: 0, edgeY: 0, patch: [1,1,1,1] },
+    '8': { density: 0.72, edgeX: 0, edgeY: 0, patch: [0.95,0.95,0.95,0.95] },
+  };
+  const samples = Array.from({ length: 12 }, (_, i) => ({
+    x: i % 6,
+    y: Math.floor(i / 6),
+    rgb: [130,190,220],
+    luminance: 0.80,
+    variance: 0.001,
+    gradientX: 0.001,
+    gradientY: 0.001,
+    patch: [1,1,1,1],
+  }));
+  const glyphs = mapper.mapSamples(samples, profiles, { columns: 6, rows: 2 }).map((cell) => cell.glyph);
+  assert.deepEqual(glyphs, Array(12).fill('0'));
+});
+
 test('structured high-variance cells keep strict best-match glyph selection', () => {
   const profiles = {
     '0': { density: 0.80, edgeX: 0.30, edgeY: 0.10, patch: [1,1,1,1] },
