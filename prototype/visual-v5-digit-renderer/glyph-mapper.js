@@ -6,6 +6,7 @@
   const CANONICAL_GLYPHS = Object.freeze(['0','1','2','3','4','5','6','7','8','9','.',':','-']);
   const DEFAULT_WEIGHTS = Object.freeze({ density: 0.40, shape: 0.35, edge: 0.20, continuity: 0.05 });
   const DEFAULT_COLOR = Object.freeze({ saturation: 1.20, contrast: 1.08, gamma: 1.00, minBrightness: 0.16 });
+  const DEFAULT_DIVERSITY = Object.freeze({ scoreTolerance: 0.08, maxVariance: 0.01, maxGradient: 0.015 });
   const REC709 = [0.2126, 0.7152, 0.0722];
 
   function clamp(value, min = 0, max = 1) {
@@ -50,19 +51,66 @@
     return known.concat(extra);
   }
 
+  function scoreOrderedGlyphs(sample, profiles, previousGlyph, weights) {
+    return orderedGlyphs(profiles).map((glyph) => ({
+      glyph,
+      score: scoreGlyph(sample, profiles[glyph], previousGlyph, weights, glyph),
+    }));
+  }
+
   function chooseGlyph(sample, profiles, previousGlyph = null, weights = DEFAULT_WEIGHTS) {
-    const glyphs = orderedGlyphs(profiles);
-    if (!glyphs.length) throw new Error('profiles must contain at least one glyph');
-    let bestGlyph = glyphs[0];
+    const scored = scoreOrderedGlyphs(sample, profiles, previousGlyph, weights);
+    if (!scored.length) throw new Error('profiles must contain at least one glyph');
+    let bestGlyph = scored[0].glyph;
     let bestScore = Number.POSITIVE_INFINITY;
-    for (const glyph of glyphs) {
-      const score = scoreGlyph(sample, profiles[glyph], previousGlyph, weights, glyph);
-      if (score < bestScore - 1e-12) {
-        bestScore = score;
-        bestGlyph = glyph;
+    for (const candidate of scored) {
+      if (candidate.score < bestScore - 1e-12) {
+        bestScore = candidate.score;
+        bestGlyph = candidate.glyph;
       }
     }
     return bestGlyph;
+  }
+
+  function isFlatSample(sample, diversity = DEFAULT_DIVERSITY) {
+    const d = { ...DEFAULT_DIVERSITY, ...(diversity || {}) };
+    const variance = Math.max(0, Number(sample && sample.variance) || 0);
+    const gx = Number(sample && sample.gradientX) || 0;
+    const gy = Number(sample && sample.gradientY) || 0;
+    const gradient = Math.hypot(gx, gy);
+    return variance <= d.maxVariance && gradient <= d.maxGradient;
+  }
+
+  function deterministicIndex(x, y, length) {
+    if (length <= 1) return 0;
+    let value = Math.imul((Number(x) || 0) + 1, 73856093) ^ Math.imul((Number(y) || 0) + 1, 19349663);
+    value ^= value >>> 16;
+    return (value >>> 0) % length;
+  }
+
+  function chooseGlyphForCell(sample, profiles, previousGlyph = null, weights = DEFAULT_WEIGHTS, diversity = DEFAULT_DIVERSITY) {
+    const scored = scoreOrderedGlyphs(sample, profiles, previousGlyph, weights);
+    if (!scored.length) throw new Error('profiles must contain at least one glyph');
+
+    let bestScore = Number.POSITIVE_INFINITY;
+    let bestGlyph = scored[0].glyph;
+    for (const candidate of scored) {
+      if (candidate.score < bestScore - 1e-12) {
+        bestScore = candidate.score;
+        bestGlyph = candidate.glyph;
+      }
+    }
+
+    if (!isFlatSample(sample, diversity)) return bestGlyph;
+
+    const d = { ...DEFAULT_DIVERSITY, ...(diversity || {}) };
+    const tolerance = Math.max(0, Number(d.scoreTolerance) || 0);
+    const candidates = scored
+      .filter((candidate) => candidate.score <= bestScore + tolerance + 1e-12)
+      .map((candidate) => candidate.glyph);
+
+    if (candidates.length < 2) return bestGlyph;
+    return candidates[deterministicIndex(sample && sample.x, sample && sample.y, candidates.length)];
   }
 
   function correctForegroundColor(rgb, tuning = DEFAULT_COLOR) {
@@ -99,10 +147,13 @@
     const rows = Math.max(1, Math.round(options.rows || Math.ceil(samples.length / columns)));
     const weights = { ...DEFAULT_WEIGHTS, ...(options.weights || {}) };
     const color = { ...DEFAULT_COLOR, ...(options.color || {}) };
+    const diversity = options.diversity === false ? false : { ...DEFAULT_DIVERSITY, ...(options.diversity || {}) };
     const cells = [];
     let previousGlyph = null;
     for (const sample of samples) {
-      const glyph = chooseGlyph(sample, profiles, previousGlyph, weights);
+      const glyph = diversity
+        ? chooseGlyphForCell(sample, profiles, previousGlyph, weights, diversity)
+        : chooseGlyph(sample, profiles, previousGlyph, weights);
       cells.push({
         x: sample.x,
         y: sample.y,
@@ -127,8 +178,11 @@
     CANONICAL_GLYPHS,
     DEFAULT_WEIGHTS,
     DEFAULT_COLOR,
+    DEFAULT_DIVERSITY,
     scoreGlyph,
     chooseGlyph,
+    chooseGlyphForCell,
+    isFlatSample,
     correctForegroundColor,
     mapSamples,
   };
