@@ -19,6 +19,7 @@ class CanonicalAction:
     target_id: str | None = None
     item_id: str | None = None
     destination_id: str | None = None
+    modifiers: dict[str, object] | None = None
     source_text: str | None = None
 
 
