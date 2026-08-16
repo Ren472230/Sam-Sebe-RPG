@@ -84,3 +84,54 @@ def test_throw_rejects_unknown_or_malformed_modifiers_without_mutation(tmp_path:
             ).fetchone()
         assert owner == player
         assert tuple(event) == (0, "INVALID_MODIFIER")
+
+
+def test_throw_rng_sequence_does_not_reset_across_restart(tmp_path: Path) -> None:
+    db_path = tmp_path / "world.sqlite3"
+    db = GameDatabase(db_path)
+    db.initialize()
+    clock = FakeClock(datetime(2026, 8, 14, 8, 0, tzinfo=timezone.utc))
+    game = GameService(db, clock, seed=9)
+    player = game.register_player("discord-a", "Ari")
+    assert game.execute(
+        CanonicalAction(actor_id=player, action_type=ActionType.TAKE, target_id="stone_flat_1")
+    ).success
+
+    first = game.execute(
+        CanonicalAction(
+            actor_id=player,
+            action_type=ActionType.THROW,
+            target_id="npc_mira",
+            item_id="stone_flat_1",
+        )
+    )
+    assert first.success
+    assert game.execute(
+        CanonicalAction(actor_id=player, action_type=ActionType.TAKE, target_id="stone_flat_1")
+    ).success
+
+    reopened_db = GameDatabase(db_path)
+    reopened_db.initialize()
+    reopened_game = GameService(reopened_db, clock, seed=9)
+    second = reopened_game.execute(
+        CanonicalAction(
+            actor_id=player,
+            action_type=ActionType.THROW,
+            target_id="npc_mira",
+            item_id="stone_flat_1",
+        )
+    )
+    assert second.success
+
+    with reopened_db.connect() as conn:
+        rolls = [
+            json.loads(row[0])["accuracy_roll"]
+            for row in conn.execute(
+                "SELECT evidence_json FROM action_events "
+                "WHERE actor_id = ? AND action_type = 'THROW' AND success = 1 ORDER BY id",
+                (player,),
+            ).fetchall()
+        ]
+
+    assert len(rolls) == 2
+    assert rolls[0] != rolls[1]
