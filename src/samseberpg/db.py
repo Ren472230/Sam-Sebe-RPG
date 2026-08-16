@@ -116,10 +116,27 @@ CREATE TABLE IF NOT EXISTS processed_interactions (
     processed_at TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS achievements (
+    actor_id TEXT NOT NULL REFERENCES actors(id) ON DELETE CASCADE,
+    achievement_id TEXT NOT NULL,
+    unlocked_at TEXT NOT NULL,
+    evidence_json TEXT NOT NULL,
+    PRIMARY KEY (actor_id, achievement_id)
+);
+
+CREATE TABLE IF NOT EXISTS abilities (
+    actor_id TEXT NOT NULL REFERENCES actors(id) ON DELETE CASCADE,
+    ability_id TEXT NOT NULL,
+    source_achievement_id TEXT NOT NULL,
+    unlocked_at TEXT NOT NULL,
+    PRIMARY KEY (actor_id, ability_id)
+);
+
 CREATE INDEX IF NOT EXISTS idx_actors_location ON actors(location_id);
 CREATE INDEX IF NOT EXISTS idx_entities_location ON entities(location_id);
 CREATE INDEX IF NOT EXISTS idx_entities_owner ON entities(owner_actor_id);
 CREATE INDEX IF NOT EXISTS idx_events_world_time ON action_events(world_id, occurred_at);
+CREATE INDEX IF NOT EXISTS idx_events_actor_action ON action_events(actor_id, action_type, success);
 CREATE INDEX IF NOT EXISTS idx_schedule_npc ON npc_schedule(npc_actor_id, priority DESC);
 """
 
