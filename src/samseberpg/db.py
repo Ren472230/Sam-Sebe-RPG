@@ -170,8 +170,22 @@ _SCHEDULE = (
 )
 
 _ENTITIES = (
-    ("stone_flat_1", "Flat Stone", "stone", "workshop_yard", 1, {}),
-    ("wood_block_1", "Wood Block", "material", "workshop_yard", 1, {}),
+    (
+        "stone_flat_1",
+        "Flat Stone",
+        "stone",
+        "workshop_yard",
+        1,
+        {"tags": ["improvised_projectile"], "projectile_type": "flat_stone"},
+    ),
+    (
+        "wood_block_1",
+        "Wood Block",
+        "material",
+        "workshop_yard",
+        1,
+        {"tags": ["improvised_projectile"], "projectile_type": "wood_block"},
+    ),
     ("hammer_old_1", "Old Hammer", "tool", "workshop_yard", 1, {"condition": "worn"}),
     ("anvil_1", "Small Anvil", "fixture", "workshop_yard", 0, {}),
     ("bread_loaf_1", "Loaf of Bread", "food", "village_square", 1, {"fresh": True}),
@@ -179,7 +193,14 @@ _ENTITIES = (
     ("market_crate_1", "Market Crate", "fixture", "village_square", 0, {}),
     ("rope_coil_1", "Coil of Rope", "tool", "village_square", 1, {}),
     ("reed_bundle_1", "Bundle of Reeds", "material", "river_edge", 1, {}),
-    ("smooth_pebble_1", "Smooth Pebble", "stone", "river_edge", 1, {}),
+    (
+        "smooth_pebble_1",
+        "Smooth Pebble",
+        "stone",
+        "river_edge",
+        1,
+        {"tags": ["improvised_projectile"], "projectile_type": "smooth_pebble"},
+    ),
     ("fishing_net_1", "Fishing Net", "tool", "river_edge", 1, {"condition": "patched"}),
     ("river_marker_1", "River Marker", "fixture", "river_edge", 0, {}),
 )
