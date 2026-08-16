@@ -259,8 +259,24 @@ class GameService:
             if target[0] != location_id:
                 return False, "TARGET_NOT_PRESENT", "Target is not present here.", location_id, {}
 
+            aimed = bool(action.modifiers and action.modifiers.get("aimed") is True)
+            if aimed:
+                ability = conn.execute(
+                    "SELECT 1 FROM abilities WHERE actor_id = ? AND ability_id = 'aimed_throw'",
+                    (action.actor_id,),
+                ).fetchone()
+                if ability is None:
+                    return (
+                        False,
+                        "ACTION_NOT_UNLOCKED",
+                        "Aimed Throw has not been unlocked.",
+                        location_id,
+                        {"aimed": True},
+                    )
+
+            accuracy_chance = 0.55 if aimed else 0.45
             accuracy_roll = self.rng.random()
-            hit = accuracy_roll < 0.45
+            hit = accuracy_roll < accuracy_chance
             conn.execute(
                 "UPDATE entities SET owner_actor_id = NULL, location_id = ? WHERE id = ?",
                 (location_id, action.item_id),
@@ -275,6 +291,8 @@ class GameService:
                 {
                     "item_id": action.item_id,
                     "projectile_type": projectile_type,
+                    "aimed": aimed,
+                    "accuracy_chance": accuracy_chance,
                     "hit": hit,
                     "accuracy_roll": accuracy_roll,
                 },
@@ -300,6 +318,7 @@ class GameService:
             for key, value in {
                 "destination_id": action.destination_id,
                 "item_id": action.item_id,
+                "modifiers": action.modifiers,
                 "source_text": action.source_text,
             }.items()
             if value is not None
