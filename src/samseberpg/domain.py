@@ -12,6 +12,24 @@ class ActionType(str, Enum):
     THROW = "THROW"
 
 
+class MechanicPrimitive(str, Enum):
+    MODIFY_ACCURACY = "MODIFY_ACCURACY"
+    MODIFY_RANGE = "MODIFY_RANGE"
+    MODIFY_COST = "MODIFY_COST"
+    MODIFY_QUALITY = "MODIFY_QUALITY"
+    MODIFY_RELATION_GAIN = "MODIFY_RELATION_GAIN"
+    UNLOCK_ACTION_VARIANT = "UNLOCK_ACTION_VARIANT"
+    CONDITIONAL_MODIFIER = "CONDITIONAL_MODIFIER"
+    REPUTATION_TAG = "REPUTATION_TAG"
+
+
+@dataclass(frozen=True, slots=True)
+class MechanicSpec:
+    mechanic_id: str
+    primitive: MechanicPrimitive | str
+    magnitude: object | None = None
+
+
 @dataclass(frozen=True, slots=True)
 class CanonicalAction:
     actor_id: str
