@@ -1,9 +1,6 @@
 name: Visual v5 CI
 
 on:
-  push:
-    branches:
-      - visual-v5-digit-renderer
   pull_request:
 
 permissions:
@@ -97,6 +94,7 @@ jobs:
           name: visual-v5-browser-proof
           path: browser-proof/
           if-no-files-found: warn
+          retention-days: 1
       - name: Compile Python project
         run: python -m compileall -q src scripts prototype/visual-v5-digit-renderer/verify-browser-dom.py
       - name: Verify shared world
