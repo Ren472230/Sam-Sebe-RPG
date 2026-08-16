@@ -34,6 +34,41 @@ def test_duplicate_external_id_replays_without_second_mutation_or_event(tmp_path
     assert owner == player
 
 
+def test_duplicate_throw_external_id_does_not_inflate_progression_evidence(tmp_path: Path) -> None:
+    db, game = make_game(tmp_path / "world.sqlite3")
+    player = game.register_player("discord-a", "Ari")
+    assert game.execute(
+        CanonicalAction(actor_id=player, action_type=ActionType.TAKE, target_id="stone_flat_1")
+    ).success
+    action = CanonicalAction(
+        actor_id=player,
+        action_type=ActionType.THROW,
+        target_id="npc_mira",
+        item_id="stone_flat_1",
+    )
+
+    first = game.execute(action, external_id="discord-throw-1")
+    replay = game.execute(action, external_id="discord-throw-1")
+
+    assert first.success is True
+    assert first.replayed is False
+    assert replay.success is True
+    assert replay.replayed is True
+    assert replay.event_id == first.event_id
+    with db.connect() as conn:
+        assert conn.execute(
+            "SELECT COUNT(*) FROM action_events "
+            "WHERE actor_id = ? AND action_type = 'THROW' AND success = 1",
+            (player,),
+        ).fetchone()[0] == 1
+        assert conn.execute(
+            "SELECT COUNT(*) FROM achievements WHERE actor_id = ?", (player,)
+        ).fetchone()[0] == 0
+        assert conn.execute(
+            "SELECT COUNT(*) FROM abilities WHERE actor_id = ?", (player,)
+        ).fetchone()[0] == 0
+
+
 def test_restart_preserves_item_ownership_event_and_replay_record(tmp_path: Path) -> None:
     db_path = tmp_path / "world.sqlite3"
     _, game = make_game(db_path)
