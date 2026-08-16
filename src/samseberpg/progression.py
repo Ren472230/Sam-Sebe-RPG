@@ -1,11 +1,19 @@
 from __future__ import annotations
 
 import json
+import math
 from dataclasses import asdict, dataclass
+
+from .domain import MechanicPrimitive, MechanicSpec
 
 
 ACHIEVEMENT_ID = "hand_remembers_arc"
 ABILITY_ID = "aimed_throw"
+AIMED_THROW_SPEC = MechanicSpec(
+    mechanic_id=ABILITY_ID,
+    primitive=MechanicPrimitive.MODIFY_ACCURACY,
+    magnitude=0.10,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -29,7 +37,41 @@ class ThrowingEvidence:
         return asdict(self)
 
 
+class MechanicValidator:
+    _NUMERIC_LIMITS = {
+        MechanicPrimitive.MODIFY_ACCURACY: 0.15,
+        MechanicPrimitive.MODIFY_RANGE: 0.10,
+        MechanicPrimitive.MODIFY_COST: 0.20,
+        MechanicPrimitive.MODIFY_RELATION_GAIN: 0.25,
+    }
+
+    def validate(self, spec: MechanicSpec) -> tuple[bool, str]:
+        if not isinstance(spec.primitive, MechanicPrimitive):
+            return False, "UNKNOWN_PRIMITIVE"
+
+        limit = self._NUMERIC_LIMITS.get(spec.primitive)
+        if limit is None:
+            if spec.magnitude is not None:
+                return False, "INVALID_MAGNITUDE"
+            return True, "OK"
+
+        magnitude = spec.magnitude
+        if (
+            isinstance(magnitude, bool)
+            or not isinstance(magnitude, (int, float))
+            or not math.isfinite(float(magnitude))
+            or float(magnitude) < 0.0
+        ):
+            return False, "INVALID_MAGNITUDE"
+        if float(magnitude) > limit:
+            return False, "LIMIT_EXCEEDED"
+        return True, "OK"
+
+
 class ProgressionService:
+    def __init__(self, validator: MechanicValidator | None = None) -> None:
+        self.validator = validator or MechanicValidator()
+
     def evaluate_throwing(
         self, conn, actor_id: str, unlocked_at: str
     ) -> tuple[str, ...]:
@@ -46,17 +88,21 @@ class ProgressionService:
             "VALUES (?, ?, ?, ?)",
             (actor_id, ACHIEVEMENT_ID, unlocked_at, payload),
         )
-        ability_insert = conn.execute(
-            "INSERT OR IGNORE INTO abilities "
-            "(actor_id, ability_id, source_achievement_id, unlocked_at) "
-            "VALUES (?, ?, ?, ?)",
-            (actor_id, ABILITY_ID, ACHIEVEMENT_ID, unlocked_at),
-        )
+
+        ability_insert = None
+        mechanic_valid, _ = self.validator.validate(AIMED_THROW_SPEC)
+        if mechanic_valid:
+            ability_insert = conn.execute(
+                "INSERT OR IGNORE INTO abilities "
+                "(actor_id, ability_id, source_achievement_id, unlocked_at) "
+                "VALUES (?, ?, ?, ?)",
+                (actor_id, ABILITY_ID, ACHIEVEMENT_ID, unlocked_at),
+            )
 
         unlocked: list[str] = []
         if achievement_insert.rowcount:
             unlocked.append(ACHIEVEMENT_ID)
-        if ability_insert.rowcount:
+        if ability_insert is not None and ability_insert.rowcount:
             unlocked.append(ABILITY_ID)
         return tuple(unlocked)
 
