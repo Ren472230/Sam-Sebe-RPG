@@ -5,7 +5,7 @@
 })(typeof window !== 'undefined' ? window : null, function () {
   const CANONICAL_GLYPHS = Object.freeze(['0','1','2','3','4','5','6','7','8','9','.',':','-']);
   const DEFAULT_WEIGHTS = Object.freeze({ density: 0.40, shape: 0.35, edge: 0.20, continuity: 0.05 });
-  const DEFAULT_COLOR = Object.freeze({ saturation: 1.20, contrast: 1.08, gamma: 1.00, minBrightness: 0.16 });
+  const DEFAULT_COLOR = Object.freeze({ saturation: 1.35, contrast: 1.08, gamma: 1.00, minBrightness: 0.20 });
   const DEFAULT_DIVERSITY = Object.freeze({ scoreTolerance: 0.028, maxVariance: 0.003, maxGradient: 0.006 });
   const REC709 = [0.2126, 0.7152, 0.0722];
 
