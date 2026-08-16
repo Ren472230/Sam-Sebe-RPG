@@ -19,7 +19,7 @@
     saturation: 1.35,
     contrast: 1.08,
     gamma: 1.00,
-    minBrightness: 0.16,
+    minBrightness: 0.20,
     showMarker: true,
     showSource: false,
     background: '#050608',
