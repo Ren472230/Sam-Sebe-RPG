@@ -6,7 +6,6 @@ from uuid import uuid4
 
 from .clock import Clock
 from .db import DEFAULT_WORLD_ID, GameDatabase
-from .world import WorldSynchronizer
 from .domain import (
     ActionResult,
     ActionType,
@@ -15,6 +14,8 @@ from .domain import (
     VisibleEntity,
     WorldView,
 )
+from .progression import ProgressionService
+from .world import WorldSynchronizer
 
 
 class GameService:
@@ -22,6 +23,7 @@ class GameService:
         self.db = db
         self.clock = clock
         self.synchronizer = WorldSynchronizer()
+        self.progression = ProgressionService()
         self.rng = random.Random(seed)
 
     def register_player(self, discord_user_id: str, name: str) -> str:
@@ -164,6 +166,10 @@ class GameService:
                 summary=summary,
                 evidence=evidence,
             )
+            if action.action_type is ActionType.THROW and result.success:
+                self.progression.evaluate_throwing(
+                    conn, action.actor_id, _timestamp(self.clock)
+                )
             conn.execute("COMMIT")
             return result
         except Exception:
