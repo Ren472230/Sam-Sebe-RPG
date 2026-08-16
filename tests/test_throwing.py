@@ -52,3 +52,35 @@ def test_throw_moves_owned_projectile_to_world_and_records_behavior_evidence(tmp
     assert evidence["projectile_type"] == "flat_stone"
     assert evidence["hit"] in (True, False)
     assert 0.0 <= evidence["accuracy_roll"] < 1.0
+
+
+def test_throw_rejects_unknown_or_malformed_modifiers_without_mutation(tmp_path: Path) -> None:
+    db, game = make_game(tmp_path)
+    player = game.register_player("discord-a", "Ari")
+    assert game.execute(
+        CanonicalAction(actor_id=player, action_type=ActionType.TAKE, target_id="stone_flat_1")
+    ).success
+
+    for modifiers in ({"aimed": "yes"}, {"god_mode": True}):
+        result = game.execute(
+            CanonicalAction(
+                actor_id=player,
+                action_type=ActionType.THROW,
+                target_id="npc_mira",
+                item_id="stone_flat_1",
+                modifiers=modifiers,
+            )
+        )
+
+        assert result.success is False
+        assert result.code == "INVALID_MODIFIER"
+        with db.connect() as conn:
+            owner = conn.execute(
+                "SELECT owner_actor_id FROM entities WHERE id = 'stone_flat_1'"
+            ).fetchone()[0]
+            event = conn.execute(
+                "SELECT success, result_code FROM action_events WHERE id = ?",
+                (result.event_id,),
+            ).fetchone()
+        assert owner == player
+        assert tuple(event) == (0, "INVALID_MODIFIER")
