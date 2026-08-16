@@ -48,6 +48,13 @@ test('visual lab exposes required controls and keeps source outside digit output
   assert.doesNotMatch(outputMatch[1], /<img\b/i);
 });
 
+test('status strip exposes the exact columns target used by app.js', () => {
+  const html = read('index.html');
+  const app = read('app.js');
+  assert.match(app, /setText\(doc, 'status-columns', geometry\.columns\)/);
+  assert.match(html, /id="status-columns"/);
+});
+
 test('glyph cells never receive CSS backgrounds', () => {
   const css = read('styles.css');
   const block = css.match(/\.glyph-cell\s*\{([\s\S]*?)\}/);
