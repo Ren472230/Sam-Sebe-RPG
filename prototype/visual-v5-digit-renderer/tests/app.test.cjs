@@ -6,7 +6,7 @@ test('buildSettings uses 240 columns and approved mapping defaults', () => {
   const settings = buildSettings({ showMarker: true });
   assert.equal(settings.columns, 240);
   assert.deepEqual(settings.weights, { density: 0.40, shape: 0.35, edge: 0.20, continuity: 0.05 });
-  assert.deepEqual(settings.color, { saturation: 1.35, contrast: 1.08, gamma: 1.00, minBrightness: 0.16 });
+  assert.deepEqual(settings.color, { saturation: 1.35, contrast: 1.08, gamma: 1.00, minBrightness: 0.20 });
   assert.equal(settings.marker.glyph, '@');
 });
 
