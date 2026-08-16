@@ -33,6 +33,49 @@ def throw_and_retake(game: GameService, player: str, item_id: str, target_id: st
     assert retaken.success, retaken
 
 
+def unlock_aimed_throw(game: GameService, player: str) -> None:
+    for item_id in ("stone_flat_1", "wood_block_1"):
+        assert game.execute(
+            CanonicalAction(actor_id=player, action_type=ActionType.TAKE, target_id=item_id)
+        ).success
+
+    for index in range(4):
+        throw_and_retake(
+            game,
+            player,
+            ("stone_flat_1", "wood_block_1")[index % 2],
+            "npc_mira",
+        )
+    assert game.execute(
+        CanonicalAction(
+            actor_id=player,
+            action_type=ActionType.MOVE,
+            destination_id="village_square",
+        )
+    ).success
+    for index in range(4):
+        throw_and_retake(
+            game,
+            player,
+            ("stone_flat_1", "wood_block_1")[index % 2],
+            "npc_oren",
+        )
+    assert game.execute(
+        CanonicalAction(
+            actor_id=player,
+            action_type=ActionType.MOVE,
+            destination_id="river_edge",
+        )
+    ).success
+    for index in range(4):
+        throw_and_retake(
+            game,
+            player,
+            ("stone_flat_1", "wood_block_1")[index % 2],
+            "npc_kaspar",
+        )
+
+
 def test_repetition_alone_does_not_unlock_throwing_specialization(tmp_path: Path) -> None:
     db, game = make_game(tmp_path / "world.sqlite3")
     player = game.register_player("discord-a", "Ari")
@@ -58,48 +101,7 @@ def test_repetition_alone_does_not_unlock_throwing_specialization(tmp_path: Path
 def test_varied_competent_throwing_unlocks_achievement_and_ability(tmp_path: Path) -> None:
     db, game = make_game(tmp_path / "world.sqlite3", seed=1)
     player = game.register_player("discord-a", "Ari")
-    for item_id in ("stone_flat_1", "wood_block_1"):
-        assert game.execute(
-            CanonicalAction(actor_id=player, action_type=ActionType.TAKE, target_id=item_id)
-        ).success
-
-    for index in range(4):
-        throw_and_retake(
-            game,
-            player,
-            ("stone_flat_1", "wood_block_1")[index % 2],
-            "npc_mira",
-        )
-
-    assert game.execute(
-        CanonicalAction(
-            actor_id=player,
-            action_type=ActionType.MOVE,
-            destination_id="village_square",
-        )
-    ).success
-    for index in range(4):
-        throw_and_retake(
-            game,
-            player,
-            ("stone_flat_1", "wood_block_1")[index % 2],
-            "npc_oren",
-        )
-
-    assert game.execute(
-        CanonicalAction(
-            actor_id=player,
-            action_type=ActionType.MOVE,
-            destination_id="river_edge",
-        )
-    ).success
-    for index in range(4):
-        throw_and_retake(
-            game,
-            player,
-            ("stone_flat_1", "wood_block_1")[index % 2],
-            "npc_kaspar",
-        )
+    unlock_aimed_throw(game, player)
 
     with db.connect() as conn:
         throw_events = conn.execute(
@@ -130,3 +132,64 @@ def test_varied_competent_throwing_unlocks_achievement_and_ability(tmp_path: Pat
         "hits": 6,
     }
     assert tuple(ability) == ("aimed_throw", "hand_remembers_arc")
+
+
+def test_aimed_throw_is_rejected_before_ability_unlock(tmp_path: Path) -> None:
+    db, game = make_game(tmp_path / "world.sqlite3", seed=9)
+    player = game.register_player("discord-a", "Ari")
+    assert game.execute(
+        CanonicalAction(actor_id=player, action_type=ActionType.TAKE, target_id="stone_flat_1")
+    ).success
+
+    result = game.execute(
+        CanonicalAction(
+            actor_id=player,
+            action_type=ActionType.THROW,
+            target_id="npc_mira",
+            item_id="stone_flat_1",
+            modifiers={"aimed": True},
+        )
+    )
+
+    assert result.success is False
+    assert result.code == "ACTION_NOT_UNLOCKED"
+    with db.connect() as conn:
+        owner = conn.execute(
+            "SELECT owner_actor_id FROM entities WHERE id = 'stone_flat_1'"
+        ).fetchone()[0]
+    assert owner == player
+
+
+def test_aimed_throw_persists_across_restart_and_changes_accuracy(tmp_path: Path) -> None:
+    db_path = tmp_path / "world.sqlite3"
+    db, game = make_game(db_path, seed=1)
+    player = game.register_player("discord-a", "Ari")
+    unlock_aimed_throw(game, player)
+
+    reopened_db, reopened_game = make_game(db_path, seed=9)
+    result = reopened_game.execute(
+        CanonicalAction(
+            actor_id=player,
+            action_type=ActionType.THROW,
+            target_id="npc_kaspar",
+            item_id="stone_flat_1",
+            modifiers={"aimed": True},
+        )
+    )
+
+    assert result.success is True
+    with reopened_db.connect() as conn:
+        ability = conn.execute(
+            "SELECT ability_id FROM abilities WHERE actor_id = ? AND ability_id = 'aimed_throw'",
+            (player,),
+        ).fetchone()
+        event = conn.execute(
+            "SELECT evidence_json FROM action_events WHERE id = ?", (result.event_id,)
+        ).fetchone()
+
+    assert ability is not None
+    evidence = json.loads(event[0])
+    assert evidence["aimed"] is True
+    assert evidence["accuracy_chance"] == 0.55
+    assert 0.45 <= evidence["accuracy_roll"] < 0.55
+    assert evidence["hit"] is True
