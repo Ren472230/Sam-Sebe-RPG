@@ -25,7 +25,79 @@ jobs:
         run: python -m pip install -e '.[dev]'
       - name: Verify digit renderer
         run: node --test prototype/visual-v5-digit-renderer/tests/*.test.cjs
+      - name: Browser proof
+        shell: bash
+        run: |
+          set -euo pipefail
+          if command -v google-chrome >/dev/null 2>&1; then
+            CHROME=google-chrome
+          elif command -v chromium >/dev/null 2>&1; then
+            CHROME=chromium
+          elif command -v chromium-browser >/dev/null 2>&1; then
+            CHROME=chromium-browser
+          else
+            echo "No supported Chrome/Chromium binary found" >&2
+            exit 1
+          fi
+
+          mkdir -p browser-proof
+          python -m http.server 4173 --bind 127.0.0.1 --directory prototype/visual-v5-digit-renderer >browser-proof/server.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+
+          for attempt in $(seq 1 40); do
+            if curl -fsS http://127.0.0.1:4173/ >/dev/null; then
+              break
+            fi
+            if [ "$attempt" -eq 40 ]; then
+              echo "Static server did not become ready" >&2
+              exit 1
+            fi
+            sleep 0.25
+          done
+
+          "$CHROME" \
+            --headless=new \
+            --no-sandbox \
+            --disable-gpu \
+            --hide-scrollbars \
+            --force-device-scale-factor=1 \
+            --window-size=1440,1000 \
+            --virtual-time-budget=15000 \
+            --dump-dom \
+            http://127.0.0.1:4173/ > browser-proof/dom.html
+
+          python prototype/visual-v5-digit-renderer/verify-browser-dom.py browser-proof/dom.html
+
+          "$CHROME" \
+            --headless=new \
+            --no-sandbox \
+            --disable-gpu \
+            --hide-scrollbars \
+            --force-device-scale-factor=1 \
+            --window-size=1440,1000 \
+            --virtual-time-budget=15000 \
+            --screenshot=browser-proof/desktop.png \
+            http://127.0.0.1:4173/
+
+          "$CHROME" \
+            --headless=new \
+            --no-sandbox \
+            --disable-gpu \
+            --hide-scrollbars \
+            --force-device-scale-factor=1 \
+            --window-size=390,844 \
+            --virtual-time-budget=15000 \
+            --screenshot=browser-proof/mobile.png \
+            http://127.0.0.1:4173/
+      - name: Upload browser proof
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: visual-v5-browser-proof
+          path: browser-proof/
+          if-no-files-found: warn
       - name: Compile Python project
-        run: python -m compileall -q src scripts
+        run: python -m compileall -q src scripts prototype/visual-v5-digit-renderer/verify-browser-dom.py
       - name: Verify shared world
         run: python -m pytest -q
