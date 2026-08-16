@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import random
 from uuid import uuid4
 
 from .clock import Clock
@@ -17,10 +18,11 @@ from .domain import (
 
 
 class GameService:
-    def __init__(self, db: GameDatabase, clock: Clock) -> None:
+    def __init__(self, db: GameDatabase, clock: Clock, seed: int = 0) -> None:
         self.db = db
         self.clock = clock
         self.synchronizer = WorldSynchronizer()
+        self.rng = random.Random(seed)
 
     def register_player(self, discord_user_id: str, name: str) -> str:
         conn = self.db.connect()
@@ -148,7 +150,7 @@ class GameService:
                 return result
 
             location_id = str(player[0])
-            success, code, summary, event_location = self._resolve_action(
+            success, code, summary, event_location, evidence = self._resolve_action(
                 conn, action, location_id
             )
             result = self._record_result(
@@ -160,6 +162,7 @@ class GameService:
                 success=success,
                 code=code,
                 summary=summary,
+                evidence=evidence,
             )
             conn.execute("COMMIT")
             return result
@@ -172,9 +175,9 @@ class GameService:
 
     def _resolve_action(
         self, conn, action: CanonicalAction, location_id: str
-    ) -> tuple[bool, str, str, str]:
+    ) -> tuple[bool, str, str, str, dict[str, object]]:
         if action.action_type is ActionType.LOOK:
-            return True, "OK", "Looked around.", location_id
+            return True, "OK", "Looked around.", location_id, {}
 
         if action.action_type is ActionType.MOVE:
             destination_id = action.destination_id
@@ -188,12 +191,12 @@ class GameService:
                 is not None
             )
             if not adjacent:
-                return False, "INVALID_DESTINATION", "Destination is not adjacent.", location_id
+                return False, "INVALID_DESTINATION", "Destination is not adjacent.", location_id, {}
             conn.execute(
                 "UPDATE actors SET location_id = ? WHERE id = ?",
                 (destination_id, action.actor_id),
             )
-            return True, "OK", f"Moved to {destination_id}.", str(destination_id)
+            return True, "OK", f"Moved to {destination_id}.", str(destination_id), {}
 
         if action.action_type is ActionType.TAKE:
             entity = conn.execute(
@@ -201,18 +204,18 @@ class GameService:
                 (action.target_id,),
             ).fetchone()
             if entity is None:
-                return False, "TARGET_NOT_FOUND", "Target does not exist.", location_id
+                return False, "TARGET_NOT_FOUND", "Target does not exist.", location_id, {}
             if entity[1] is not None:
-                return False, "ALREADY_OWNED", "Target is already owned.", location_id
+                return False, "ALREADY_OWNED", "Target is already owned.", location_id, {}
             if entity[0] != location_id:
-                return False, "TARGET_NOT_PRESENT", "Target is not present here.", location_id
+                return False, "TARGET_NOT_PRESENT", "Target is not present here.", location_id, {}
             if not bool(entity[2]):
-                return False, "NOT_PORTABLE", "Target cannot be carried.", location_id
+                return False, "NOT_PORTABLE", "Target cannot be carried.", location_id, {}
             conn.execute(
                 "UPDATE entities SET location_id = NULL, owner_actor_id = ? WHERE id = ?",
                 (action.actor_id, action.target_id),
             )
-            return True, "OK", f"Took {action.target_id}.", location_id
+            return True, "OK", f"Took {action.target_id}.", location_id, {}
 
         if action.action_type is ActionType.DROP:
             entity = conn.execute(
@@ -220,12 +223,56 @@ class GameService:
                 (action.target_id,),
             ).fetchone()
             if entity is None or entity[0] != action.actor_id:
-                return False, "ITEM_NOT_OWNED", "Item is not owned by this player.", location_id
+                return False, "ITEM_NOT_OWNED", "Item is not owned by this player.", location_id, {}
             conn.execute(
                 "UPDATE entities SET owner_actor_id = NULL, location_id = ? WHERE id = ?",
                 (location_id, action.target_id),
             )
-            return True, "OK", f"Dropped {action.target_id}.", location_id
+            return True, "OK", f"Dropped {action.target_id}.", location_id, {}
+
+        if action.action_type is ActionType.THROW:
+            if action.item_id is None:
+                return False, "ITEM_REQUIRED", "A projectile item is required.", location_id, {}
+            entity = conn.execute(
+                "SELECT owner_actor_id, state_json, entity_type FROM entities WHERE id = ?",
+                (action.item_id,),
+            ).fetchone()
+            if entity is None or entity[0] != action.actor_id:
+                return False, "ITEM_NOT_OWNED", "Projectile is not owned by this player.", location_id, {}
+
+            state = json.loads(str(entity[1]))
+            if "improvised_projectile" not in state.get("tags", []):
+                return False, "ITEM_NOT_THROWABLE", "Item cannot be used as a projectile.", location_id, {}
+
+            target = conn.execute(
+                "SELECT location_id FROM actors WHERE id = ?",
+                (action.target_id,),
+            ).fetchone()
+            if target is None:
+                return False, "TARGET_NOT_FOUND", "Target does not exist.", location_id, {}
+            if target[0] != location_id:
+                return False, "TARGET_NOT_PRESENT", "Target is not present here.", location_id, {}
+
+            accuracy_roll = self.rng.random()
+            hit = accuracy_roll < 0.45
+            conn.execute(
+                "UPDATE entities SET owner_actor_id = NULL, location_id = ? WHERE id = ?",
+                (location_id, action.item_id),
+            )
+            projectile_type = str(state.get("projectile_type", entity[2]))
+            outcome = "hit" if hit else "miss"
+            return (
+                True,
+                "OK",
+                f"Threw {action.item_id} at {action.target_id}: {outcome}.",
+                location_id,
+                {
+                    "item_id": action.item_id,
+                    "projectile_type": projectile_type,
+                    "hit": hit,
+                    "accuracy_roll": accuracy_roll,
+                },
+            )
 
         raise ValueError(f"unsupported action type: {action.action_type}")
 
@@ -240,15 +287,19 @@ class GameService:
         success: bool,
         code: str,
         summary: str,
+        evidence: dict[str, object] | None = None,
     ) -> ActionResult:
-        evidence = {
+        evidence_payload = {
             key: value
             for key, value in {
                 "destination_id": action.destination_id,
+                "item_id": action.item_id,
                 "source_text": action.source_text,
             }.items()
             if value is not None
         }
+        if evidence:
+            evidence_payload.update(evidence)
         cursor = conn.execute(
             "INSERT INTO action_events "
             "(world_id, external_id, occurred_at, actor_id, action_type, target_id, location_id, "
@@ -265,7 +316,7 @@ class GameService:
                 int(success),
                 code,
                 summary,
-                json.dumps(evidence, separators=(",", ":"), sort_keys=True),
+                json.dumps(evidence_payload, separators=(",", ":"), sort_keys=True),
             ),
         )
         result = ActionResult(
