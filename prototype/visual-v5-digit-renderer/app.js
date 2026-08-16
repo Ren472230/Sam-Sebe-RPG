@@ -16,7 +16,7 @@
     shape: 0.35,
     edge: 0.20,
     continuity: 0.05,
-    saturation: 1.20,
+    saturation: 1.35,
     contrast: 1.08,
     gamma: 1.00,
     minBrightness: 0.16,
