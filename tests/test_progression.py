@@ -162,11 +162,11 @@ def test_aimed_throw_is_rejected_before_ability_unlock(tmp_path: Path) -> None:
 
 def test_aimed_throw_persists_across_restart_and_changes_accuracy(tmp_path: Path) -> None:
     db_path = tmp_path / "world.sqlite3"
-    db, game = make_game(db_path, seed=1)
+    db, game = make_game(db_path, seed=89)
     player = game.register_player("discord-a", "Ari")
     unlock_aimed_throw(game, player)
 
-    reopened_db, reopened_game = make_game(db_path, seed=9)
+    reopened_db, reopened_game = make_game(db_path, seed=89)
     result = reopened_game.execute(
         CanonicalAction(
             actor_id=player,
