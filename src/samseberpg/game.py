@@ -22,9 +22,9 @@ class GameService:
     def __init__(self, db: GameDatabase, clock: Clock, seed: int = 0) -> None:
         self.db = db
         self.clock = clock
+        self.seed = seed
         self.synchronizer = WorldSynchronizer()
         self.progression = ProgressionService()
-        self.rng = random.Random(seed)
 
     def register_player(self, discord_user_id: str, name: str) -> str:
         conn = self.db.connect()
@@ -300,7 +300,7 @@ class GameService:
                 accuracy_bonus = float(AIMED_THROW_SPEC.magnitude)
 
             accuracy_chance = 0.45 + accuracy_bonus
-            accuracy_roll = self.rng.random()
+            accuracy_roll = self._next_throw_roll(conn)
             hit = accuracy_roll < accuracy_chance
             conn.execute(
                 "UPDATE entities SET owner_actor_id = NULL, location_id = ? WHERE id = ?",
@@ -325,6 +325,20 @@ class GameService:
             )
 
         raise ValueError(f"unsupported action type: {action.action_type}")
+
+    def _next_throw_roll(self, conn) -> float:
+        prior_resolved_throws = int(
+            conn.execute(
+                "SELECT COUNT(*) FROM action_events "
+                "WHERE world_id = ? AND action_type = 'THROW' AND success = 1",
+                (DEFAULT_WORLD_ID,),
+            ).fetchone()[0]
+        )
+        rng = random.Random(self.seed)
+        roll = 0.0
+        for _ in range(prior_resolved_throws + 1):
+            roll = rng.random()
+        return roll
 
     def _record_result(
         self,
