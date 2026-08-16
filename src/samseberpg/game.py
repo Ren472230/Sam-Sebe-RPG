@@ -14,7 +14,7 @@ from .domain import (
     VisibleEntity,
     WorldView,
 )
-from .progression import ProgressionService
+from .progression import AIMED_THROW_SPEC, ProgressionService
 from .world import WorldSynchronizer
 
 
@@ -260,6 +260,7 @@ class GameService:
                 return False, "TARGET_NOT_PRESENT", "Target is not present here.", location_id, {}
 
             aimed = bool(action.modifiers and action.modifiers.get("aimed") is True)
+            accuracy_bonus = 0.0
             if aimed:
                 ability = conn.execute(
                     "SELECT 1 FROM abilities WHERE actor_id = ? AND ability_id = 'aimed_throw'",
@@ -273,8 +274,24 @@ class GameService:
                         location_id,
                         {"aimed": True},
                     )
+                mechanic_valid, mechanic_code = self.progression.validator.validate(
+                    AIMED_THROW_SPEC
+                )
+                if not mechanic_valid:
+                    return (
+                        False,
+                        "MECHANIC_INVALID",
+                        "Aimed Throw mechanic failed validation.",
+                        location_id,
+                        {
+                            "aimed": True,
+                            "mechanic_id": AIMED_THROW_SPEC.mechanic_id,
+                            "mechanic_validation": mechanic_code,
+                        },
+                    )
+                accuracy_bonus = float(AIMED_THROW_SPEC.magnitude)
 
-            accuracy_chance = 0.55 if aimed else 0.45
+            accuracy_chance = 0.45 + accuracy_bonus
             accuracy_roll = self.rng.random()
             hit = accuracy_roll < accuracy_chance
             conn.execute(
@@ -292,6 +309,7 @@ class GameService:
                     "item_id": action.item_id,
                     "projectile_type": projectile_type,
                     "aimed": aimed,
+                    "accuracy_bonus": accuracy_bonus,
                     "accuracy_chance": accuracy_chance,
                     "hit": hit,
                     "accuracy_roll": accuracy_roll,
