@@ -23,10 +23,14 @@ def build_app(db_path: str | Path = "data/world.sqlite3", *, provider=None):
     return create_app(game, quest, dialogue)
 
 
+def configured_db_path() -> str:
+    return os.environ.get("SAM_SEBE_DB", "data/world.sqlite3")
+
+
 def main() -> None:
     import uvicorn
 
-    uvicorn.run(build_app(), host="127.0.0.1", port=8000)
+    uvicorn.run(build_app(configured_db_path()), host="127.0.0.1", port=8000)
 
 
 if __name__ == "__main__":
