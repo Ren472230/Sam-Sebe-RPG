@@ -30,10 +30,12 @@ export class TavernScene extends Phaser.Scene {
     this.add.text(28, 28, "ТАВЕРНА · ПУТНИЧИЙ ОЧАГ", { color: "#efe9dc", fontSize: "24px", fontStyle: "bold" });
 
     this.player = this.add.rectangle(270, 425, 24, 42, 0xe03a3e).setStrokeStyle(4, 0x111315);
-    this.keys = this.input.keyboard.addKeys("W,A,S,D,E");
-    this.input.keyboard.on("keydown-E", () => void this.interact());
+    const keyboard = this.input.keyboard;
+    if (!keyboard) throw new Error("Keyboard input unavailable");
+    this.keys = keyboard.addKeys("W,A,S,D,E");
+    keyboard.on("keydown-E", () => void this.interact());
     this.events.once("shutdown", () => {
-      this.input.keyboard.removeAllListeners("keydown-E");
+      keyboard.removeAllListeners("keydown-E");
       this.hint.textContent = "";
     });
   }
