@@ -8,12 +8,13 @@
 
 `деревня -> таверна -> Орен -> 5 дров -> сдача -> trust/memory/reward -> reload persistence`.
 
-Сейчас от Visual Production нужен **не concept art**, а первый production-ready пакет файлов для прямой интеграции в игру.
+Game Core уже умеет автоматически подхватить production-art через manifest и сохранить validated greybox как fallback. Сейчас от Visual Production нужен **не concept art**, а первый production-ready пакет файлов для прямой интеграции в игру.
 
 ## Источник истины
 
 - MASTER STYLE REFERENCE v1 / VISUAL STYLE BIBLE v1.0;
-- `docs/production/visual-asset-handoff-v1.md` — технический контракт.
+- `docs/production/visual-asset-handoff-v1.md` — технический контракт;
+- `web/public/assets/production/manifest.json` — точные пути и gameplay anchors.
 
 Не менять визуальное направление и не пересматривать палитру.
 
@@ -104,6 +105,15 @@ Tavern:
 - лишняя мелкая рябь;
 - грязная transparency;
 - композиция, где gameplay entrance/character/prop визуально не совпадают с утверждёнными anchors.
+
+## Как передать пакет в Game Core
+
+1. Экспортировать финальные файлы в точные пути из manifest.
+2. Не менять имена файлов и gameplay anchors.
+3. Пока обязательный пакет неполный, оставить `status: "awaiting_assets"`.
+4. Когда все обязательные файлы на месте, поменять только `status` на `"ready"`.
+5. Game Core автоматически загрузит production layers/sprites и прогонит build + Chromium acceptance.
+6. Optional foreground/UI можно добавить следующим проходом без изменения gameplay logic.
 
 ## Результат работы этого чата
 
