@@ -14,19 +14,27 @@ async function moveAxisTo(
   axis: "x" | "y",
   target: number,
   tolerance = 12,
-  timeout = 8_000
+  timeout = 12_000
 ): Promise<void> {
   const started = Date.now();
-  while (Date.now() - started < timeout) {
-    const position = await playerPosition(page);
-    const value = position[axis];
-    if (Number.isFinite(value) && Math.abs(value - target) <= tolerance) return;
-    const key = axis === "x"
-      ? (value < target ? "d" : "a")
-      : (value < target ? "s" : "w");
-    await page.keyboard.down(key);
-    await page.waitForTimeout(80);
-    await page.keyboard.up(key);
+  let heldKey: string | null = null;
+  try {
+    while (Date.now() - started < timeout) {
+      const position = await playerPosition(page);
+      const value = position[axis];
+      if (Number.isFinite(value) && Math.abs(value - target) <= tolerance) return;
+      const key = axis === "x"
+        ? (value < target ? "d" : "a")
+        : (value < target ? "s" : "w");
+      if (heldKey !== key) {
+        if (heldKey) await page.keyboard.up(heldKey);
+        await page.keyboard.down(key);
+        heldKey = key;
+      }
+      await page.waitForTimeout(100);
+    }
+  } finally {
+    if (heldKey) await page.keyboard.up(heldKey);
   }
   throw new Error(`player did not reach ${axis}=${target}; last=${JSON.stringify(await playerPosition(page))}`);
 }
