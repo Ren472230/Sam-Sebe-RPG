@@ -3,10 +3,15 @@ import Phaser from "phaser";
 import { requestId } from "../api";
 import { getRuntime } from "../runtime";
 
+type TavernInteraction = "oren" | "exit";
+
 export class TavernScene extends Phaser.Scene {
   private player: any;
   private keys: any;
   private hint!: HTMLElement;
+  private interaction: TavernInteraction | null = null;
+  private interactionExpiresAt = 0;
+  private readonly interactionGraceMs = 600;
   private readonly oren = { x: 650, y: 325 };
   private readonly exit = { x: 110, y: 420 };
 
@@ -37,6 +42,7 @@ export class TavernScene extends Phaser.Scene {
     keyboard.on("keydown-E", () => void this.interact());
     this.events.once("shutdown", () => {
       keyboard.removeAllListeners("keydown-E");
+      this.clearInteraction();
       this.hint.textContent = "";
     });
   }
@@ -54,10 +60,13 @@ export class TavernScene extends Phaser.Scene {
     this.publishPlayerPosition();
 
     if (distance(this.player.x, this.player.y, this.oren.x, this.oren.y) < 85) {
-      this.hint.textContent = "E — поговорить с Ореном";
+      this.offerInteraction("oren", "E — поговорить с Ореном");
     } else if (distance(this.player.x, this.player.y, this.exit.x, this.exit.y) < 70) {
-      this.hint.textContent = "E — выйти в деревню";
+      this.offerInteraction("exit", "E — выйти в деревню");
+    } else if (this.interaction && this.time.now <= this.interactionExpiresAt) {
+      return;
     } else {
+      this.clearInteraction();
       this.hint.textContent = "WASD — движение · E — взаимодействие";
     }
   }
@@ -67,14 +76,29 @@ export class TavernScene extends Phaser.Scene {
     document.body.dataset.playerY = Math.round(this.player.y).toString();
   }
 
+  private offerInteraction(interaction: TavernInteraction, text: string): void {
+    this.interaction = interaction;
+    this.interactionExpiresAt = this.time.now + this.interactionGraceMs;
+    this.hint.textContent = text;
+  }
+
+  private clearInteraction(): void {
+    this.interaction = null;
+    this.interactionExpiresAt = 0;
+  }
+
   private async interact(): Promise<void> {
-    if (distance(this.player.x, this.player.y, this.oren.x, this.oren.y) < 85) {
+    const interaction = this.interaction;
+    if (!interaction || this.time.now > this.interactionExpiresAt) {
+      this.clearInteraction();
+      return;
+    }
+    this.clearInteraction();
+    if (interaction === "oren") {
       await getRuntime().dialogue.openOren();
       return;
     }
-    if (distance(this.player.x, this.player.y, this.exit.x, this.exit.y) < 70) {
-      await this.leaveTavern();
-    }
+    await this.leaveTavern();
   }
 
   private async leaveTavern(): Promise<void> {
