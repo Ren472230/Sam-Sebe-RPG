@@ -2,6 +2,7 @@
   "version": 1,
   "status": "awaiting_assets",
   "canvas": { "width": 960, "height": 540 },
+  "runtime_note": "Keep awaiting_assets until all required P0 WebP exports exist. Then switch status to ready; gameplay anchors remain unchanged.",
   "village": {
     "layers": {
       "sky": "village/sky.webp",
