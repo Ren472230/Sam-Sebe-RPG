@@ -1,6 +1,13 @@
 import Phaser from "phaser";
 
 import { requestId } from "../api";
+import {
+  createProductionFirewood,
+  createProductionPlayer,
+  preloadVillageProductionArt,
+  renderVillageProductionBackground,
+  renderVillageProductionForeground
+} from "../productionArt";
 import { getRuntime } from "../runtime";
 
 type Hotspot = { id: string; x: number; y: number; view: any };
@@ -26,11 +33,18 @@ export class VillageScene extends Phaser.Scene {
     super("VillageScene");
   }
 
+  preload(): void {
+    preloadVillageProductionArt(this);
+  }
+
   create(): void {
     this.hint = document.getElementById("interaction-hint") as HTMLElement;
-    this.drawWorld();
+    const productionBackground = renderVillageProductionBackground(this);
+    if (!productionBackground) this.drawWorld();
     this.createFirewood();
-    this.player = this.add.rectangle(430, 455, 24, 42, 0xe03a3e).setStrokeStyle(4, 0x111315);
+    this.player = createProductionPlayer(this, 430, 455)
+      ?? this.add.rectangle(430, 455, 24, 42, 0xe03a3e).setStrokeStyle(4, 0x111315).setDepth(20);
+    renderVillageProductionForeground(this);
     this.publishPlayerPosition();
     const keyboard = this.input.keyboard;
     if (!keyboard) throw new Error("Keyboard input unavailable");
@@ -99,10 +113,13 @@ export class VillageScene extends Phaser.Scene {
     ];
     this.firewood = visible.map((entity, index) => {
       const [x, y] = positions[index] ?? [110 + index * 38, 430];
+      const productionView = createProductionFirewood(this, x, y);
+      if (productionView) return { id: entity.entity_id, x, y, view: productionView };
+
       const body = this.add.rectangle(0, 0, 28, 12, 0xe9e4d7).setStrokeStyle(4, 0x24272a);
       const accent = this.add.rectangle(0, 0, 6, 16, 0xe03a3e);
       const label = this.add.text(-23, 15, `${index + 1}`, { color: "#f1eee4", fontSize: "12px" });
-      const view = this.add.container(x, y, [body, accent, label]);
+      const view = this.add.container(x, y, [body, accent, label]).setDepth(12);
       return { id: entity.entity_id, x, y, view };
     });
   }
