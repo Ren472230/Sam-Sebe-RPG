@@ -1,6 +1,7 @@
 import Phaser from "phaser";
 
 import { GameApi } from "./api";
+import { loadProductionManifest, setProductionManifest } from "./productionArt";
 import { setRuntime } from "./runtime";
 import { VillageScene } from "./scenes/VillageScene";
 import { TavernScene } from "./scenes/TavernScene";
@@ -9,6 +10,9 @@ import { DialoguePanel } from "./ui/DialoguePanel";
 import "./styles.css";
 
 async function bootstrap(): Promise<void> {
+  const artManifest = await loadProductionManifest();
+  setProductionManifest(artManifest);
+
   const api = new GameApi();
   const playerId = await api.createSession("Ren");
   const state = new ClientState(api, playerId);
