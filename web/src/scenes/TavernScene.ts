@@ -1,6 +1,13 @@
 import Phaser from "phaser";
 
 import { requestId } from "../api";
+import {
+  createProductionOren,
+  createProductionPlayer,
+  preloadTavernProductionArt,
+  renderTavernProductionBackground,
+  renderTavernProductionForeground
+} from "../productionArt";
 import { getRuntime } from "../runtime";
 
 type TavernInteraction = "oren" | "exit";
@@ -19,22 +26,24 @@ export class TavernScene extends Phaser.Scene {
     super("TavernScene");
   }
 
+  preload(): void {
+    preloadTavernProductionArt(this);
+  }
+
   create(): void {
     this.hint = document.getElementById("interaction-hint") as HTMLElement;
-    this.cameras.main.setBackgroundColor("#24272a");
-    this.add.rectangle(480, 270, 960, 540, 0x26292c);
-    this.add.rectangle(480, 375, 900, 250, 0xe7e2d7).setStrokeStyle(10, 0x1d2023);
-    this.add.rectangle(690, 270, 370, 72, 0x2b2e31).setStrokeStyle(5, 0x111315);
-    this.add.rectangle(710, 185, 150, 110, 0xe0a34c).setStrokeStyle(10, 0x292c2f);
-    this.add.rectangle(710, 195, 92, 72, 0x5b2f2a);
-    this.add.text(645, 125, "ОЧАГ", { color: "#eee8dc", fontSize: "18px" });
-    this.add.rectangle(650, 325, 38, 68, 0x2b2e31).setStrokeStyle(5, 0xe03a3e);
-    this.add.text(624, 365, "ОРЕН", { color: "#1f2225", fontSize: "17px", fontStyle: "bold" });
-    this.add.rectangle(110, 420, 58, 104, 0x25282b).setStrokeStyle(5, 0x64d5d9);
-    this.add.text(70, 478, "ВЫХОД", { color: "#202326", fontSize: "15px" });
-    this.add.text(28, 28, "ТАВЕРНА · ПУТНИЧИЙ ОЧАГ", { color: "#efe9dc", fontSize: "24px", fontStyle: "bold" });
+    const productionBackground = renderTavernProductionBackground(this);
+    if (!productionBackground) this.drawGreyboxWorld();
 
-    this.player = this.add.rectangle(270, 425, 24, 42, 0xe03a3e).setStrokeStyle(4, 0x111315);
+    const productionOren = createProductionOren(this, this.oren.x, this.oren.y);
+    if (!productionOren) {
+      this.add.rectangle(650, 325, 38, 68, 0x2b2e31).setStrokeStyle(5, 0xe03a3e).setDepth(18);
+      this.add.text(624, 365, "ОРЕН", { color: "#1f2225", fontSize: "17px", fontStyle: "bold" }).setDepth(18);
+    }
+
+    this.player = createProductionPlayer(this, 270, 425)
+      ?? this.add.rectangle(270, 425, 24, 42, 0xe03a3e).setStrokeStyle(4, 0x111315).setDepth(20);
+    renderTavernProductionForeground(this);
     this.publishPlayerPosition();
     const keyboard = this.input.keyboard;
     if (!keyboard) throw new Error("Keyboard input unavailable");
@@ -69,6 +78,19 @@ export class TavernScene extends Phaser.Scene {
       this.clearInteraction();
       this.hint.textContent = "WASD — движение · E — взаимодействие";
     }
+  }
+
+  private drawGreyboxWorld(): void {
+    this.cameras.main.setBackgroundColor("#24272a");
+    this.add.rectangle(480, 270, 960, 540, 0x26292c);
+    this.add.rectangle(480, 375, 900, 250, 0xe7e2d7).setStrokeStyle(10, 0x1d2023);
+    this.add.rectangle(690, 270, 370, 72, 0x2b2e31).setStrokeStyle(5, 0x111315);
+    this.add.rectangle(710, 185, 150, 110, 0xe0a34c).setStrokeStyle(10, 0x292c2f);
+    this.add.rectangle(710, 195, 92, 72, 0x5b2f2a);
+    this.add.text(645, 125, "ОЧАГ", { color: "#eee8dc", fontSize: "18px" });
+    this.add.rectangle(110, 420, 58, 104, 0x25282b).setStrokeStyle(5, 0x64d5d9);
+    this.add.text(70, 478, "ВЫХОД", { color: "#202326", fontSize: "15px" });
+    this.add.text(28, 28, "ТАВЕРНА · ПУТНИЧИЙ ОЧАГ", { color: "#efe9dc", fontSize: "24px", fontStyle: "bold" });
   }
 
   private publishPlayerPosition(): void {
