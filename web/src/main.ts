@@ -17,13 +17,17 @@ async function bootstrap(): Promise<void> {
   setRuntime({ api, state, dialogue });
   bindHud(state);
 
+  const initialScenes = state.snapshot?.world.location_id === "tavern_interior"
+    ? [TavernScene, VillageScene]
+    : [VillageScene, TavernScene];
+
   new Phaser.Game({
     type: Phaser.AUTO,
     parent: "game",
     width: 960,
     height: 540,
     backgroundColor: "#24272a",
-    scene: [VillageScene, TavernScene],
+    scene: initialScenes,
     render: { antialias: true, roundPixels: true }
   });
 }
