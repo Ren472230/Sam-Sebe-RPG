@@ -25,11 +25,12 @@ The current P0 proves one complete playable causal loop:
 - restart/reload persistence;
 - append-only action evidence and idempotency;
 - real-time lazy NPC schedule catch-up;
-- automated real-browser Chromium acceptance of the full critical route.
+- automated real-browser Chromium acceptance of the full critical route;
+- production-art manifest runtime with stable scene/sprite keys and explicit greybox fallback.
 
 ### Still intentionally deferred from P0
 
-- final production visual assets from MASTER STYLE REFERENCE v1;
+- final production visual WebP exports from MASTER STYLE REFERENCE v1;
 - second NPC gameplay loop;
 - generalized procedural quest generation;
 - full Law of Forgetting ranking/decay;
@@ -172,6 +173,16 @@ The current graphical scenes are a functional greybox in the locked project pale
 
 Visual R&D is closed. Production replacement must follow MASTER STYLE REFERENCE v1 / VISUAL STYLE BIBLE v1.0 and must not reopen the art direction.
 
+Game Core is already wired for the production handoff:
+
+- `web/public/assets/production/manifest.json` contains exact paths and anchors;
+- `status: "awaiting_assets"` keeps the validated greybox active;
+- when all required P0 WebP exports exist, changing the manifest to `status: "ready"` makes Phaser preload village/tavern layers plus player, Oren and firewood;
+- gameplay anchors, collision rules and authoritative world logic stay unchanged;
+- the real Chromium route is rerun after the art pack is activated.
+
+Production handoff details live in `docs/production/visual-asset-handoff-v1.md` and `docs/production/visual-production-task.md`.
+
 ## Primary source map
 
 - `src/samseberpg/db.py` — canonical schema and village bootstrap;
@@ -180,6 +191,7 @@ Visual R&D is closed. Production replacement must follow MASTER STYLE REFERENCE 
 - `src/samseberpg/dialogue.py` — state-aware LLM/fallback dialogue adapter;
 - `src/samseberpg/api.py` — HTTP adapter;
 - `src/samseberpg/server.py` — local application entrypoint;
+- `web/src/productionArt.ts` — production manifest loader and texture runtime;
 - `web/src/scenes/` — Phaser village/tavern presentation;
 - `web/src/ui/DialoguePanel.ts` — DOM dialogue UI;
 - `tests/` — Python authoritative-state tests;
