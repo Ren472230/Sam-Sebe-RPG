@@ -30,6 +30,7 @@ export class TavernScene extends Phaser.Scene {
     this.add.text(28, 28, "ТАВЕРНА · ПУТНИЧИЙ ОЧАГ", { color: "#efe9dc", fontSize: "24px", fontStyle: "bold" });
 
     this.player = this.add.rectangle(270, 425, 24, 42, 0xe03a3e).setStrokeStyle(4, 0x111315);
+    this.publishPlayerPosition();
     const keyboard = this.input.keyboard;
     if (!keyboard) throw new Error("Keyboard input unavailable");
     this.keys = keyboard.addKeys("W,A,S,D,E");
@@ -50,6 +51,7 @@ export class TavernScene extends Phaser.Scene {
     if (this.keys.S.isDown) dy += speed;
     this.player.x = Phaser.Math.Clamp(this.player.x + dx, 80, 880);
     this.player.y = Phaser.Math.Clamp(this.player.y + dy, 315, 470);
+    this.publishPlayerPosition();
 
     if (distance(this.player.x, this.player.y, this.oren.x, this.oren.y) < 85) {
       this.hint.textContent = "E — поговорить с Ореном";
@@ -58,6 +60,11 @@ export class TavernScene extends Phaser.Scene {
     } else {
       this.hint.textContent = "WASD — движение · E — взаимодействие";
     }
+  }
+
+  private publishPlayerPosition(): void {
+    document.body.dataset.playerX = Math.round(this.player.x).toString();
+    document.body.dataset.playerY = Math.round(this.player.y).toString();
   }
 
   private async interact(): Promise<void> {
