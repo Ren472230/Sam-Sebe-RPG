@@ -33,3 +33,35 @@ jobs:
       - name: Build web client
         working-directory: web
         run: npm run build
+
+  browser-acceptance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.16.0"
+      - name: Install Python dependencies
+        run: python -m pip install -e ".[dev]"
+      - name: Install web dependencies
+        working-directory: web
+        run: npm install --no-audit --no-fund
+      - name: Install Chromium
+        working-directory: web
+        run: npx playwright install --with-deps chromium
+      - name: Run real browser acceptance
+        working-directory: web
+        run: npm run test:e2e
+      - name: Upload playtest evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vertical-slice-playtest
+          path: |
+            web/test-results
+            web/playwright-report
+          if-no-files-found: ignore
+          retention-days: 7
