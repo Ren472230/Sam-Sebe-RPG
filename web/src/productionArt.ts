@@ -1,41 +1,43 @@
 import Phaser from "phaser";
 
 export type ProductionAssetManifest = {
-  version: string;
-  enabled: boolean;
-  assets: {
-    village: {
+  version: number;
+  status: "awaiting_assets" | "ready";
+  canvas: { width: number; height: number };
+  village: {
+    layers: {
       sky: string;
-      farWorld: string;
-      midWorld: string;
+      far_world: string;
+      mid_world: string;
       foreground?: string;
     };
-    tavern: {
+  };
+  tavern: {
+    layers: {
       background: string;
       foreground?: string;
     };
-    characters: {
-      player: string;
-      oren: string;
-    };
-    props: {
-      firewood: string;
-    };
-    ui?: {
-      dialogueFrame?: string;
-    };
+  };
+  characters: {
+    player: string;
+    oren: string;
+  };
+  props: {
+    firewood: string;
+  };
+  ui?: {
+    dialogue_frame?: string;
   };
 };
 
 const FALLBACK_MANIFEST: ProductionAssetManifest = {
-  version: "greybox",
-  enabled: false,
-  assets: {
-    village: { sky: "", farWorld: "", midWorld: "" },
-    tavern: { background: "" },
-    characters: { player: "", oren: "" },
-    props: { firewood: "" }
-  }
+  version: 1,
+  status: "awaiting_assets",
+  canvas: { width: 960, height: 540 },
+  village: { layers: { sky: "", far_world: "", mid_world: "" } },
+  tavern: { layers: { background: "" } },
+  characters: { player: "", oren: "" },
+  props: { firewood: "" }
 };
 
 const KEYS = {
@@ -65,34 +67,30 @@ export async function loadProductionManifest(): Promise<ProductionAssetManifest>
 
 export function setProductionManifest(manifest: ProductionAssetManifest): void {
   currentManifest = manifest;
-  document.body.dataset.artMode = manifest.enabled ? "production-pending" : "greybox";
-}
-
-export function getProductionManifest(): ProductionAssetManifest {
-  return currentManifest;
+  document.body.dataset.artMode = manifest.status === "ready" ? "production-pending" : "greybox";
 }
 
 export function preloadVillageProductionArt(scene: Phaser.Scene): void {
-  if (!currentManifest.enabled) return;
-  queueImage(scene, KEYS.villageSky, currentManifest.assets.village.sky);
-  queueImage(scene, KEYS.villageFar, currentManifest.assets.village.farWorld);
-  queueImage(scene, KEYS.villageMid, currentManifest.assets.village.midWorld);
-  queueImage(scene, KEYS.villageForeground, currentManifest.assets.village.foreground);
-  queueImage(scene, KEYS.player, currentManifest.assets.characters.player);
-  queueImage(scene, KEYS.firewood, currentManifest.assets.props.firewood);
+  if (!productionEnabled()) return;
+  queueImage(scene, KEYS.villageSky, currentManifest.village.layers.sky);
+  queueImage(scene, KEYS.villageFar, currentManifest.village.layers.far_world);
+  queueImage(scene, KEYS.villageMid, currentManifest.village.layers.mid_world);
+  queueImage(scene, KEYS.villageForeground, currentManifest.village.layers.foreground);
+  queueImage(scene, KEYS.player, currentManifest.characters.player);
+  queueImage(scene, KEYS.firewood, currentManifest.props.firewood);
 }
 
 export function preloadTavernProductionArt(scene: Phaser.Scene): void {
-  if (!currentManifest.enabled) return;
-  queueImage(scene, KEYS.tavernBackground, currentManifest.assets.tavern.background);
-  queueImage(scene, KEYS.tavernForeground, currentManifest.assets.tavern.foreground);
-  queueImage(scene, KEYS.player, currentManifest.assets.characters.player);
-  queueImage(scene, KEYS.oren, currentManifest.assets.characters.oren);
+  if (!productionEnabled()) return;
+  queueImage(scene, KEYS.tavernBackground, currentManifest.tavern.layers.background);
+  queueImage(scene, KEYS.tavernForeground, currentManifest.tavern.layers.foreground);
+  queueImage(scene, KEYS.player, currentManifest.characters.player);
+  queueImage(scene, KEYS.oren, currentManifest.characters.oren);
 }
 
 export function renderVillageProductionBackground(scene: Phaser.Scene): boolean {
   const required = [KEYS.villageSky, KEYS.villageFar, KEYS.villageMid];
-  if (!currentManifest.enabled || !required.every((key) => scene.textures.exists(key))) {
+  if (!productionEnabled() || !required.every((key) => scene.textures.exists(key))) {
     document.body.dataset.artMode = "greybox";
     return false;
   }
@@ -111,7 +109,7 @@ export function renderVillageProductionForeground(scene: Phaser.Scene): void {
 }
 
 export function renderTavernProductionBackground(scene: Phaser.Scene): boolean {
-  if (!currentManifest.enabled || !scene.textures.exists(KEYS.tavernBackground)) {
+  if (!productionEnabled() || !scene.textures.exists(KEYS.tavernBackground)) {
     document.body.dataset.artMode = "greybox";
     return false;
   }
@@ -151,9 +149,17 @@ export function createProductionFirewood(scene: Phaser.Scene, x: number, y: numb
     .setDepth(12);
 }
 
+function productionEnabled(): boolean {
+  return currentManifest.status === "ready";
+}
+
 function queueImage(scene: Phaser.Scene, key: string, path?: string): void {
   if (!path || scene.textures.exists(key)) return;
-  scene.load.image(key, path);
+  scene.load.image(key, assetUrl(path));
+}
+
+function assetUrl(path: string): string {
+  return path.startsWith("/") ? path : `/assets/production/${path}`;
 }
 
 function addFullCanvasLayer(scene: Phaser.Scene, key: string, depth: number): Phaser.GameObjects.Image {
@@ -164,17 +170,18 @@ function addFullCanvasLayer(scene: Phaser.Scene, key: string, depth: number): Ph
 
 function isProductionAssetManifest(value: unknown): value is ProductionAssetManifest {
   if (!value || typeof value !== "object") return false;
-  const manifest = value as Partial<ProductionAssetManifest>;
-  if (typeof manifest.version !== "string" || typeof manifest.enabled !== "boolean") return false;
-  const assets = manifest.assets;
-  if (!assets || typeof assets !== "object") return false;
-  return hasString(assets.village?.sky)
-    && hasString(assets.village?.farWorld)
-    && hasString(assets.village?.midWorld)
-    && hasString(assets.tavern?.background)
-    && hasString(assets.characters?.player)
-    && hasString(assets.characters?.oren)
-    && hasString(assets.props?.firewood);
+  const manifest = value as Record<string, any>;
+  return manifest.version === 1
+    && (manifest.status === "awaiting_assets" || manifest.status === "ready")
+    && manifest.canvas?.width === 960
+    && manifest.canvas?.height === 540
+    && hasString(manifest.village?.layers?.sky)
+    && hasString(manifest.village?.layers?.far_world)
+    && hasString(manifest.village?.layers?.mid_world)
+    && hasString(manifest.tavern?.layers?.background)
+    && hasString(manifest.characters?.player)
+    && hasString(manifest.characters?.oren)
+    && hasString(manifest.props?.firewood);
 }
 
 function hasString(value: unknown): value is string {
