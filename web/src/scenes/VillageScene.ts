@@ -27,10 +27,12 @@ export class VillageScene extends Phaser.Scene {
     this.drawWorld();
     this.createFirewood();
     this.player = this.add.rectangle(430, 455, 24, 42, 0xe03a3e).setStrokeStyle(4, 0x111315);
-    this.keys = this.input.keyboard.addKeys("W,A,S,D,E");
-    this.input.keyboard.on("keydown-E", () => void this.interact());
+    const keyboard = this.input.keyboard;
+    if (!keyboard) throw new Error("Keyboard input unavailable");
+    this.keys = keyboard.addKeys("W,A,S,D,E");
+    keyboard.on("keydown-E", () => void this.interact());
     this.events.once("shutdown", () => {
-      this.input.keyboard.removeAllListeners("keydown-E");
+      keyboard.removeAllListeners("keydown-E");
       this.hint.textContent = "";
     });
   }
