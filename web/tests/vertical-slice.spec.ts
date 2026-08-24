@@ -17,9 +17,11 @@ async function holdUntilHint(page: Page, key: string, text: string, timeout = 4_
 }
 
 async function enterTavernFromVillage(page: Page): Promise<void> {
-  await hold(page, "d", 650);
-  await hold(page, "w", 720);
-  await holdUntilHint(page, "d", "войти в таверну");
+  // Normalize any village x-position against the right boundary, then approach the door from below.
+  // Approaching from the left after moving north collides with the tavern footprint by design.
+  await hold(page, "d", 3_000);
+  await hold(page, "a", 650);
+  await holdUntilHint(page, "w", "войти в таверну");
   await page.keyboard.press("e");
   await expect(page.locator("body")).toHaveAttribute("data-scene", "tavern");
 }
