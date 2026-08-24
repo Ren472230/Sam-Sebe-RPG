@@ -36,6 +36,7 @@ function bindHud(state: ClientState): void {
   const hud = document.getElementById("hud");
   if (!hud) return;
   state.subscribe((snapshot) => {
+    document.body.dataset.scene = snapshot.world.location_id === "tavern_interior" ? "tavern" : "village";
     const label = snapshot.quest.status === "available"
       ? "нет активной задачи"
       : snapshot.quest.status === "active"
