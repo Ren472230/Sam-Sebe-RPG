@@ -9,6 +9,13 @@ async function playerPosition(page: Page): Promise<PlayerPosition> {
   }));
 }
 
+async function releaseMovementKeys(page: Page): Promise<void> {
+  for (const key of ["w", "a", "s", "d"]) {
+    await page.keyboard.up(key);
+  }
+  await page.waitForTimeout(60);
+}
+
 async function moveAxisTo(
   page: Page,
   axis: "x" | "y",
@@ -18,6 +25,7 @@ async function moveAxisTo(
 ): Promise<void> {
   const started = Date.now();
   let heldKey: string | null = null;
+  await releaseMovementKeys(page);
   try {
     while (Date.now() - started < timeout) {
       const position = await playerPosition(page);
@@ -35,17 +43,20 @@ async function moveAxisTo(
     }
   } finally {
     if (heldKey) await page.keyboard.up(heldKey);
+    await releaseMovementKeys(page);
   }
   throw new Error(`player did not reach ${axis}=${target}; last=${JSON.stringify(await playerPosition(page))}`);
 }
 
 async function holdUntilHint(page: Page, key: string, text: string, timeout = 5_000): Promise<void> {
   const hint = page.locator("#interaction-hint");
+  await releaseMovementKeys(page);
   await page.keyboard.down(key);
   try {
     await expect(hint).toContainText(text, { timeout });
   } finally {
     await page.keyboard.up(key);
+    await releaseMovementKeys(page);
   }
 }
 
