@@ -58,7 +58,8 @@ export class VillageScene extends Phaser.Scene {
   }
 
   update(_time: number, delta: number): void {
-    const speed = 0.22 * delta;
+    // A long browser frame must not teleport the player through narrow collision/interaction bands.
+    const speed = 0.22 * Math.min(delta, 50);
     let dx = 0;
     let dy = 0;
     if (this.keys.A.isDown) dx -= speed;
