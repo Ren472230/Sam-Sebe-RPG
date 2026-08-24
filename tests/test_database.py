@@ -17,6 +17,8 @@ EXPECTED_TABLES = {
     "relations",
     "action_events",
     "processed_interactions",
+    "quests",
+    "npc_memories",
 }
 
 
@@ -39,7 +41,7 @@ def test_initialize_bootstraps_one_shared_village_idempotently(tmp_path: Path) -
         assert EXPECTED_TABLES <= tables
 
         assert conn.execute("SELECT COUNT(*) FROM worlds").fetchone()[0] == 1
-        assert conn.execute("SELECT COUNT(*) FROM locations").fetchone()[0] == 3
+        assert conn.execute("SELECT COUNT(*) FROM locations").fetchone()[0] == 4
         assert conn.execute("SELECT COUNT(*) FROM npcs").fetchone()[0] == 3
         assert conn.execute("SELECT COUNT(*) FROM entities").fetchone()[0] >= 10
 
@@ -62,7 +64,12 @@ def test_bootstrap_contains_required_npcs_and_locations(tmp_path: Path) -> None:
         location_ids = {
             row[0] for row in conn.execute("SELECT id FROM locations").fetchall()
         }
-        assert location_ids == {"workshop_yard", "village_square", "river_edge"}
+        assert location_ids == {
+            "workshop_yard",
+            "village_square",
+            "river_edge",
+            "tavern_interior",
+        }
 
         npcs = {
             row[0]: (row[1], row[2])
