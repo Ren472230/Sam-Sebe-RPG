@@ -48,12 +48,18 @@ async function moveAxisTo(
   throw new Error(`player did not reach ${axis}=${target}; last=${JSON.stringify(await playerPosition(page))}`);
 }
 
-async function holdUntilHint(page: Page, key: string, text: string, timeout = 5_000): Promise<void> {
+async function moveAndInteractWhenHint(
+  page: Page,
+  key: string,
+  hintText: string,
+  timeout = 10_000
+): Promise<void> {
   const hint = page.locator("#interaction-hint");
   await releaseMovementKeys(page);
   await page.keyboard.down(key);
   try {
-    await expect(hint).toContainText(text, { timeout });
+    await expect(hint).toContainText(hintText, { timeout });
+    await page.keyboard.press("e");
   } finally {
     await page.keyboard.up(key);
     await releaseMovementKeys(page);
@@ -61,17 +67,15 @@ async function holdUntilHint(page: Page, key: string, text: string, timeout = 5_
 }
 
 async function enterTavernFromVillage(page: Page): Promise<void> {
-  await moveAxisTo(page, "x", 825, 15);
-  await holdUntilHint(page, "w", "войти в таверну");
-  await page.keyboard.press("e");
+  await moveAxisTo(page, "x", 936, 4);
+  await moveAxisTo(page, "y", 324, 6);
+  await moveAndInteractWhenHint(page, "a", "войти в таверну");
   await expect(page.locator("body")).toHaveAttribute("data-scene", "tavern");
 }
 
 async function approachOren(page: Page): Promise<void> {
   await moveAxisTo(page, "y", 340, 14);
-  await moveAxisTo(page, "x", 620, 20);
-  await expect(page.locator("#interaction-hint")).toContainText("поговорить с Ореном");
-  await page.keyboard.press("e");
+  await moveAndInteractWhenHint(page, "d", "поговорить с Ореном");
   await expect(page.locator("#dialogue")).toBeVisible();
   await expect(page.locator("#dialogue h2")).toHaveText("Орен");
 }
@@ -79,15 +83,12 @@ async function approachOren(page: Page): Promise<void> {
 async function leaveTavern(page: Page): Promise<void> {
   await page.getByRole("button", { name: "Закрыть" }).click().catch(() => undefined);
   await moveAxisTo(page, "y", 420, 14);
-  await moveAxisTo(page, "x", 150, 20);
-  await expect(page.locator("#interaction-hint")).toContainText("выйти в деревню");
-  await page.keyboard.press("e");
+  await moveAndInteractWhenHint(page, "a", "выйти в деревню");
   await expect(page.locator("body")).toHaveAttribute("data-scene", "village");
 }
 
 async function collectOneFirewood(page: Page, expectedCount: number): Promise<void> {
-  await holdUntilHint(page, "a", "подобрать дрова", 8_000);
-  await page.keyboard.press("e");
+  await moveAndInteractWhenHint(page, "a", "подобрать дрова", 10_000);
   await expect(page.locator("#hud")).toContainText(`дрова ${expectedCount}/5`);
 }
 
