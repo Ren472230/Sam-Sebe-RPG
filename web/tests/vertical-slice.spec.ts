@@ -50,45 +50,43 @@ async function moveAxisTo(
 
 async function moveAndInteractWhenHint(
   page: Page,
-  key: string,
+  keys: string[],
   hintText: string,
   timeout = 10_000
 ): Promise<void> {
   const hint = page.locator("#interaction-hint");
   await releaseMovementKeys(page);
-  await page.keyboard.down(key);
+  for (const key of keys) await page.keyboard.down(key);
   try {
     await expect(hint).toContainText(hintText, { timeout });
     await page.keyboard.press("e");
   } finally {
-    await page.keyboard.up(key);
+    for (const key of keys) await page.keyboard.up(key);
     await releaseMovementKeys(page);
   }
 }
 
 async function enterTavernFromVillage(page: Page): Promise<void> {
+  // Go to the right edge first, then approach the door diagonally from the walkable road below.
   await moveAxisTo(page, "x", 936, 4);
-  await moveAxisTo(page, "y", 324, 6);
-  await moveAndInteractWhenHint(page, "a", "войти в таверну");
+  await moveAndInteractWhenHint(page, ["w", "a"], "войти в таверну");
   await expect(page.locator("body")).toHaveAttribute("data-scene", "tavern");
 }
 
 async function approachOren(page: Page): Promise<void> {
-  await moveAxisTo(page, "y", 340, 14);
-  await moveAndInteractWhenHint(page, "d", "поговорить с Ореном");
+  await moveAndInteractWhenHint(page, ["w", "d"], "поговорить с Ореном");
   await expect(page.locator("#dialogue")).toBeVisible();
   await expect(page.locator("#dialogue h2")).toHaveText("Орен");
 }
 
 async function leaveTavern(page: Page): Promise<void> {
   await page.getByRole("button", { name: "Закрыть" }).click().catch(() => undefined);
-  await moveAxisTo(page, "y", 420, 14);
-  await moveAndInteractWhenHint(page, "a", "выйти в деревню");
+  await moveAndInteractWhenHint(page, ["s", "a"], "выйти в деревню");
   await expect(page.locator("body")).toHaveAttribute("data-scene", "village");
 }
 
 async function collectOneFirewood(page: Page, expectedCount: number): Promise<void> {
-  await moveAndInteractWhenHint(page, "a", "подобрать дрова", 10_000);
+  await moveAndInteractWhenHint(page, ["a"], "подобрать дрова", 10_000);
   await expect(page.locator("#hud")).toContainText(`дрова ${expectedCount}/5`);
 }
 
