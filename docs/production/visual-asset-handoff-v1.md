@@ -39,6 +39,19 @@ web/public/assets/production/
 
 `foreground.webp` files and `ui/dialogue_frame.webp` may be omitted for the first art integration if they are not ready. All other files are P0 production inputs.
 
+## Runtime activation gate
+
+`web/public/assets/production/manifest.json` is the production-art switch.
+
+- `status: "awaiting_assets"` means the validated greybox remains active and no production textures are requested.
+- Commit all required P0 files first.
+- Only after the required files exist at the exact manifest paths, change the manifest to `status: "ready"`.
+- With `status: "ready"`, Phaser preloads the production scene layers, player, Oren and firewood under stable texture keys.
+- If required scene textures fail to load, the scene falls back to the greybox rather than booting into a half-rendered state.
+- Gameplay anchors, collision rectangles, quest logic and canonical state do not change when art mode changes.
+
+Do **not** mark the manifest ready to preview a partial pack. Optional foreground/UI files may remain absent, but the required scene layers, characters and firewood must be present before activation.
+
 ## Canvas and export rules
 
 ### Village layers
@@ -130,15 +143,17 @@ Each export must pass:
 
 After files are committed, Game Core will:
 
-1. preload them under stable keys;
-2. replace greybox primitives while keeping the existing authoritative interaction coordinates;
-3. run TypeScript/Vite build;
-4. run full Python suite;
-5. run the real Chromium critical route;
-6. inspect four evidence screenshots: start, quest offer, completion, reload;
-7. adjust only presentation/collision mismatches proven by those screenshots;
-8. keep greybox fallback until the production pass is accepted.
+1. keep manifest status `awaiting_assets` while the pack is incomplete;
+2. commit all required exports at the stable paths;
+3. switch manifest status to `ready`;
+4. preload production assets while keeping authoritative interaction coordinates unchanged;
+5. run TypeScript/Vite build;
+6. run full Python suite;
+7. run the real Chromium critical route;
+8. inspect four evidence screenshots: start, quest offer, completion, reload;
+9. adjust only presentation/collision mismatches proven by those screenshots;
+10. keep greybox fallback available until the production pass is accepted.
 
 ## Definition of handoff-ready
 
-Visual Production is ready for integration when all required P0 files exist at the paths above and the village/tavern full-scene layers share exact canvas alignment.
+Visual Production is ready for integration when all required P0 files exist at the paths above, the village/tavern full-scene layers share exact canvas alignment, and the manifest can safely be moved from `awaiting_assets` to `ready`.
