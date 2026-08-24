@@ -86,7 +86,23 @@ async function leaveTavern(page: Page): Promise<void> {
 }
 
 async function collectOneFirewood(page: Page, expectedCount: number): Promise<void> {
-  await moveAndInteractWhenHint(page, ["a"], "подобрать дрова", 10_000);
+  const hint = page.locator("#interaction-hint");
+  const start = await playerPosition(page);
+  await releaseMovementKeys(page);
+  await page.keyboard.down("a");
+  try {
+    // A repeated pickup may begin while the previous "pick up firewood" hint is still visible.
+    // Require real movement first so an old hint can never trigger an empty E press.
+    await expect.poll(async () => {
+      const current = await playerPosition(page);
+      return start.x - current.x;
+    }, { timeout: 5_000 }).toBeGreaterThan(12);
+    await expect(hint).toContainText("подобрать дрова", { timeout: 10_000 });
+    await page.keyboard.press("e");
+  } finally {
+    await page.keyboard.up("a");
+    await releaseMovementKeys(page);
+  }
   await expect(page.locator("#hud")).toContainText(`дрова ${expectedCount}/5`);
 }
 
