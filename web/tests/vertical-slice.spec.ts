@@ -112,6 +112,7 @@ async function collectOneFirewood(page: Page, expectedCount: number): Promise<vo
 test("player can finish the critical firewood route in the real browser and reload into canonical scene", async ({ page }) => {
   test.setTimeout(120_000);
   await page.goto("/");
+  await expect(page.locator("body")).toHaveAttribute("data-art-mode", "greybox");
   await expect(page.locator("body")).toHaveAttribute("data-scene", "village");
   await expect(page.locator("#hud")).toContainText("Workshop Yard");
   await page.screenshot({ path: "test-results/01-village.png", fullPage: true });
@@ -146,6 +147,7 @@ test("player can finish the critical firewood route in the real browser and relo
   await page.screenshot({ path: "test-results/03-completed.png", fullPage: true });
 
   await page.reload();
+  await expect(page.locator("body")).toHaveAttribute("data-art-mode", "greybox");
   await expect(page.locator("body")).toHaveAttribute("data-scene", "tavern");
   await expect(page.locator("#hud")).toContainText("дрова доставлены ✓");
   await expect(page.locator("#hud")).toContainText("монеты 15");
