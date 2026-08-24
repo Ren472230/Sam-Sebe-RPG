@@ -5,12 +5,16 @@ import { getRuntime } from "../runtime";
 
 type Hotspot = { id: string; x: number; y: number; view: any };
 type Rect = { x: number; y: number; w: number; h: number };
+type VillageInteraction = { kind: "firewood"; item: Hotspot } | { kind: "tavern" };
 
 export class VillageScene extends Phaser.Scene {
   private player: any;
   private keys: any;
   private hint!: HTMLElement;
   private firewood: Hotspot[] = [];
+  private interaction: VillageInteraction | null = null;
+  private interactionExpiresAt = 0;
+  private readonly interactionGraceMs = 600;
   private readonly tavern = { x: 825, y: 250 };
   private readonly obstacles: Rect[] = [
     { x: 115, y: 205, w: 230, h: 120 },
@@ -34,6 +38,7 @@ export class VillageScene extends Phaser.Scene {
     keyboard.on("keydown-E", () => void this.interact());
     this.events.once("shutdown", () => {
       keyboard.removeAllListeners("keydown-E");
+      this.clearInteraction();
       this.hint.textContent = "";
     });
   }
@@ -120,25 +125,41 @@ export class VillageScene extends Phaser.Scene {
   private updateHint(): void {
     const wood = this.nearestFirewood();
     if (wood) {
-      this.hint.textContent = "E — подобрать дрова";
+      this.offerInteraction({ kind: "firewood", item: wood }, "E — подобрать дрова");
       return;
     }
     if (distance(this.player.x, this.player.y, this.tavern.x, this.tavern.y) < 85) {
-      this.hint.textContent = "E — войти в таверну";
+      this.offerInteraction({ kind: "tavern" }, "E — войти в таверну");
       return;
     }
+    if (this.interaction && this.time.now <= this.interactionExpiresAt) return;
+    this.clearInteraction();
     this.hint.textContent = "WASD — движение · E — взаимодействие";
   }
 
+  private offerInteraction(interaction: VillageInteraction, text: string): void {
+    this.interaction = interaction;
+    this.interactionExpiresAt = this.time.now + this.interactionGraceMs;
+    this.hint.textContent = text;
+  }
+
+  private clearInteraction(): void {
+    this.interaction = null;
+    this.interactionExpiresAt = 0;
+  }
+
   private async interact(): Promise<void> {
-    const wood = this.nearestFirewood();
-    if (wood) {
-      await this.pickupFirewood(wood);
+    const interaction = this.interaction;
+    if (!interaction || this.time.now > this.interactionExpiresAt) {
+      this.clearInteraction();
       return;
     }
-    if (distance(this.player.x, this.player.y, this.tavern.x, this.tavern.y) < 85) {
-      await this.enterTavern();
+    this.clearInteraction();
+    if (interaction.kind === "firewood") {
+      await this.pickupFirewood(interaction.item);
+      return;
     }
+    await this.enterTavern();
   }
 
   private nearestFirewood(): Hotspot | null {
