@@ -352,3 +352,27 @@ Additionally:
 - the browser/LLM never directly mutates SQLite;
 - duplicate quest completion cannot duplicate reward;
 - no P2 feature is allowed to delay release.
+
+## Verified technical acceptance — 24 Aug 2026
+
+The feature branch has now passed an automated real-browser acceptance gate in Chromium on the same critical route defined above.
+
+Fresh CI evidence on `feat/playable-vertical-slice`:
+- Python suite: success (`39` tests at the time of this gate);
+- real frontend dependency install + TypeScript/Phaser/Vite production build: success;
+- real Chromium route: success.
+
+The browser route verified:
+1. clean village start;
+2. physical WASD traversal to the tavern;
+3. Oren quest offer through the real dialogue UI;
+4. accepting `bring_5_firewood`;
+5. leaving the tavern and collecting canonical firewood through interaction input;
+6. an insufficient turn-in before the fifth item;
+7. final deterministic completion;
+8. visible reward (`15` coins), Oren trust (`10`) and changed memory-aware acknowledgement;
+9. full browser reload while preserving canonical tavern location and completed quest consequences.
+
+The acceptance job stores four browser screenshots as evidence: start village, quest offer, completed consequence, and post-reload state.
+
+This closes the technical gameplay loop. It does **not** close production art integration: the current Phaser presentation is still a functional greybox. MASTER STYLE REFERENCE v1 remains the required source of truth for replacing those placeholders without changing the validated gameplay contract.
