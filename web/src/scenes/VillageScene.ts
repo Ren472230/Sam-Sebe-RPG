@@ -27,6 +27,7 @@ export class VillageScene extends Phaser.Scene {
     this.drawWorld();
     this.createFirewood();
     this.player = this.add.rectangle(430, 455, 24, 42, 0xe03a3e).setStrokeStyle(4, 0x111315);
+    this.publishPlayerPosition();
     const keyboard = this.input.keyboard;
     if (!keyboard) throw new Error("Keyboard input unavailable");
     this.keys = keyboard.addKeys("W,A,S,D,E");
@@ -46,7 +47,13 @@ export class VillageScene extends Phaser.Scene {
     if (this.keys.W.isDown) dy -= speed;
     if (this.keys.S.isDown) dy += speed;
     this.movePlayer(dx, dy);
+    this.publishPlayerPosition();
     this.updateHint();
+  }
+
+  private publishPlayerPosition(): void {
+    document.body.dataset.playerX = Math.round(this.player.x).toString();
+    document.body.dataset.playerY = Math.round(this.player.y).toString();
   }
 
   private drawWorld(): void {
