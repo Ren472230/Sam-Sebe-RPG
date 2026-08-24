@@ -1,162 +1,186 @@
 # Sam-Sebe-RPG — Playable Vertical Slice
 
-**Sam-Sebe-RPG / Emergent RPG / Living World** is a persistent RPG prototype where the Python game core and SQLite database are authoritative. The browser and LLM are adapters: they can request or propose actions, but only deterministic Python logic changes canonical world state.
+A small persistent Living World prototype with a graphical Phaser client, deterministic Python game logic, canonical SQLite state and an LLM dialogue layer that is not allowed to mutate world truth directly.
 
 ## Current vertical slice
 
-The playable route is intentionally small:
+The current P0 proves one complete playable causal loop:
 
-`village -> tavern -> Oren -> bring 5 firewood -> deterministic turn-in -> reward/trust/memory -> changed dialogue -> restart persistence`
+`village -> tavern -> Oren -> accept 5-firewood quest -> collect real canonical items -> deterministic turn-in -> reward/trust/memory -> changed Oren reaction -> reload preserves consequence`
 
-Implemented now:
+### Implemented
 
-- canonical SQLite village state and restart persistence;
-- deterministic `LOOK`, `MOVE`, `TAKE`, `DROP` through `GameService`;
-- append-only action evidence and idempotent external interactions;
-- real-time Clock abstraction and lazy NPC schedule catch-up;
-- tavern interior and Oren as the innkeeper;
-- five canonical firewood entities;
-- one persistent quest: `bring_5_firewood`;
-- exact-once quest reward and Oren -> player trust change;
-- persistent NPC memory of the completed quest;
-- state-aware Oren dialogue with a constrained OpenAI Responses adapter;
-- deterministic Russian fallback dialogue when OpenAI is unavailable;
-- FastAPI local adapter;
-- Phaser 3 + TypeScript browser client with village/tavern scenes, movement, interactions, HUD and dialogue UI.
+- graphical browser client with Phaser 3 + TypeScript + Vite;
+- start village and tavern scenes;
+- WASD movement, collision bounds and interaction prompts;
+- canonical SQLite world state;
+- deterministic `LOOK`, `MOVE`, `TAKE`, `DROP`;
+- one authoritative `bring_5_firewood` quest;
+- exact-once quest completion and reward;
+- persistent Oren -> player trust;
+- persistent NPC memory;
+- LLM dialogue adapter with constrained proposals only;
+- deterministic fallback dialogue, so the critical route remains playable without OpenAI;
+- FastAPI adapter between browser and authoritative game services;
+- restart/reload persistence;
+- append-only action evidence and idempotency;
+- real-time lazy NPC schedule catch-up;
+- automated real-browser Chromium acceptance of the full critical route.
 
-## Architecture
+### Still intentionally deferred from P0
 
-```text
-Phaser / TypeScript browser client
-             |
-             | JSON HTTP
-             v
-        FastAPI adapter
-          /        \
-         v          v
-  GameService   DialogueService
-  QuestService        |
-         \            | read-only context
-          \           /
-           v         v
-          canonical SQLite
-```
-
-**Invariant:** browser code and LLM output never write SQLite directly.
+- final production visual assets from MASTER STYLE REFERENCE v1;
+- second NPC gameplay loop;
+- generalized procedural quest generation;
+- full Law of Forgetting ranking/decay;
+- morning newspaper/digest;
+- autonomous off-screen simulation;
+- larger economy, regions and biomes.
 
 ## Requirements
 
 - Python 3.12+
-- Node.js 20.19+ or 22.12+
+- Node.js 22+
 - npm
-- optional: `OPENAI_API_KEY` for generated Oren dialogue
 
-The critical route remains playable without an OpenAI key; deterministic fallback dialogue is used instead.
+## Backend setup
 
-## Install — Windows
-
-From the repository root:
+Windows PowerShell:
 
 ```powershell
-python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -e ".[dev]"
+py -3.12 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -e ".[dev]"
+python -m samseberpg.server
 ```
 
-Install the browser client:
+Backend starts at:
+
+`http://127.0.0.1:8000`
+
+If `OPENAI_API_KEY` is absent, the game automatically uses deterministic dialogue fallback for the critical route.
+
+The default persistent save is:
+
+`data/world.sqlite3`
+
+Override it with `SAM_SEBE_DB` when an isolated database is required.
+
+## Browser client
+
+In a second terminal:
 
 ```powershell
 cd web
 npm install
-cd ..
-```
-
-## Run
-
-Terminal 1 — canonical game server:
-
-```powershell
-.\.venv\Scripts\python.exe -m samseberpg.server
-```
-
-Server: `http://127.0.0.1:8000`
-
-Terminal 2 — browser client:
-
-```powershell
-cd web
 npm run dev
 ```
 
-Open the URL printed by Vite (normally `http://127.0.0.1:5173`). Vite proxies `/api` to the Python server.
+Open the Vite URL, normally:
 
-### Optional OpenAI dialogue
+`http://127.0.0.1:5173`
 
-PowerShell:
-
-```powershell
-$env:OPENAI_API_KEY="YOUR_KEY"
-$env:OPENAI_MODEL="gpt-5"
-.\.venv\Scripts\python.exe -m samseberpg.server
-```
-
-Do not put API keys in the repository.
-
-## Controls
+Controls:
 
 - `WASD` — move;
-- `E` — interact with the nearest highlighted object/NPC/door;
-- dialogue buttons — accept or turn in the firewood quest.
+- `E` — interact;
+- dialogue buttons — quest/dialogue actions.
 
-## Acceptance route
+## Critical acceptance route
 
-A clean vertical-slice check is:
+1. Start in the village.
+2. Walk to the tavern and press `E` when prompted.
+3. Approach Oren and talk to him.
+4. Accept the firewood task.
+5. Leave the tavern.
+6. Collect four firewood items.
+7. Return to Oren and verify early turn-in is rejected.
+8. Collect the fifth firewood item.
+9. Return and complete the task.
+10. Verify HUD shows completed quest, `15` coins and Oren trust `10`.
+11. Verify Oren acknowledges that the player helped him.
+12. Reload the page and verify the completed consequence and tavern location persist.
 
-1. Start the Python server and browser client.
-2. Enter the start village and move the player.
-3. Walk to the tavern entrance and press `E`.
-4. Approach Oren and press `E`.
-5. Accept his request for five pieces of firewood.
-6. Leave the tavern and return to the village/workshop area.
-7. Collect four firewood pieces.
-8. Return to Oren and try to turn in: the server must reject the attempt.
-9. Return outside and collect the fifth firewood piece.
-10. Return to Oren and turn in successfully.
-11. Confirm the quest becomes completed and coins/trust change once.
-12. Speak to Oren again: his response must reflect the completed event/memory.
-13. Stop both processes completely.
-14. Start them again against the same `data/world.sqlite3`.
-15. Confirm completed quest, reward/trust and Oren memory are still present.
-16. Repeat with `OPENAI_API_KEY` unset: the route must still be completable through fallback dialogue.
+## Tests
 
-## Automated verification
+Python:
 
-Python/kernel/quest/API/restart acceptance:
-
-```powershell
-.\.venv\Scripts\python.exe -m pytest -q
+```bash
+pytest -q
 ```
 
 Frontend production build:
 
-```powershell
+```bash
 cd web
+npm install
 npm run build
 ```
 
-The acceptance test is `tests/test_vertical_slice_acceptance.py`.
+Real browser acceptance:
 
-## Source map
+```bash
+cd web
+npx playwright install chromium
+npm run test:e2e
+```
 
-- `src/samseberpg/db.py` — canonical schema/bootstrap;
-- `src/samseberpg/game.py` — authoritative generic world actions;
-- `src/samseberpg/quest.py` — deterministic firewood quest lifecycle;
-- `src/samseberpg/dialogue.py` — Oren context, provider boundary and fallback;
+The browser acceptance uses an isolated `data/e2e-world.sqlite3` save and captures evidence screenshots for:
+
+- clean village start;
+- Oren quest offer;
+- completed consequence;
+- post-reload persistent state.
+
+## Architecture
+
+```text
+Phaser / TypeScript client
+          |
+          | HTTP
+          v
+       FastAPI
+          |
+    +-----+-----------------+
+    |                       |
+    v                       v
+GameService             DialogueService
+    |                 read-only context
+    |                       |
+    +-----------+-----------+
+                v
+          Canonical SQLite
+```
+
+### Authority invariant
+
+SQLite is authoritative. Browser code and LLM output never write world state directly. Every gameplay mutation is validated and committed through deterministic Python application logic.
+
+## Existing kernel guarantees retained
+
+- atomic gameplay writes;
+- append-only `ActionEvent` evidence;
+- idempotency by external interaction ID;
+- restart persistence;
+- `SystemClock` / `FakeClock`;
+- lazy deterministic NPC schedule catch-up;
+- serialized concurrent mutations with `BEGIN IMMEDIATE`.
+
+## Visual status
+
+The current graphical scenes are a functional greybox in the locked project palette. They intentionally prove gameplay/readability before final asset replacement.
+
+Visual R&D is closed. Production replacement must follow MASTER STYLE REFERENCE v1 / VISUAL STYLE BIBLE v1.0 and must not reopen the art direction.
+
+## Primary source map
+
+- `src/samseberpg/db.py` — canonical schema and village bootstrap;
+- `src/samseberpg/game.py` — base authoritative actions;
+- `src/samseberpg/quest.py` — one deterministic vertical-slice quest;
+- `src/samseberpg/dialogue.py` — state-aware LLM/fallback dialogue adapter;
 - `src/samseberpg/api.py` — HTTP adapter;
-- `src/samseberpg/server.py` — local service wiring;
-- `web/src/scenes/` — graphical village/tavern scenes;
-- `web/src/ui/DialoguePanel.ts` — dialogue and quest interaction UI;
-- `tests/test_vertical_slice_acceptance.py` — end-to-end restart proof.
-
-## Deferred until after this slice
-
-Morning newspaper, procedural quests, autonomous off-screen agents, multiple settlements/biomes, cloud persistence and larger simulation systems are deliberately outside P0.
+- `src/samseberpg/server.py` — local application entrypoint;
+- `web/src/scenes/` — Phaser village/tavern presentation;
+- `web/src/ui/DialoguePanel.ts` — DOM dialogue UI;
+- `tests/` — Python authoritative-state tests;
+- `web/tests/vertical-slice.spec.ts` — real Chromium critical-route acceptance.
