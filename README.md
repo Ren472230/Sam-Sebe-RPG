@@ -47,7 +47,7 @@ Phaser / TypeScript browser client
 ## Requirements
 
 - Python 3.12+
-- Node.js 20+
+- Node.js 20.19+ or 22.12+
 - npm
 - optional: `OPENAI_API_KEY` for generated Oren dialogue
 
@@ -103,7 +103,7 @@ Do not put API keys in the repository.
 
 ## Controls
 
-- `WASD` or arrow keys — move;
+- `WASD` — move;
 - `E` — interact with the nearest highlighted object/NPC/door;
 - dialogue buttons — accept or turn in the firewood quest.
 
