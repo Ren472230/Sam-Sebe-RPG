@@ -5,11 +5,11 @@ Date: 2026-08-24
 ## Verified
 
 - Gameplay vertical slice: Python suite, TypeScript/Vite build and full real Chromium critical route.
-- Production-art runtime: implemented in `web/src/productionArt.ts`.
+- Production-art runtime: `web/src/productionArt.ts`.
 - Stable manifest: `web/public/assets/production/manifest.json`.
-- Greybox fallback: active and browser-verified while manifest is `awaiting_assets`.
+- Greybox fallback stays active while manifest is `awaiting_assets`.
 - Scene/gameplay anchors remain authoritative and unchanged by art mode.
-- Frame-stall movement tunneling discovered during art-runtime acceptance was fixed by capping the village movement timestep; the original Chromium route passed after the fix.
+- Frame-stall movement tunneling found during acceptance was fixed by capping the village movement timestep; the original Chromium route passed after the fix.
 
 ## Current blocker
 
@@ -18,9 +18,8 @@ Final production WebP exports are not in the repository yet. `web/public/assets/
 ## Exact next action
 
 1. Commit required Visual Production files to the manifest paths.
-2. Keep optional foreground/UI files optional for first pass.
-3. Switch manifest `status` from `awaiting_assets` to `ready`.
-4. Run Python + TypeScript/Vite + real Chromium acceptance.
-5. Inspect start / Oren offer / completion / reload screenshots.
-6. Run a short human smoke test.
-7. Merge PR #6 only after the production-art pass is accepted.
+2. Switch manifest `status` from `awaiting_assets` to `ready`.
+3. Run Python + TypeScript/Vite + real Chromium acceptance.
+4. Inspect start / Oren offer / completion / reload screenshots.
+5. Run a short human smoke test.
+6. Merge PR #6 only after the production-art pass is accepted.
