@@ -1,100 +1,162 @@
-# Sam-Sebe-RPG — Shared World Kernel
+# Sam-Sebe-RPG — Playable Vertical Slice
 
-A deliberately small multiplayer-first kernel for **Emergent RPG / Living World / Сам-себе-RPG**.
+**Sam-Sebe-RPG / Emergent RPG / Living World** is a persistent RPG prototype where the Python game core and SQLite database are authoritative. The browser and LLM are adapters: they can request or propose actions, but only deterministic Python logic changes canonical world state.
 
-The current milestone proves that 2–5 players can inhabit one canonical SQLite village, mutate shared state atomically, survive retries/restarts, and lazily synchronize deterministic NPC schedules to real time.
+## Current vertical slice
 
-## Implemented scope
+The playable route is intentionally small:
 
-- one shared village with three locations;
-- three scheduled NPCs and twelve entities;
-- Discord user ID → persistent player actor mapping;
-- shared observation;
-- deterministic `LOOK`, `MOVE`, `TAKE`, `DROP`;
-- one SQLite write transaction per gameplay action;
-- append-only `ActionEvent` evidence for successes and gameplay failures;
-- idempotency by external interaction ID;
-- restart persistence;
-- `SystemClock` / `FakeClock`;
-- lazy NPC schedule catch-up;
-- serialized concurrent mutations with `BEGIN IMMEDIATE`;
-- no Discord SDK or LLM dependency in the core.
+`village -> tavern -> Oren -> bring 5 firewood -> deterministic turn-in -> reward/trust/memory -> changed dialogue -> restart persistence`
 
-Deferred: Discord adapter/UI, LLM parsing, voice, combat, crafting, progression, large-world generation, Redis/PostgreSQL/microservices.
+Implemented now:
 
-## Requirements
-
-- Python 3.12+
-- pytest for development/testing
-
-## Setup
-
-```bash
-python -m venv .venv
-source .venv/bin/activate  # Windows: .venv\\Scripts\\activate
-python -m pip install -e ".[dev]"
-```
-
-## Tests
-
-```bash
-pytest -q
-```
-
-Concurrency proof:
-
-```bash
-pytest -q tests/test_concurrency.py
-```
-
-## Executable multiplayer proof
-
-After installing the package:
-
-```bash
-python scripts/demo_shared_world.py
-```
-
-The demo creates a clean temporary SQLite database and proves:
-
-1. Player A and Player B both see `stone_flat_1`.
-2. Player A takes it.
-3. Player B immediately stops seeing it.
-4. Reopening the database preserves Player A's ownership.
-5. `FakeClock` advances from 08:00 to 20:00 UTC.
-6. The next world touch lazily moves Mira to `village_square` with her evening activity.
+- canonical SQLite village state and restart persistence;
+- deterministic `LOOK`, `MOVE`, `TAKE`, `DROP` through `GameService`;
+- append-only action evidence and idempotent external interactions;
+- real-time Clock abstraction and lazy NPC schedule catch-up;
+- tavern interior and Oren as the innkeeper;
+- five canonical firewood entities;
+- one persistent quest: `bring_5_firewood`;
+- exact-once quest reward and Oren -> player trust change;
+- persistent NPC memory of the completed quest;
+- state-aware Oren dialogue with a constrained OpenAI Responses adapter;
+- deterministic Russian fallback dialogue when OpenAI is unavailable;
+- FastAPI local adapter;
+- Phaser 3 + TypeScript browser client with village/tavern scenes, movement, interactions, HUD and dialogue UI.
 
 ## Architecture
 
 ```text
-adapter / tests / future Discord
-            |
-            v
-     CanonicalAction
-            |
-            v
-       GameService
-         /      \
-        v        v
-WorldSynchronizer  deterministic rules
-        \        /
-         v      v
-        SQLite
- state + ActionEvent + idempotency
+Phaser / TypeScript browser client
+             |
+             | JSON HTTP
+             v
+        FastAPI adapter
+          /        \
+         v          v
+  GameService   DialogueService
+  QuestService        |
+         \            | read-only context
+          \           /
+           v         v
+          canonical SQLite
 ```
 
-SQLite is authoritative. LLMs and Discord adapters are not allowed to write canonical state directly.
+**Invariant:** browser code and LLM output never write SQLite directly.
+
+## Requirements
+
+- Python 3.12+
+- Node.js 20+
+- npm
+- optional: `OPENAI_API_KEY` for generated Oren dialogue
+
+The critical route remains playable without an OpenAI key; deterministic fallback dialogue is used instead.
+
+## Install — Windows
+
+From the repository root:
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -e ".[dev]"
+```
+
+Install the browser client:
+
+```powershell
+cd web
+npm install
+cd ..
+```
+
+## Run
+
+Terminal 1 — canonical game server:
+
+```powershell
+.\.venv\Scripts\python.exe -m samseberpg.server
+```
+
+Server: `http://127.0.0.1:8000`
+
+Terminal 2 — browser client:
+
+```powershell
+cd web
+npm run dev
+```
+
+Open the URL printed by Vite (normally `http://127.0.0.1:5173`). Vite proxies `/api` to the Python server.
+
+### Optional OpenAI dialogue
+
+PowerShell:
+
+```powershell
+$env:OPENAI_API_KEY="YOUR_KEY"
+$env:OPENAI_MODEL="gpt-5"
+.\.venv\Scripts\python.exe -m samseberpg.server
+```
+
+Do not put API keys in the repository.
+
+## Controls
+
+- `WASD` or arrow keys — move;
+- `E` — interact with the nearest highlighted object/NPC/door;
+- dialogue buttons — accept or turn in the firewood quest.
+
+## Acceptance route
+
+A clean vertical-slice check is:
+
+1. Start the Python server and browser client.
+2. Enter the start village and move the player.
+3. Walk to the tavern entrance and press `E`.
+4. Approach Oren and press `E`.
+5. Accept his request for five pieces of firewood.
+6. Leave the tavern and return to the village/workshop area.
+7. Collect four firewood pieces.
+8. Return to Oren and try to turn in: the server must reject the attempt.
+9. Return outside and collect the fifth firewood piece.
+10. Return to Oren and turn in successfully.
+11. Confirm the quest becomes completed and coins/trust change once.
+12. Speak to Oren again: his response must reflect the completed event/memory.
+13. Stop both processes completely.
+14. Start them again against the same `data/world.sqlite3`.
+15. Confirm completed quest, reward/trust and Oren memory are still present.
+16. Repeat with `OPENAI_API_KEY` unset: the route must still be completable through fallback dialogue.
+
+## Automated verification
+
+Python/kernel/quest/API/restart acceptance:
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest -q
+```
+
+Frontend production build:
+
+```powershell
+cd web
+npm run build
+```
+
+The acceptance test is `tests/test_vertical_slice_acceptance.py`.
 
 ## Source map
 
-- `src/samseberpg/domain.py` — typed actions/results/views
-- `src/samseberpg/clock.py` — replaceable world clock
-- `src/samseberpg/db.py` — schema, connection policy, village bootstrap
-- `src/samseberpg/world.py` — deterministic lazy NPC catch-up
-- `src/samseberpg/game.py` — player registration, observation, authoritative actions
-- `tests/` — persistence, shared state, idempotency, time and concurrency proofs
-- `scripts/demo_shared_world.py` — clean end-to-end proof
+- `src/samseberpg/db.py` — canonical schema/bootstrap;
+- `src/samseberpg/game.py` — authoritative generic world actions;
+- `src/samseberpg/quest.py` — deterministic firewood quest lifecycle;
+- `src/samseberpg/dialogue.py` — Oren context, provider boundary and fallback;
+- `src/samseberpg/api.py` — HTTP adapter;
+- `src/samseberpg/server.py` — local service wiring;
+- `web/src/scenes/` — graphical village/tavern scenes;
+- `web/src/ui/DialoguePanel.ts` — dialogue and quest interaction UI;
+- `tests/test_vertical_slice_acceptance.py` — end-to-end restart proof.
 
-## Next slice
+## Deferred until after this slice
 
-Only after this kernel stays green should development move to the Discord gameplay adapter (`/look`, `/me`, `/act`) while keeping the simulation package independent of Discord and LLM SDKs.
+Morning newspaper, procedural quests, autonomous off-screen agents, multiple settlements/biomes, cloud persistence and larger simulation systems are deliberately outside P0.
