@@ -1,1 +1,0 @@
-PNG binary promotion in progress; authoritative status lives in ASSET_MAPPING.md.
