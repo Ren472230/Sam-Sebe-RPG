@@ -7,10 +7,10 @@ name = "samseberpg"
 version = "0.1.0"
 description = "Multiplayer-first persistent shared-world kernel for Sam-Sebe-RPG"
 requires-python = ">=3.12"
-dependencies = []
+dependencies = ["fastapi>=0.128", "uvicorn>=0.48", "openai>=2.0"]
 
 [project.optional-dependencies]
-dev = ["pytest>=8"]
+dev = ["pytest>=8", "httpx>=0.28"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
