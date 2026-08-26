@@ -35,7 +35,7 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: Real browser critical route
         working-directory: web
-        run: npm run test:e2e
+        run: node scripts/reset-e2e.mjs && npx playwright test tests/vertical-slice.spec.ts
       - name: Persisted browser console smoke
         working-directory: web
         run: npx playwright test tests/console-smoke.spec.ts
