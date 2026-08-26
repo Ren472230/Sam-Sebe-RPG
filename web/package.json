@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "typecheck": "tsc --noEmit",
-    "test:contract": "node --test --experimental-strip-types tests/api-contract.test.ts tests/production-art.test.ts",
+    "test:contract": "node --test --experimental-strip-types tests/api-contract.test.ts tests/production-art.test.ts tests/production-assets-materialized.test.ts",
     "preview": "vite preview",
     "test:e2e": "node scripts/reset-e2e.mjs && playwright test"
   },
