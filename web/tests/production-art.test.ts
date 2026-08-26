@@ -82,14 +82,14 @@ test("v2 reports exact partial Village layers without coupling them to absent co
   ]);
 });
 
-test("checked-in partial manifest activates only approved L3 and L4 derivatives", () => {
+test("checked-in partial manifest activates only approved materialized L3 and L4 derivatives", () => {
   const raw = JSON.parse(readFileSync(new URL("../public/assets/production/manifest.json", import.meta.url), "utf8"));
   const manifest = normalizeProductionManifest(raw);
   const readiness = getProductionReadiness(manifest);
 
   assert.equal(manifest.status, "partial");
-  assert.equal(manifest.village.layers.architecture, "village/L3_ARCHITECTURE_PARTIAL.png");
-  assert.equal(manifest.village.layers.gameplay, "village/L4_GAMEPLAY_PARTIAL.png");
+  assert.equal(manifest.village.layers.architecture, "village/L3_ARCHITECTURE_PARTIAL.webp");
+  assert.equal(manifest.village.layers.gameplay, "village/L4_GAMEPLAY_PARTIAL.webp");
   assert.equal(manifest.village.layers.sky, "");
   assert.equal(manifest.village.layers.distant_nature, "");
   assert.equal(manifest.village.layers.mid_nature, "");
