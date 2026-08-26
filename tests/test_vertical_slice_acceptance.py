@@ -39,10 +39,15 @@ class FailingProvider:
         raise RuntimeError("LLM intentionally unavailable")
 
 
-def _session(client: TestClient, *, name: str = "Player") -> str:
+def _session(
+    client: TestClient,
+    *,
+    external_id: str = "local-player",
+    name: str = "Player",
+) -> str:
     response = client.post(
         "/api/session",
-        json={"external_id": "local-player", "name": name},
+        json={"external_id": external_id, "name": name},
     )
     assert response.status_code == 200, response.text
     player_id = response.json().get("player_id")
@@ -54,18 +59,35 @@ def _state(client: TestClient, player_id: str) -> dict:
     response = client.get(f"/api/state/{player_id}")
     assert response.status_code == 200, response.text
     payload = response.json()
+    assert payload.get("player_id") == player_id
+    location = payload.get("location")
+    assert isinstance(location, dict), payload
+    for key in ("id", "name", "description"):
+        assert key in location, f"state is missing location.{key}: {payload}"
+    for key in ("visible_actors", "visible_entities", "inventory"):
+        assert isinstance(payload.get(key), list), f"state is missing {key}: {payload}"
     assert isinstance(payload.get("quest"), dict)
     assert "coins" in payload
+    relation = payload.get("oren_relation")
+    assert isinstance(relation, dict) and "trust" in relation, payload
     _world(payload)
     _trust(payload)
     return payload
 
 
 def _world(state: dict) -> dict:
-    world = state.get("world", state)
-    for key in ("location_id", "visible_actors", "visible_entities", "inventory"):
-        assert key in world, f"state is missing world field {key!r}: {state}"
-    return world
+    legacy = state.get("world")
+    if isinstance(legacy, dict):
+        for key in ("location_id", "visible_actors", "visible_entities", "inventory"):
+            assert key in legacy, f"legacy world alias is missing {key!r}: {state}"
+        assert legacy["location_id"] == state["location"]["id"]
+        return legacy
+    return {
+        "location_id": state["location"]["id"],
+        "visible_actors": state["visible_actors"],
+        "visible_entities": state["visible_entities"],
+        "inventory": state["inventory"],
+    }
 
 
 def _trust(state: dict) -> int:
@@ -181,7 +203,7 @@ def _run_complete_route(
     _move(client, player_id, "tavern_interior", "02-tavern")
     offer = client.post(
         "/api/dialogue",
-        json={"player_id": player_id, "user_text": "Есть работа?"},
+        json={"player_id": player_id, "text": "Есть работа?"},
     )
     assert offer.status_code == 200, offer.text
     offer_payload = offer.json()
@@ -288,7 +310,7 @@ def _run_complete_route(
 
     consequence = client.post(
         "/api/dialogue",
-        json={"player_id": player_id, "user_text": "Ты меня помнишь?"},
+        json={"player_id": player_id, "text": "Ты меня помнишь?"},
     )
     assert consequence.status_code == 200, consequence.text
     consequence_payload = consequence.json()
@@ -309,7 +331,7 @@ def _run_complete_route(
 
     restored_dialogue = restarted.post(
         "/api/dialogue",
-        json={"player_id": player_id, "user_text": "Что изменилось?"},
+        json={"player_id": player_id, "text": "Что изменилось?"},
     )
     assert restored_dialogue.status_code == 200, restored_dialogue.text
     restored_payload = restored_dialogue.json()
@@ -344,6 +366,8 @@ def test_frozen_api_contract_supports_health_session_state_look_take_and_drop(tm
 
     player_id = _session(client)
     assert _session(client, name="Renamed but same local player") == player_id
+    other_player = _session(client, external_id="local-player-2", name="Other")
+    assert other_player != player_id
     state = _state(client, player_id)
     assert _world(state)["location_id"] == "workshop_yard"
 
