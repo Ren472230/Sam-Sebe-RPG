@@ -1,1 +1,0 @@
-Static QA evidence is generated from accepted runtime derivatives. Browser screenshots remain a separate gate.
