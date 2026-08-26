@@ -67,6 +67,7 @@ async function moveAndInteractWhenHint(
 }
 
 async function enterTavernFromVillage(page: Page): Promise<void> {
+  // Go to the right edge first, then approach the door diagonally from the walkable road below.
   await moveAxisTo(page, "x", 936, 4);
   await moveAndInteractWhenHint(page, ["w", "a"], "войти в таверну");
   await expect(page.locator("body")).toHaveAttribute("data-scene", "tavern");
@@ -87,10 +88,14 @@ async function leaveTavern(page: Page): Promise<void> {
 async function collectOneFirewood(page: Page, expectedCount: number): Promise<void> {
   const hint = page.locator("#interaction-hint");
   const start = await playerPosition(page);
+  // Firewood sits in a compact strip around x=112..260. Headless key-up latency can carry
+  // the test past the strip, so sweep back toward its center instead of always walking left.
   const key = start.x < 186 ? "d" : "a";
   await releaseMovementKeys(page);
   await page.keyboard.down(key);
   try {
+    // A repeated pickup may begin while the previous "pick up firewood" hint is still visible.
+    // Require real movement first so an old hint can never trigger an empty E press.
     await expect.poll(async () => {
       const current = await playerPosition(page);
       return key === "a" ? start.x - current.x : current.x - start.x;
@@ -110,12 +115,12 @@ test("player can finish the critical firewood route in the real browser and relo
   await expect(page.locator("body")).toHaveAttribute("data-art-mode", "greybox");
   await expect(page.locator("body")).toHaveAttribute("data-scene", "village");
   await expect(page.locator("#hud")).toContainText("Workshop Yard");
-  await page.screenshot({ path: "release-evidence/01-village.png", fullPage: true });
+  await page.screenshot({ path: "test-results/01-village.png", fullPage: true });
 
   await enterTavernFromVillage(page);
   await approachOren(page);
   await expect(page.getByRole("button", { name: "Взяться за дрова" })).toBeVisible();
-  await page.screenshot({ path: "release-evidence/02-oren-offer.png", fullPage: true });
+  await page.screenshot({ path: "test-results/02-oren-offer.png", fullPage: true });
   await page.getByRole("button", { name: "Взяться за дрова" }).click();
   await expect(page.locator("#hud")).toContainText("дрова 0/5");
 
@@ -139,7 +144,7 @@ test("player can finish the critical firewood route in the real browser and relo
   await expect(page.locator("#hud")).toContainText("монеты 15");
   await expect(page.locator("#hud")).toContainText("доверие Орена 10");
   await expect(page.locator("#dialogue")).toContainText("помню, что ты выручил меня");
-  await page.screenshot({ path: "release-evidence/03-completed.png", fullPage: true });
+  await page.screenshot({ path: "test-results/03-completed.png", fullPage: true });
 
   await page.reload();
   await expect(page.locator("body")).toHaveAttribute("data-art-mode", "greybox");
@@ -147,5 +152,5 @@ test("player can finish the critical firewood route in the real browser and relo
   await expect(page.locator("#hud")).toContainText("дрова доставлены ✓");
   await expect(page.locator("#hud")).toContainText("монеты 15");
   await expect(page.locator("#hud")).toContainText("доверие Орена 10");
-  await page.screenshot({ path: "release-evidence/04-reloaded.png", fullPage: true });
+  await page.screenshot({ path: "test-results/04-reloaded.png", fullPage: true });
 });
