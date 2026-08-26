@@ -1,1 +1,0 @@
-The active browser runtime currently ships accepted materialized derivatives as transparent WebP. PNG source compositions are deterministic resize/composite derivatives generated from the accepted recovered PNGs; no generative fill or retouching is used.
