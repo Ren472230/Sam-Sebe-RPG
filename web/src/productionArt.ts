@@ -23,8 +23,8 @@ const VILLAGE_DEPTHS: Record<VillageLayerName, number> = {
   sky: -60,
   distant_nature: -50,
   mid_nature: -40,
-  architecture: -20,
-  gameplay: 0,
+  architecture: 2,
+  gameplay: 4,
   foreground: 40
 };
 
@@ -59,10 +59,8 @@ export function setProductionManifest(manifest: NormalizedProductionManifest): v
 }
 
 export function preloadVillageProductionArt(scene: Phaser.Scene): void {
-  if (currentReadiness.village.ready) {
-    for (const layer of villageLayerNames()) {
-      queueImage(scene, VILLAGE_KEYS[layer], currentManifest.village.layers[layer]);
-    }
+  for (const layer of villageLayerNames()) {
+    queueImage(scene, VILLAGE_KEYS[layer], currentManifest.village.layers[layer]);
   }
   if (currentReadiness.player) queueImage(scene, KEYS.player, currentManifest.characters.player);
   if (currentReadiness.firewood) queueImage(scene, KEYS.firewood, currentManifest.props.firewood);
@@ -78,29 +76,39 @@ export function preloadTavernProductionArt(scene: Phaser.Scene): void {
 }
 
 export function renderVillageProductionBackground(scene: Phaser.Scene): boolean {
+  const declared = villageLayerNames().filter((layer) => Boolean(currentManifest.village.layers[layer]));
+  const loaded = declared.filter((layer) => scene.textures.exists(VILLAGE_KEYS[layer]));
+  const runtimeMissing = declared
+    .filter((layer) => !scene.textures.exists(VILLAGE_KEYS[layer]))
+    .map((layer) => `texture:${layer}`);
   const required = requiredVillageLayers();
-  if (!currentReadiness.village.ready || !required.every((layer) => scene.textures.exists(VILLAGE_KEYS[layer]))) {
-    markSceneFallback("village", required
-      .filter((layer) => currentManifest.village.layers[layer] && !scene.textures.exists(VILLAGE_KEYS[layer]))
-      .map((layer) => `texture:${layer}`));
+  const fullReady = currentReadiness.village.ready
+    && required.every((layer) => scene.textures.exists(VILLAGE_KEYS[layer]));
+
+  if (loaded.length === 0) {
+    markSceneFallback("village", runtimeMissing);
     return false;
   }
 
-  for (const layer of villageLayerNames()) {
+  for (const layer of loaded) {
     if (layer === "foreground") continue;
-    const path = currentManifest.village.layers[layer];
-    if (!path || !scene.textures.exists(VILLAGE_KEYS[layer])) continue;
     addVillageCanvasLayer(scene, layer);
   }
-  document.body.dataset.artMode = "production";
-  document.body.dataset.villageArt = "production";
-  return true;
+
+  if (runtimeMissing.length > 0) appendRuntimeMissing(runtimeMissing);
+  document.body.dataset.artMode = fullReady ? "production" : "partial-production";
+  document.body.dataset.villageArt = fullReady ? "production" : "partial-production";
+  return fullReady;
 }
 
 export function renderVillageProductionForeground(scene: Phaser.Scene): void {
   const layer: VillageLayerName = "foreground";
-  if (!currentReadiness.village.ready || !currentManifest.village.layers[layer]) return;
-  if (scene.textures.exists(VILLAGE_KEYS[layer])) addVillageCanvasLayer(scene, layer);
+  if (!currentManifest.village.layers[layer]) return;
+  if (scene.textures.exists(VILLAGE_KEYS[layer])) {
+    addVillageCanvasLayer(scene, layer);
+  } else {
+    appendRuntimeMissing(["texture:foreground"]);
+  }
 }
 
 export function renderTavernProductionBackground(scene: Phaser.Scene): boolean {
@@ -159,10 +167,10 @@ export function createProductionFirewood(scene: Phaser.Scene, x: number, y: numb
 function publishManifestDiagnostics(): void {
   const villageState = currentReadiness.village.ready
     ? "production-pending"
-    : currentReadiness.village.present > 0 ? "partial-fallback" : "greybox";
+    : currentReadiness.village.partial ? "partial-production-pending" : "greybox";
   const tavernState = currentReadiness.tavern.ready
     ? "production-pending"
-    : currentReadiness.tavern.present > 0 ? "partial-fallback" : "greybox";
+    : currentReadiness.tavern.partial ? "partial-fallback" : "greybox";
 
   document.body.dataset.artMode = "greybox";
   document.body.dataset.artManifest = `source-v${currentManifest.sourceVersion}:v2:${currentManifest.status}`;
@@ -187,10 +195,12 @@ function markSceneFallback(sceneName: "village" | "tavern", runtimeMissing: stri
   document.body.dataset[sceneName === "village" ? "villageArt" : "tavernArt"] = runtimeMissing.length > 0
     ? "fallback-load-error"
     : "greybox";
-  if (runtimeMissing.length > 0) {
-    const existing = document.body.dataset.artMissing;
-    document.body.dataset.artMissing = [existing, ...runtimeMissing].filter(Boolean).join(",");
-  }
+  if (runtimeMissing.length > 0) appendRuntimeMissing(runtimeMissing);
+}
+
+function appendRuntimeMissing(runtimeMissing: string[]): void {
+  const existing = document.body.dataset.artMissing;
+  document.body.dataset.artMissing = [existing, ...runtimeMissing].filter(Boolean).join(",");
 }
 
 function requiredVillageLayers(): VillageLayerName[] {
