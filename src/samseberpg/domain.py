@@ -53,3 +53,21 @@ class ActionResult:
     summary: str
     event_id: int | None = None
     replayed: bool = False
+
+
+@dataclass(frozen=True, slots=True)
+class QuestState:
+    quest_type: str
+    status: str
+    required_firewood: int
+    owned_firewood: int
+
+
+@dataclass(frozen=True, slots=True)
+class QuestResult:
+    success: bool
+    code: str
+    summary: str
+    state: QuestState
+    event_id: int | None = None
+    replayed: bool = False
