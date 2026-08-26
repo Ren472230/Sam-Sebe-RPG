@@ -44,7 +44,7 @@ Purpose: factual materialization + canonical mapping ledger for the 14 locked St
 | `GRASS_MASS_001.png` | NO in this runtime | historical PASS: 1254x1254 RGBA alpha 0-255, QA 23/24 | ACCEPT / LOCKED historically; bytes currently UNMATERIALIZED | FALLBACK |
 | `FOREGROUND_FLORA_001.png` | NO in this runtime | historical PASS: 1254x1254 RGBA alpha 0-255, QA 22/24 | ACCEPT / LOCKED historically; bytes currently UNMATERIALIZED | FALLBACK |
 | `NPC_MASTER_001.png` | YES - candidate bytes | PNG PASS; isolated-alpha FAIL | CANDIDATE; baked background prevents canonical runtime promotion in this branch | NOT USED |
-| `NPC_002.png` | YES | PASS for attached PNG; 1224x1285 RGBA alpha 0-255 | ACCEPT visual identity: uploaded sheet matches recovered elder-man turnaround description. Historical ZIP raw was reported as 1024x1536, so byte identity with that older raw is **not claimed** | RAW materialized in current session only; no player/Oren/runtime-role assignment |
+| `NPC_002.png` | YES | PASS for attached PNG; 1224x1285 RGBA alpha 0-255 | ACCEPT visual identity: uploaded sheet matches recovered elder-man turnaround description. Historical ZIP raw was reported as 1024x1536, so byte identity with that older raw is **not claimed** | RAW inspected in current session; no player/Oren/runtime-role assignment |
 
 Current physical attachments: **8/14 slots have candidate or accepted bytes in this runtime**.
 Current accepted mappings from these attachments: **5** (`GROUND_PATH_001`, `HOUSE_002`, `WORKSHOP_001`, `WELL_001`, `NPC_002`).
@@ -53,27 +53,29 @@ Proven missing canonical assets: **0**.
 
 ## Runtime derivatives
 
-### `village/L3_ARCHITECTURE_PARTIAL.png`
+The source composition is authored on the 960x540 target canvas, then encoded to smaller transparent WebP shipping derivatives to keep this PR lightweight. Phaser displays every layer at 960x540. This is a derived runtime export only; the attached source PNGs are unchanged.
 
-Transparent 960x540 derivative from:
+### `village/L3_ARCHITECTURE_PARTIAL.webp`
 
-- `WORKSHOP_001`: resized to 350px wide, centered on x=230 with bottom y=335. This aligns with the existing Workshop presentation anchor and stays above the canonical firewood strip.
-- `HOUSE_002`: resized to 265px wide, centered on x=565 with bottom y=332.
+- Shipping derivative: **400x225 WebP**, 11,048 bytes, transparent, Git blob `d65e6d1b2d96d1e73535753b40dfa931d30e6057`.
+- Source composition: transparent 960x540 derivative from:
+  - `WORKSHOP_001`: resized to 350px wide on the 960x540 composition, centered on x=230 with bottom y=335. This aligns with the existing Workshop presentation anchor and stays above the canonical firewood strip.
+  - `HOUSE_002`: resized to 265px wide on the 960x540 composition, centered on x=565 with bottom y=332.
 
 No production Tavern exterior is inserted because `TAVERN_001` is not materialized. The existing Tavern entrance greybox remains the truthful interaction landmark.
 
-### `village/L4_GAMEPLAY_PARTIAL.png`
+### `village/L4_GAMEPLAY_PARTIAL.webp`
 
-Transparent 960x540 derivative from:
-
-- `GROUND_PATH_001`: proportional runtime resize to the 960x540 gameplay canvas.
-- `WELL_001`: resized to 165px wide, centered at x=485 with bottom y=420, aligned with the existing well obstacle/presentation area.
+- Shipping derivative: **256x144 WebP**, 6,298 bytes, transparent, Git blob `8569e6b6204547d3618399c01f761b6ff777e47b`.
+- Source composition: transparent 960x540 derivative from:
+  - `GROUND_PATH_001`: proportional runtime resize to the 960x540 gameplay canvas.
+  - `WELL_001`: resized to 165px wide on the 960x540 composition, centered at x=485 with bottom y=420, aligned with the existing well obstacle/presentation area.
 
 Canonical firewood entities remain the existing gameplay fallback and are not painted into this layer.
 
 ## Partial production policy
 
-The checked-in manifest is `status: partial` and activates only L3/L4 derivatives. The runtime renders these transparent production layers above the readable greybox base. It does **not** synthesize absent L0/L1/L2/L5 slots.
+The checked-in manifest is `status: partial` and activates only the materialized L3/L4 WebP derivatives. The runtime renders these transparent production layers above the readable greybox base. It does **not** synthesize absent L0/L1/L2/L5 slots.
 
 Tavern interior, player, Oren and firewood production slots stay empty/fallback. `TAVERN_001` exterior is not reused as an interior, and neither NPC asset is assigned to player/Oren.
 
@@ -88,7 +90,7 @@ Historical coefficients remain locked:
 - L4 GAMEPLAY `1.0`
 - L5 FOREGROUND `1.4`
 
-Parallax remains **disabled** in this partial materialization. The current accepted L3/L4 derivatives are exactly 960x540 and have no safe horizontal overscan. Enabling camera-relative scroll factors would expose transparent/greybox seams and risk visual hotspot drift. Partial static production is therefore the truthful P0 result until seam-safe background/foreground layers are materialized.
+Parallax remains **disabled** in this partial materialization. The current accepted L3/L4 source compositions have no safe horizontal overscan. Enabling camera-relative scroll factors would expose transparent/greybox seams and risk visual hotspot drift. Partial static production is therefore the truthful P0 result until seam-safe background/foreground layers are materialized.
 
 ## Remaining unresolved canonical slots after this pass
 
