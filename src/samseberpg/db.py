@@ -16,7 +16,6 @@ CREATE TABLE IF NOT EXISTS worlds (
     created_at TEXT NOT NULL,
     last_simulated_at TEXT
 );
-
 CREATE TABLE IF NOT EXISTS locations (
     id TEXT PRIMARY KEY,
     world_id TEXT NOT NULL REFERENCES worlds(id) ON DELETE CASCADE,
@@ -24,14 +23,12 @@ CREATE TABLE IF NOT EXISTS locations (
     description TEXT NOT NULL,
     sort_order INTEGER NOT NULL
 );
-
 CREATE TABLE IF NOT EXISTS location_edges (
     from_location_id TEXT NOT NULL REFERENCES locations(id) ON DELETE CASCADE,
     to_location_id TEXT NOT NULL REFERENCES locations(id) ON DELETE CASCADE,
     PRIMARY KEY (from_location_id, to_location_id),
     CHECK (from_location_id <> to_location_id)
 );
-
 CREATE TABLE IF NOT EXISTS actors (
     id TEXT PRIMARY KEY,
     world_id TEXT NOT NULL REFERENCES worlds(id) ON DELETE CASCADE,
@@ -40,20 +37,17 @@ CREATE TABLE IF NOT EXISTS actors (
     location_id TEXT REFERENCES locations(id),
     created_at TEXT NOT NULL
 );
-
 CREATE TABLE IF NOT EXISTS players (
     actor_id TEXT PRIMARY KEY REFERENCES actors(id) ON DELETE CASCADE,
     discord_user_id TEXT NOT NULL UNIQUE,
     joined_at TEXT NOT NULL,
     coins INTEGER NOT NULL DEFAULT 10 CHECK (coins >= 0)
 );
-
 CREATE TABLE IF NOT EXISTS npcs (
     actor_id TEXT PRIMARY KEY REFERENCES actors(id) ON DELETE CASCADE,
     role TEXT NOT NULL,
     current_activity TEXT NOT NULL
 );
-
 CREATE TABLE IF NOT EXISTS npc_schedule (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     npc_actor_id TEXT NOT NULL REFERENCES npcs(actor_id) ON DELETE CASCADE,
@@ -64,7 +58,6 @@ CREATE TABLE IF NOT EXISTS npc_schedule (
     priority INTEGER NOT NULL DEFAULT 0,
     UNIQUE (npc_actor_id, start_minute_local, end_minute_local, priority)
 );
-
 CREATE TABLE IF NOT EXISTS entities (
     id TEXT PRIMARY KEY,
     world_id TEXT NOT NULL REFERENCES worlds(id) ON DELETE CASCADE,
@@ -77,7 +70,6 @@ CREATE TABLE IF NOT EXISTS entities (
     created_at TEXT NOT NULL,
     CHECK (NOT (location_id IS NOT NULL AND owner_actor_id IS NOT NULL))
 );
-
 CREATE TABLE IF NOT EXISTS relations (
     source_actor_id TEXT NOT NULL REFERENCES actors(id) ON DELETE CASCADE,
     target_actor_id TEXT NOT NULL REFERENCES actors(id) ON DELETE CASCADE,
@@ -91,7 +83,6 @@ CREATE TABLE IF NOT EXISTS relations (
     PRIMARY KEY (source_actor_id, target_actor_id),
     CHECK (source_actor_id <> target_actor_id)
 );
-
 CREATE TABLE IF NOT EXISTS action_events (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     world_id TEXT NOT NULL REFERENCES worlds(id) ON DELETE CASCADE,
@@ -106,7 +97,6 @@ CREATE TABLE IF NOT EXISTS action_events (
     summary TEXT NOT NULL,
     evidence_json TEXT NOT NULL DEFAULT '{}'
 );
-
 CREATE TABLE IF NOT EXISTS processed_interactions (
     external_id TEXT PRIMARY KEY,
     world_id TEXT NOT NULL REFERENCES worlds(id) ON DELETE CASCADE,
@@ -115,7 +105,27 @@ CREATE TABLE IF NOT EXISTS processed_interactions (
     result_json TEXT NOT NULL,
     processed_at TEXT NOT NULL
 );
-
+CREATE TABLE IF NOT EXISTS quests (
+    id TEXT PRIMARY KEY,
+    world_id TEXT NOT NULL REFERENCES worlds(id) ON DELETE CASCADE,
+    player_actor_id TEXT NOT NULL REFERENCES players(actor_id) ON DELETE CASCADE,
+    quest_type TEXT NOT NULL,
+    giver_actor_id TEXT NOT NULL REFERENCES npcs(actor_id),
+    status TEXT NOT NULL CHECK (status IN ('active', 'completed')),
+    accepted_at TEXT NOT NULL,
+    completed_at TEXT,
+    UNIQUE (player_actor_id, quest_type)
+);
+CREATE TABLE IF NOT EXISTS npc_memories (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    npc_actor_id TEXT NOT NULL REFERENCES npcs(actor_id) ON DELETE CASCADE,
+    subject_actor_id TEXT REFERENCES actors(id) ON DELETE SET NULL,
+    fact TEXT NOT NULL,
+    importance INTEGER NOT NULL DEFAULT 50 CHECK (importance BETWEEN 0 AND 100),
+    reinforcement_count INTEGER NOT NULL DEFAULT 0 CHECK (reinforcement_count >= 0),
+    created_at TEXT NOT NULL,
+    UNIQUE (npc_actor_id, subject_actor_id, fact)
+);
 CREATE INDEX IF NOT EXISTS idx_actors_location ON actors(location_id);
 CREATE INDEX IF NOT EXISTS idx_entities_location ON entities(location_id);
 CREATE INDEX IF NOT EXISTS idx_entities_owner ON entities(owner_actor_id);
@@ -125,24 +135,10 @@ CREATE INDEX IF NOT EXISTS idx_schedule_npc ON npc_schedule(npc_actor_id, priori
 
 
 _LOCATIONS = (
-    (
-        "workshop_yard",
-        "Workshop Yard",
-        "A compact yard of benches, timber scraps, tools, and a weathered stone wall.",
-        10,
-    ),
-    (
-        "village_square",
-        "Village Square",
-        "The social center of the village, ringed by a well, an inn, and market tables.",
-        20,
-    ),
-    (
-        "river_edge",
-        "River Edge",
-        "A reed-lined bank where the village path meets a shallow bend in the river.",
-        30,
-    ),
+    ("workshop_yard", "Workshop Yard", "A compact yard of benches, timber scraps, tools, and a weathered stone wall.", 10),
+    ("village_square", "Village Square", "The social center of the village, ringed by a well, an inn, and market tables.", 20),
+    ("river_edge", "River Edge", "A reed-lined bank where the village path meets a shallow bend in the river.", 30),
+    ("tavern_interior", "The Wayfarer's Hearth", "A compact warm tavern interior with a dark timber counter and amber hearth light.", 40),
 )
 
 _EDGES = (
@@ -150,11 +146,13 @@ _EDGES = (
     ("village_square", "workshop_yard"),
     ("village_square", "river_edge"),
     ("river_edge", "village_square"),
+    ("village_square", "tavern_interior"),
+    ("tavern_interior", "village_square"),
 )
 
 _NPCS = (
     ("npc_mira", "Mira", "workshop_yard", "craftswoman", "working at the bench"),
-    ("npc_oren", "Oren", "village_square", "innkeeper", "preparing the inn"),
+    ("npc_oren", "Oren", "tavern_interior", "innkeeper", "preparing the inn"),
     ("npc_kaspar", "Kaspar", "river_edge", "forager", "checking the riverbank"),
 )
 
@@ -162,8 +160,8 @@ _SCHEDULE = (
     ("npc_mira", 360, 1080, "workshop_yard", "working at the bench", 10),
     ("npc_mira", 1080, 1320, "village_square", "running evening errands", 10),
     ("npc_mira", 1320, 360, "workshop_yard", "resting near the workshop", 10),
-    ("npc_oren", 300, 1380, "village_square", "running the inn", 10),
-    ("npc_oren", 1380, 300, "village_square", "sleeping upstairs", 10),
+    ("npc_oren", 300, 1380, "tavern_interior", "running the inn", 10),
+    ("npc_oren", 1380, 300, "tavern_interior", "sleeping upstairs", 10),
     ("npc_kaspar", 360, 960, "river_edge", "foraging along the river", 10),
     ("npc_kaspar", 960, 1260, "village_square", "trading gathered goods", 10),
     ("npc_kaspar", 1260, 360, "river_edge", "camping by the river", 10),
@@ -182,6 +180,11 @@ _ENTITIES = (
     ("smooth_pebble_1", "Smooth Pebble", "stone", "river_edge", 1, {}),
     ("fishing_net_1", "Fishing Net", "tool", "river_edge", 1, {"condition": "patched"}),
     ("river_marker_1", "River Marker", "fixture", "river_edge", 0, {}),
+    ("firewood_1", "Split Firewood", "firewood", "workshop_yard", 1, {}),
+    ("firewood_2", "Split Firewood", "firewood", "workshop_yard", 1, {}),
+    ("firewood_3", "Split Firewood", "firewood", "workshop_yard", 1, {}),
+    ("firewood_4", "Split Firewood", "firewood", "workshop_yard", 1, {}),
+    ("firewood_5", "Split Firewood", "firewood", "workshop_yard", 1, {}),
 )
 
 
@@ -190,12 +193,7 @@ class GameDatabase:
         self.path = Path(path)
 
     def connect(self) -> sqlite3.Connection:
-        conn = sqlite3.connect(
-            str(self.path),
-            timeout=5.0,
-            isolation_level=None,
-            check_same_thread=False,
-        )
+        conn = sqlite3.connect(str(self.path), timeout=5.0, isolation_level=None, check_same_thread=False)
         conn.row_factory = sqlite3.Row
         conn.execute("PRAGMA foreign_keys = ON")
         conn.execute("PRAGMA busy_timeout = 5000")
@@ -221,50 +219,37 @@ class GameDatabase:
 
     def _bootstrap(self, conn: sqlite3.Connection) -> None:
         created_at = _sqlite_utc_now(conn)
-
         conn.execute(
-            "INSERT OR IGNORE INTO worlds "
-            "(id, name, timezone, created_at, last_simulated_at) VALUES (?, ?, ?, ?, NULL)",
+            "INSERT OR IGNORE INTO worlds (id, name, timezone, created_at, last_simulated_at) VALUES (?, ?, ?, ?, NULL)",
             (DEFAULT_WORLD_ID, "MVP Village", "UTC", created_at),
         )
-
         conn.executemany(
-            "INSERT OR IGNORE INTO locations "
-            "(id, world_id, name, description, sort_order) VALUES (?, ?, ?, ?, ?)",
-            [
-                (location_id, DEFAULT_WORLD_ID, name, description, sort_order)
-                for location_id, name, description, sort_order in _LOCATIONS
-            ],
+            "INSERT OR IGNORE INTO locations (id, world_id, name, description, sort_order) VALUES (?, ?, ?, ?, ?)",
+            [(location_id, DEFAULT_WORLD_ID, name, description, sort_order) for location_id, name, description, sort_order in _LOCATIONS],
         )
-
         conn.executemany(
             "INSERT OR IGNORE INTO location_edges (from_location_id, to_location_id) VALUES (?, ?)",
             _EDGES,
         )
-
         for actor_id, name, location_id, role, activity in _NPCS:
             conn.execute(
-                "INSERT OR IGNORE INTO actors "
-                "(id, world_id, actor_type, name, location_id, created_at) "
-                "VALUES (?, ?, 'npc', ?, ?, ?)",
+                "INSERT OR IGNORE INTO actors (id, world_id, actor_type, name, location_id, created_at) VALUES (?, ?, 'npc', ?, ?, ?)",
                 (actor_id, DEFAULT_WORLD_ID, name, location_id, created_at),
             )
             conn.execute(
                 "INSERT OR IGNORE INTO npcs (actor_id, role, current_activity) VALUES (?, ?, ?)",
                 (actor_id, role, activity),
             )
-
         conn.executemany(
-            "INSERT OR IGNORE INTO npc_schedule "
-            "(npc_actor_id, start_minute_local, end_minute_local, location_id, activity, priority) "
-            "VALUES (?, ?, ?, ?, ?, ?)",
+            "INSERT OR IGNORE INTO npc_schedule (npc_actor_id, start_minute_local, end_minute_local, location_id, activity, priority) VALUES (?, ?, ?, ?, ?, ?)",
             _SCHEDULE,
         )
-
+        conn.execute("UPDATE actors SET location_id = 'tavern_interior' WHERE id = 'npc_oren'")
+        conn.execute(
+            "UPDATE npc_schedule SET location_id = 'tavern_interior' WHERE npc_actor_id = 'npc_oren'"
+        )
         conn.executemany(
-            "INSERT OR IGNORE INTO entities "
-            "(id, world_id, name, entity_type, location_id, owner_actor_id, portable, state_json, created_at) "
-            "VALUES (?, ?, ?, ?, ?, NULL, ?, ?, ?)",
+            "INSERT OR IGNORE INTO entities (id, world_id, name, entity_type, location_id, owner_actor_id, portable, state_json, created_at) VALUES (?, ?, ?, ?, ?, NULL, ?, ?, ?)",
             [
                 (
                     entity_id,
@@ -282,8 +267,4 @@ class GameDatabase:
 
 
 def _sqlite_utc_now(conn: sqlite3.Connection) -> str:
-    return str(
-        conn.execute(
-            "SELECT strftime('%Y-%m-%dT%H:%M:%fZ', 'now')"
-        ).fetchone()[0]
-    )
+    return str(conn.execute("SELECT strftime('%Y-%m-%dT%H:%M:%fZ', 'now')").fetchone()[0])
