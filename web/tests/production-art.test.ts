@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import {
@@ -51,8 +52,55 @@ test("v2 village missing one core layer falls back truthfully and reports the mi
 
   const readiness = getProductionReadiness(manifest);
   assert.equal(readiness.village.ready, false);
+  assert.equal(readiness.village.partial, true);
   assert.ok(readiness.village.present > 0);
   assert.deepEqual(readiness.village.missing, ["village.layers.architecture"]);
+});
+
+test("v2 reports exact partial Village layers without coupling them to absent core slots", () => {
+  const manifest = normalizeProductionManifest({
+    version: 2,
+    status: "partial",
+    canvas: { width: 960, height: 540 },
+    village: {
+      layers: { architecture: "village/L3.png", gameplay: "village/L4.png" },
+      parallax: { enabled: false }
+    },
+    tavern: { layers: {} },
+    characters: {},
+    props: {}
+  });
+
+  const readiness = getProductionReadiness(manifest);
+  assert.equal(readiness.village.ready, false);
+  assert.equal(readiness.village.partial, true);
+  assert.deepEqual(readiness.village.available, ["architecture", "gameplay"]);
+  assert.deepEqual(readiness.village.missing, [
+    "village.layers.sky",
+    "village.layers.distant_nature",
+    "village.layers.mid_nature"
+  ]);
+});
+
+test("checked-in partial manifest activates only approved L3 and L4 derivatives", () => {
+  const raw = JSON.parse(readFileSync(new URL("../public/assets/production/manifest.json", import.meta.url), "utf8"));
+  const manifest = normalizeProductionManifest(raw);
+  const readiness = getProductionReadiness(manifest);
+
+  assert.equal(manifest.status, "partial");
+  assert.equal(manifest.village.layers.architecture, "village/L3_ARCHITECTURE_PARTIAL.png");
+  assert.equal(manifest.village.layers.gameplay, "village/L4_GAMEPLAY_PARTIAL.png");
+  assert.equal(manifest.village.layers.sky, "");
+  assert.equal(manifest.village.layers.distant_nature, "");
+  assert.equal(manifest.village.layers.mid_nature, "");
+  assert.equal(manifest.village.layers.foreground, "");
+  assert.equal(manifest.village.parallax.enabled, false);
+  assert.equal(readiness.village.partial, true);
+  assert.deepEqual(readiness.village.available, ["architecture", "gameplay"]);
+  assert.equal(manifest.tavern.layers.background, "");
+  assert.equal(manifest.characters.player, "");
+  assert.equal(manifest.characters.oren, "");
+  assert.equal(manifest.props.firewood, "");
 });
 
 test("legacy v1 awaiting_assets paths remain disabled so placeholder paths are never fetched", () => {
@@ -68,6 +116,7 @@ test("legacy v1 awaiting_assets paths remain disabled so placeholder paths are n
 
   const readiness = getProductionReadiness(manifest);
   assert.equal(readiness.village.present, 0);
+  assert.equal(readiness.village.partial, false);
   assert.equal(readiness.tavern.ready, false);
   assert.equal(readiness.player, false);
   assert.equal(readiness.oren, false);
@@ -87,6 +136,7 @@ test("legacy v1 ready remains backward compatible without coupling village to ta
 
   const readiness = getProductionReadiness(manifest);
   assert.equal(readiness.village.ready, true);
+  assert.equal(readiness.village.partial, false);
   assert.equal(readiness.tavern.ready, false);
 });
 
@@ -111,5 +161,6 @@ test("malformed manifest becomes a safe empty fallback instead of throwing", () 
   const readiness = getProductionReadiness(manifest);
   assert.equal(manifest.status, "awaiting_assets");
   assert.equal(readiness.village.ready, false);
+  assert.equal(readiness.village.partial, false);
   assert.equal(readiness.village.present, 0);
 });
