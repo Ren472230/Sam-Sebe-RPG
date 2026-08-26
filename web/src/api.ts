@@ -100,7 +100,10 @@ export class GameApi {
   }
 
   async getState(playerId: string): Promise<GameSnapshot> {
-    const response = await this.request<FrozenStateResponse>(`/api/state/${encodeURIComponent(playerId)}`);
+    const response = await this.request<unknown>(`/api/state/${encodeURIComponent(playerId)}`);
+    if (!isFrozenStateResponse(response)) {
+      throw new ApiError(200, "Некорректный ответ backend: состояние имеет неожиданный формат.");
+    }
     return {
       world: {
         player_id: response.player_id,
@@ -178,6 +181,35 @@ export class GameApi {
     }
     return payload as T;
   }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function isFrozenStateResponse(value: unknown): value is FrozenStateResponse {
+  if (!isRecord(value)) return false;
+  const location = value.location;
+  const quest = value.quest;
+  const relation = value.oren_relation;
+  if (!isRecord(location) || !isRecord(quest) || !isRecord(relation)) return false;
+
+  return typeof value.player_id === "string"
+    && typeof location.id === "string"
+    && typeof location.name === "string"
+    && typeof location.description === "string"
+    && Array.isArray(value.visible_actors)
+    && value.visible_actors.every(isRecord)
+    && Array.isArray(value.visible_entities)
+    && value.visible_entities.every(isRecord)
+    && Array.isArray(value.inventory)
+    && value.inventory.every(isRecord)
+    && typeof quest.quest_type === "string"
+    && (quest.status === "available" || quest.status === "active" || quest.status === "completed")
+    && typeof quest.required_firewood === "number"
+    && typeof quest.owned_firewood === "number"
+    && typeof value.coins === "number"
+    && typeof relation.trust === "number";
 }
 
 function mapActor(actor: CanonicalActor): VisibleActor {

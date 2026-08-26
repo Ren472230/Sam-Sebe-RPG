@@ -69,3 +69,21 @@ test("network failure becomes readable ApiError", async () => {
     globalThis.fetch = originalFetch;
   }
 });
+
+test("malformed state response becomes readable ApiError", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => new Response(JSON.stringify({}), {
+    status: 200,
+    headers: { "content-type": "application/json" }
+  });
+  try {
+    await assert.rejects(() => new GameApi().getState("player_1"), (error: unknown) => {
+      assert.ok(error instanceof ApiError);
+      assert.equal(error.status, 200);
+      assert.match(error.message, /Некорректный ответ backend/);
+      return true;
+    });
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
