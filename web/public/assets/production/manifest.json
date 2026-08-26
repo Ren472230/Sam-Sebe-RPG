@@ -1,0 +1,47 @@
+{
+  "version": 1,
+  "status": "awaiting_assets",
+  "canvas": { "width": 960, "height": 540 },
+  "runtime_note": "Keep awaiting_assets until all required P0 WebP exports exist. Then switch status to ready; gameplay anchors remain unchanged.",
+  "village": {
+    "layers": {
+      "sky": "village/sky.webp",
+      "far_world": "village/far_world.webp",
+      "mid_world": "village/mid_world.webp",
+      "foreground": "village/foreground.webp"
+    },
+    "anchors": {
+      "player_start": [430, 455],
+      "tavern_door": [825, 250],
+      "well": [485, 360],
+      "workshop": [230, 264],
+      "firewood_strip": { "x": [112, 260], "y": [428, 449] }
+    }
+  },
+  "tavern": {
+    "layers": {
+      "background": "tavern/background.webp",
+      "foreground": "tavern/foreground.webp"
+    },
+    "anchors": {
+      "player_entry": [270, 425],
+      "oren": [650, 325],
+      "exit": [110, 420]
+    }
+  },
+  "characters": {
+    "player": "characters/player.webp",
+    "oren": "characters/oren.webp"
+  },
+  "props": {
+    "firewood": "props/firewood.webp"
+  },
+  "ui": {
+    "dialogue_frame": "ui/dialogue_frame.webp"
+  },
+  "optional": [
+    "village/foreground.webp",
+    "tavern/foreground.webp",
+    "ui/dialogue_frame.webp"
+  ]
+}
