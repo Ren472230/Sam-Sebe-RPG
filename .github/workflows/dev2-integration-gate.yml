@@ -36,6 +36,9 @@ jobs:
       - name: Real browser critical route
         working-directory: web
         run: npm run test:e2e
+      - name: Persisted browser console smoke
+        working-directory: web
+        run: npx playwright test tests/console-smoke.spec.ts
       - name: Upload browser evidence
         if: always()
         uses: actions/upload-artifact@v4
