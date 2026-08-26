@@ -1,14 +1,28 @@
 {
-  "version": 1,
+  "version": 2,
   "status": "awaiting_assets",
   "canvas": { "width": 960, "height": 540 },
-  "runtime_note": "Keep awaiting_assets until all required P0 WebP exports exist. Then switch status to ready; gameplay anchors remain unchanged.",
+  "runtime_note": "Canonical Start Village existence is known, but raw bytes are not mounted in this integration runtime. Keep paths empty until approved derivatives are materialized and QA'd. Village readiness is independent from Tavern/player/Oren/firewood readiness.",
   "village": {
     "layers": {
-      "sky": "village/sky.webp",
-      "far_world": "village/far_world.webp",
-      "mid_world": "village/mid_world.webp",
-      "foreground": "village/foreground.webp"
+      "sky": "",
+      "distant_nature": "",
+      "mid_nature": "",
+      "architecture": "",
+      "gameplay": "",
+      "foreground": ""
+    },
+    "parallax": {
+      "enabled": false,
+      "coefficients": {
+        "sky": 0.005,
+        "distant_nature": 0.045,
+        "mid_nature": 0.16,
+        "architecture": 0.43,
+        "gameplay": 1.0,
+        "foreground": 1.4
+      },
+      "activation_note": "Enable only after materialized derivatives include safe camera overscan and hotspot alignment has passed browser QA."
     },
     "anchors": {
       "player_start": [430, 455],
@@ -20,28 +34,31 @@
   },
   "tavern": {
     "layers": {
-      "background": "tavern/background.webp",
-      "foreground": "tavern/foreground.webp"
+      "background": "",
+      "foreground": ""
     },
     "anchors": {
       "player_entry": [270, 425],
       "oren": [650, 325],
       "exit": [110, 420]
-    }
+    },
+    "runtime_note": "TAVERN_001 is an exterior building slot, not an approved TavernScene interior. Keep TavernScene on greybox until a canonical interior exists."
   },
   "characters": {
-    "player": "characters/player.webp",
-    "oren": "characters/oren.webp"
+    "player": "",
+    "oren": ""
   },
   "props": {
-    "firewood": "props/firewood.webp"
+    "firewood": ""
   },
   "ui": {
-    "dialogue_frame": "ui/dialogue_frame.webp"
+    "dialogue_frame": ""
   },
-  "optional": [
-    "village/foreground.webp",
-    "tavern/foreground.webp",
-    "ui/dialogue_frame.webp"
-  ]
+  "fallback_policy": {
+    "village": "greybox unless all core Village derivative layers are present and loaded",
+    "tavern": "greybox unless approved interior background is present and loaded",
+    "player": "existing gameplay fallback",
+    "oren": "existing gameplay fallback",
+    "firewood": "existing canonical-entity gameplay fallback"
+  }
 }
