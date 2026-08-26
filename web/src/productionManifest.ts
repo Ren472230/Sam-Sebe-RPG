@@ -55,7 +55,9 @@ export const EMPTY_PRODUCTION_MANIFEST: NormalizedProductionManifest = {
 
 type SceneReadiness = {
   ready: boolean;
+  partial: boolean;
   present: number;
+  available: string[];
   missing: string[];
 };
 
@@ -80,24 +82,34 @@ export function getProductionReadiness(manifest: NormalizedProductionManifest): 
     ? ["sky", "distant_nature", "mid_nature"]
     : ["sky", "distant_nature", "mid_nature", "architecture", "gameplay"];
 
+  const villageAvailable = (Object.keys(manifest.village.layers) as VillageLayerName[])
+    .filter((name) => hasPath(manifest.village.layers[name]));
   const villageMissing = requiredVillage
     .filter((name) => !hasPath(manifest.village.layers[name]))
     .map((name) => `village.layers.${name}`);
-  const villagePresent = Object.values(manifest.village.layers).filter(hasPath).length;
+  const villagePresent = villageAvailable.length;
 
   const tavernBackground = manifest.tavern.layers.background;
+  const tavernAvailable = [
+    hasPath(manifest.tavern.layers.background) ? "background" : "",
+    hasPath(manifest.tavern.layers.foreground) ? "foreground" : ""
+  ].filter(Boolean);
   const tavernMissing = hasPath(tavernBackground) ? [] : ["tavern.layers.background"];
-  const tavernPresent = [manifest.tavern.layers.background, manifest.tavern.layers.foreground].filter(hasPath).length;
+  const tavernPresent = tavernAvailable.length;
 
   return {
     village: {
       ready: villageMissing.length === 0,
+      partial: villagePresent > 0 && villageMissing.length > 0,
       present: villagePresent,
+      available: villageAvailable,
       missing: villageMissing
     },
     tavern: {
       ready: tavernMissing.length === 0,
+      partial: tavernPresent > 0 && tavernMissing.length > 0,
       present: tavernPresent,
+      available: tavernAvailable,
       missing: tavernMissing
     },
     player: hasPath(manifest.characters.player),
