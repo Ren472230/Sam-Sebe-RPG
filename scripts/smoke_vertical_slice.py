@@ -45,11 +45,18 @@ def payload(response, step: str) -> dict:
 
 
 def world(state: dict) -> dict:
-    value = state.get("world", state)
-    require("state contract", isinstance(value, dict), expected="world object", actual=value)
-    for key in ("location_id", "visible_actors", "visible_entities", "inventory"):
-        require("state contract", key in value, expected=f"world.{key}", actual=value)
-    return value
+    legacy = state.get("world")
+    if isinstance(legacy, dict):
+        for key in ("location_id", "visible_actors", "visible_entities", "inventory"):
+            require("state contract", key in legacy, expected=f"world.{key}", actual=legacy)
+        require("state contract", legacy["location_id"] == state["location"]["id"], expected=state["location"]["id"], actual=legacy["location_id"])
+        return legacy
+    return {
+        "location_id": state["location"]["id"],
+        "visible_actors": state["visible_actors"],
+        "visible_entities": state["visible_entities"],
+        "inventory": state["inventory"],
+    }
 
 
 def trust(state: dict) -> int:
@@ -68,8 +75,16 @@ def trust(state: dict) -> int:
 
 def state(client: TestClient, player_id: str) -> dict:
     value = payload(client.get(f"/api/state/{player_id}"), "state")
+    require("state contract", value.get("player_id") == player_id, expected=player_id, actual=value.get("player_id"))
+    location = value.get("location")
+    require("state contract", isinstance(location, dict), expected="location object", actual=location)
+    for key in ("id", "name", "description"):
+        require("state contract", key in location, expected=f"location.{key}", actual=location)
+    for key in ("visible_actors", "visible_entities", "inventory"):
+        require("state contract", isinstance(value.get(key), list), expected=f"{key} list", actual=value.get(key))
     require("state contract", isinstance(value.get("quest"), dict), expected="quest object", actual=value)
     require("state contract", "coins" in value, expected="coins", actual=value)
+    require("state contract", isinstance(value.get("oren_relation"), dict) and "trust" in value["oren_relation"], expected="oren_relation.trust", actual=value.get("oren_relation"))
     world(value)
     trust(value)
     return value
@@ -160,10 +175,13 @@ def run_smoke(db_path: Path) -> None:
 
     move(client, player_id, "village_square", "village square")
     move(client, player_id, "tavern_interior", "tavern reachable")
+    tavern_state = state(client, player_id)
+    oren_ids = {str(actor.get("actor_id", actor.get("id", ""))) for actor in tavern_state["visible_actors"] if isinstance(actor, dict)}
+    require("tavern reachable", "npc_oren" in oren_ids, expected="npc_oren visible", actual=sorted(oren_ids))
     pass_step("tavern reachable")
 
     dialogue = payload(
-        client.post("/api/dialogue", json={"player_id": player_id, "user_text": "Есть работа?"}),
+        client.post("/api/dialogue", json={"player_id": player_id, "text": "Есть работа?"}),
         "quest offer dialogue",
     )
     require("fallback dialogue", dialogue.get("used_fallback") is True, expected=True, actual=dialogue)
@@ -247,7 +265,7 @@ def run_smoke(db_path: Path) -> None:
     pass_step("restart persistence")
 
     fallback = payload(
-        restarted.post("/api/dialogue", json={"player_id": player_id, "user_text": "Ты меня помнишь?"}),
+        restarted.post("/api/dialogue", json={"player_id": player_id, "text": "Ты меня помнишь?"}),
         "fallback dialogue",
     )
     require("fallback dialogue", fallback.get("used_fallback") is True, expected=True, actual=fallback)
