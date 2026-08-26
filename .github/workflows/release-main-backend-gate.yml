@@ -1,0 +1,51 @@
+name: Release Main Backend Gate
+
+on:
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  backend-main:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout exact main base SHA
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          fetch-depth: 1
+      - name: Assert tested SHA
+        run: |
+          echo "Expected main SHA: ${{ github.event.pull_request.base.sha }}"
+          echo "Actual checkout: $(git rev-parse HEAD)"
+          test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.base.sha }}"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install backend dependencies
+        run: python -m pip install -e ".[dev]"
+      - name: Python suite
+        run: python -m pytest -q tests
+      - name: No-OpenAI server and health
+        shell: bash
+        run: |
+          unset OPENAI_API_KEY
+          python -m samseberpg.server > /tmp/samseberpg-server.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+          for i in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:8000/api/health > /tmp/health.json; then
+              break
+            fi
+            sleep 1
+          done
+          cat /tmp/health.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          data = json.loads(Path('/tmp/health.json').read_text())
+          assert data == {'ok': True}, data
+          PY
+          kill "$SERVER_PID"
+          wait "$SERVER_PID" || true
+          trap - EXIT
