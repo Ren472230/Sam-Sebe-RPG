@@ -1,50 +1,34 @@
 import Phaser from "phaser";
 
-export type ProductionAssetManifest = {
-  version: number;
-  status: "awaiting_assets" | "ready";
-  canvas: { width: number; height: number };
-  village: {
-    layers: {
-      sky: string;
-      far_world: string;
-      mid_world: string;
-      foreground?: string;
-    };
-  };
-  tavern: {
-    layers: {
-      background: string;
-      foreground?: string;
-    };
-  };
-  characters: {
-    player: string;
-    oren: string;
-  };
-  props: {
-    firewood: string;
-  };
-  ui?: {
-    dialogue_frame?: string;
-  };
+import {
+  EMPTY_PRODUCTION_MANIFEST,
+  VILLAGE_PARALLAX_COEFFICIENTS,
+  getProductionReadiness,
+  normalizeProductionManifest,
+  type NormalizedProductionManifest,
+  type ProductionReadiness,
+  type VillageLayerName
+} from "./productionManifest";
+
+const VILLAGE_KEYS: Record<VillageLayerName, string> = {
+  sky: "prod:village:sky",
+  distant_nature: "prod:village:distant-nature",
+  mid_nature: "prod:village:mid-nature",
+  architecture: "prod:village:architecture",
+  gameplay: "prod:village:gameplay",
+  foreground: "prod:village:foreground"
 };
 
-const FALLBACK_MANIFEST: ProductionAssetManifest = {
-  version: 1,
-  status: "awaiting_assets",
-  canvas: { width: 960, height: 540 },
-  village: { layers: { sky: "", far_world: "", mid_world: "" } },
-  tavern: { layers: { background: "" } },
-  characters: { player: "", oren: "" },
-  props: { firewood: "" }
+const VILLAGE_DEPTHS: Record<VillageLayerName, number> = {
+  sky: -60,
+  distant_nature: -50,
+  mid_nature: -40,
+  architecture: -20,
+  gameplay: 0,
+  foreground: 40
 };
 
 const KEYS = {
-  villageSky: "prod:village:sky",
-  villageFar: "prod:village:far-world",
-  villageMid: "prod:village:mid-world",
-  villageForeground: "prod:village:foreground",
   tavernBackground: "prod:tavern:background",
   tavernForeground: "prod:tavern:foreground",
   player: "prod:character:player",
@@ -52,81 +36,96 @@ const KEYS = {
   firewood: "prod:prop:firewood"
 } as const;
 
-let currentManifest: ProductionAssetManifest = FALLBACK_MANIFEST;
+const V2_VILLAGE_CORE: VillageLayerName[] = ["sky", "distant_nature", "mid_nature", "architecture", "gameplay"];
+const V1_VILLAGE_CORE: VillageLayerName[] = ["sky", "distant_nature", "mid_nature"];
 
-export async function loadProductionManifest(): Promise<ProductionAssetManifest> {
+let currentManifest: NormalizedProductionManifest = EMPTY_PRODUCTION_MANIFEST;
+let currentReadiness: ProductionReadiness = getProductionReadiness(currentManifest);
+
+export async function loadProductionManifest(): Promise<NormalizedProductionManifest> {
   try {
     const response = await fetch("/assets/production/manifest.json", { cache: "no-store" });
-    if (!response.ok) return FALLBACK_MANIFEST;
-    const candidate: unknown = await response.json();
-    return isProductionAssetManifest(candidate) ? candidate : FALLBACK_MANIFEST;
+    if (!response.ok) return normalizeProductionManifest(null);
+    return normalizeProductionManifest(await response.json());
   } catch {
-    return FALLBACK_MANIFEST;
+    return normalizeProductionManifest(null);
   }
 }
 
-export function setProductionManifest(manifest: ProductionAssetManifest): void {
+export function setProductionManifest(manifest: NormalizedProductionManifest): void {
   currentManifest = manifest;
-  document.body.dataset.artMode = manifest.status === "ready" ? "production-pending" : "greybox";
+  currentReadiness = getProductionReadiness(manifest);
+  publishManifestDiagnostics();
 }
 
 export function preloadVillageProductionArt(scene: Phaser.Scene): void {
-  if (!productionEnabled()) return;
-  queueImage(scene, KEYS.villageSky, currentManifest.village.layers.sky);
-  queueImage(scene, KEYS.villageFar, currentManifest.village.layers.far_world);
-  queueImage(scene, KEYS.villageMid, currentManifest.village.layers.mid_world);
-  queueImage(scene, KEYS.villageForeground, currentManifest.village.layers.foreground);
-  queueImage(scene, KEYS.player, currentManifest.characters.player);
-  queueImage(scene, KEYS.firewood, currentManifest.props.firewood);
+  if (currentReadiness.village.ready) {
+    for (const layer of villageLayerNames()) {
+      queueImage(scene, VILLAGE_KEYS[layer], currentManifest.village.layers[layer]);
+    }
+  }
+  if (currentReadiness.player) queueImage(scene, KEYS.player, currentManifest.characters.player);
+  if (currentReadiness.firewood) queueImage(scene, KEYS.firewood, currentManifest.props.firewood);
 }
 
 export function preloadTavernProductionArt(scene: Phaser.Scene): void {
-  if (!productionEnabled()) return;
-  queueImage(scene, KEYS.tavernBackground, currentManifest.tavern.layers.background);
-  queueImage(scene, KEYS.tavernForeground, currentManifest.tavern.layers.foreground);
-  queueImage(scene, KEYS.player, currentManifest.characters.player);
-  queueImage(scene, KEYS.oren, currentManifest.characters.oren);
+  if (currentReadiness.tavern.ready) {
+    queueImage(scene, KEYS.tavernBackground, currentManifest.tavern.layers.background);
+    queueImage(scene, KEYS.tavernForeground, currentManifest.tavern.layers.foreground);
+  }
+  if (currentReadiness.player) queueImage(scene, KEYS.player, currentManifest.characters.player);
+  if (currentReadiness.oren) queueImage(scene, KEYS.oren, currentManifest.characters.oren);
 }
 
 export function renderVillageProductionBackground(scene: Phaser.Scene): boolean {
-  const required = [KEYS.villageSky, KEYS.villageFar, KEYS.villageMid];
-  if (!productionEnabled() || !required.every((key) => scene.textures.exists(key))) {
-    document.body.dataset.artMode = "greybox";
+  const required = requiredVillageLayers();
+  if (!currentReadiness.village.ready || !required.every((layer) => scene.textures.exists(VILLAGE_KEYS[layer]))) {
+    markSceneFallback("village", required
+      .filter((layer) => currentManifest.village.layers[layer] && !scene.textures.exists(VILLAGE_KEYS[layer]))
+      .map((layer) => `texture:${layer}`));
     return false;
   }
 
-  addFullCanvasLayer(scene, KEYS.villageSky, -40);
-  addFullCanvasLayer(scene, KEYS.villageFar, -30);
-  addFullCanvasLayer(scene, KEYS.villageMid, -20);
+  for (const layer of villageLayerNames()) {
+    if (layer === "foreground") continue;
+    const path = currentManifest.village.layers[layer];
+    if (!path || !scene.textures.exists(VILLAGE_KEYS[layer])) continue;
+    addVillageCanvasLayer(scene, layer);
+  }
   document.body.dataset.artMode = "production";
+  document.body.dataset.villageArt = "production";
   return true;
 }
 
 export function renderVillageProductionForeground(scene: Phaser.Scene): void {
-  if (scene.textures.exists(KEYS.villageForeground)) {
-    addFullCanvasLayer(scene, KEYS.villageForeground, 40);
-  }
+  const layer: VillageLayerName = "foreground";
+  if (!currentReadiness.village.ready || !currentManifest.village.layers[layer]) return;
+  if (scene.textures.exists(VILLAGE_KEYS[layer])) addVillageCanvasLayer(scene, layer);
 }
 
 export function renderTavernProductionBackground(scene: Phaser.Scene): boolean {
-  if (!productionEnabled() || !scene.textures.exists(KEYS.tavernBackground)) {
-    document.body.dataset.artMode = "greybox";
+  if (!currentReadiness.tavern.ready || !scene.textures.exists(KEYS.tavernBackground)) {
+    markSceneFallback("tavern", currentReadiness.tavern.ready ? ["texture:tavern.background"] : []);
     return false;
   }
 
   addFullCanvasLayer(scene, KEYS.tavernBackground, -20);
   document.body.dataset.artMode = "production";
+  document.body.dataset.tavernArt = "production";
   return true;
 }
 
 export function renderTavernProductionForeground(scene: Phaser.Scene): void {
-  if (scene.textures.exists(KEYS.tavernForeground)) {
-    addFullCanvasLayer(scene, KEYS.tavernForeground, 40);
-  }
+  if (!currentReadiness.tavern.ready || !currentManifest.tavern.layers.foreground) return;
+  if (scene.textures.exists(KEYS.tavernForeground)) addFullCanvasLayer(scene, KEYS.tavernForeground, 40);
 }
 
 export function createProductionPlayer(scene: Phaser.Scene, x: number, y: number): Phaser.GameObjects.Image | null {
-  if (!scene.textures.exists(KEYS.player)) return null;
+  if (!currentReadiness.player || !scene.textures.exists(KEYS.player)) {
+    if (currentReadiness.player) document.body.dataset.playerArt = "fallback-load-error";
+    return null;
+  }
+  document.body.dataset.playerArt = "production";
   return scene.add.image(x, y, KEYS.player)
     .setOrigin(0.5, 0.93)
     .setDisplaySize(48, 72)
@@ -134,7 +133,11 @@ export function createProductionPlayer(scene: Phaser.Scene, x: number, y: number
 }
 
 export function createProductionOren(scene: Phaser.Scene, x: number, y: number): Phaser.GameObjects.Image | null {
-  if (!scene.textures.exists(KEYS.oren)) return null;
+  if (!currentReadiness.oren || !scene.textures.exists(KEYS.oren)) {
+    if (currentReadiness.oren) document.body.dataset.orenArt = "fallback-load-error";
+    return null;
+  }
+  document.body.dataset.orenArt = "production";
   return scene.add.image(x, y, KEYS.oren)
     .setOrigin(0.5, 0.93)
     .setDisplaySize(64, 88)
@@ -142,15 +145,60 @@ export function createProductionOren(scene: Phaser.Scene, x: number, y: number):
 }
 
 export function createProductionFirewood(scene: Phaser.Scene, x: number, y: number): Phaser.GameObjects.Image | null {
-  if (!scene.textures.exists(KEYS.firewood)) return null;
+  if (!currentReadiness.firewood || !scene.textures.exists(KEYS.firewood)) {
+    if (currentReadiness.firewood) document.body.dataset.firewoodArt = "fallback-load-error";
+    return null;
+  }
+  document.body.dataset.firewoodArt = "production";
   return scene.add.image(x, y, KEYS.firewood)
     .setOrigin(0.5, 0.5)
     .setDisplaySize(44, 29)
     .setDepth(12);
 }
 
-function productionEnabled(): boolean {
-  return currentManifest.status === "ready";
+function publishManifestDiagnostics(): void {
+  const villageState = currentReadiness.village.ready
+    ? "production-pending"
+    : currentReadiness.village.present > 0 ? "partial-fallback" : "greybox";
+  const tavernState = currentReadiness.tavern.ready
+    ? "production-pending"
+    : currentReadiness.tavern.present > 0 ? "partial-fallback" : "greybox";
+
+  document.body.dataset.artMode = "greybox";
+  document.body.dataset.artManifest = `source-v${currentManifest.sourceVersion}:v2:${currentManifest.status}`;
+  document.body.dataset.villageArt = villageState;
+  document.body.dataset.tavernArt = tavernState;
+  document.body.dataset.playerArt = currentReadiness.player ? "production-pending" : "fallback";
+  document.body.dataset.orenArt = currentReadiness.oren ? "production-pending" : "fallback";
+  document.body.dataset.firewoodArt = currentReadiness.firewood ? "production-pending" : "fallback";
+
+  const missing = [
+    ...currentReadiness.village.missing,
+    ...currentReadiness.tavern.missing,
+    ...(!currentReadiness.player ? ["characters.player"] : []),
+    ...(!currentReadiness.oren ? ["characters.oren"] : []),
+    ...(!currentReadiness.firewood ? ["props.firewood"] : [])
+  ];
+  document.body.dataset.artMissing = missing.join(",");
+}
+
+function markSceneFallback(sceneName: "village" | "tavern", runtimeMissing: string[]): void {
+  document.body.dataset.artMode = "greybox";
+  document.body.dataset[sceneName === "village" ? "villageArt" : "tavernArt"] = runtimeMissing.length > 0
+    ? "fallback-load-error"
+    : "greybox";
+  if (runtimeMissing.length > 0) {
+    const existing = document.body.dataset.artMissing;
+    document.body.dataset.artMissing = [existing, ...runtimeMissing].filter(Boolean).join(",");
+  }
+}
+
+function requiredVillageLayers(): VillageLayerName[] {
+  return currentManifest.sourceVersion === 1 ? V1_VILLAGE_CORE : V2_VILLAGE_CORE;
+}
+
+function villageLayerNames(): VillageLayerName[] {
+  return ["sky", "distant_nature", "mid_nature", "architecture", "gameplay", "foreground"];
 }
 
 function queueImage(scene: Phaser.Scene, key: string, path?: string): void {
@@ -162,28 +210,16 @@ function assetUrl(path: string): string {
   return path.startsWith("/") ? path : `/assets/production/${path}`;
 }
 
+function addVillageCanvasLayer(scene: Phaser.Scene, layer: VillageLayerName): Phaser.GameObjects.Image {
+  const image = addFullCanvasLayer(scene, VILLAGE_KEYS[layer], VILLAGE_DEPTHS[layer]);
+  if (currentManifest.village.parallax.enabled) {
+    image.setScrollFactor(VILLAGE_PARALLAX_COEFFICIENTS[layer], 1);
+  }
+  return image;
+}
+
 function addFullCanvasLayer(scene: Phaser.Scene, key: string, depth: number): Phaser.GameObjects.Image {
   return scene.add.image(480, 270, key)
     .setDisplaySize(960, 540)
     .setDepth(depth);
-}
-
-function isProductionAssetManifest(value: unknown): value is ProductionAssetManifest {
-  if (!value || typeof value !== "object") return false;
-  const manifest = value as Record<string, any>;
-  return manifest.version === 1
-    && (manifest.status === "awaiting_assets" || manifest.status === "ready")
-    && manifest.canvas?.width === 960
-    && manifest.canvas?.height === 540
-    && hasString(manifest.village?.layers?.sky)
-    && hasString(manifest.village?.layers?.far_world)
-    && hasString(manifest.village?.layers?.mid_world)
-    && hasString(manifest.tavern?.layers?.background)
-    && hasString(manifest.characters?.player)
-    && hasString(manifest.characters?.oren)
-    && hasString(manifest.props?.firewood);
-}
-
-function hasString(value: unknown): value is string {
-  return typeof value === "string";
 }
