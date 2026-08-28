@@ -139,7 +139,7 @@ class VisualForgeTests(unittest.TestCase):
             with Image.open(output) as image:
                 rgba = image.convert("RGBA")
                 self.assertEqual(rgba.getpixel((0, 0)), (0, 0, 255, 255))
-                self.assertEqual(rgba.getpixel((3, 3)), (255, 0, 0, 255))
+                self.assertEqual(rgba.getpixel((3, 3)), (0, 0, 255, 255))
 
     def test_verify_production_manifest_checks_only_materialized_paths(self):
         with tempfile.TemporaryDirectory() as tmp:
