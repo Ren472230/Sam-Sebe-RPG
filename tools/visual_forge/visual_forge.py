@@ -166,6 +166,74 @@ def compose_scene(manifest_path: str | Path, output_path: str | Path) -> dict[st
     }
 
 
+VILLAGE_LAYER_ORDER = (
+    "sky",
+    "distant_nature",
+    "mid_nature",
+    "architecture",
+    "gameplay",
+    "foreground",
+)
+
+
+def compose_production_preview(
+    repo_root: str | Path,
+    output_path: str | Path,
+) -> dict[str, Any]:
+    repo_root = Path(repo_root).resolve()
+    production_dir = repo_root / "web/public/assets/production"
+    manifest_path = production_dir / "manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+
+    canvas = manifest.get("canvas", {})
+    width = int(canvas["width"])
+    height = int(canvas["height"])
+    scene = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+
+    layers = manifest.get("village", {}).get("layers", {})
+    if not isinstance(layers, dict):
+        raise ValueError("manifest.village.layers must be an object")
+
+    production_resolved = production_dir.resolve()
+    used_slots: list[str] = []
+    used_paths: list[str] = []
+
+    for slot in VILLAGE_LAYER_ORDER:
+        relative = layers.get(slot, "")
+        if not isinstance(relative, str) or not relative:
+            continue
+
+        candidate = (production_dir / relative).resolve()
+        try:
+            candidate.relative_to(production_resolved)
+        except ValueError as exc:
+            raise ValueError(f"layer path escapes production directory: {relative}") from exc
+        if not candidate.is_file():
+            raise FileNotFoundError(f"materialized layer is missing: {relative}")
+
+        image = _load_rgba(candidate)
+        if image.width > width or image.height > height:
+            raise ValueError(
+                f"layer exceeds production canvas: {relative} "
+                f"{image.size} > {(width, height)}"
+            )
+        scene.alpha_composite(image, dest=(0, 0))
+        used_slots.append(slot)
+        used_paths.append(relative)
+
+    output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    scene.save(output_path, format="PNG")
+    return {
+        "output": str(output_path),
+        "size": [width, height],
+        "layer_count": len(used_slots),
+        "layer_slots": used_slots,
+        "layers": used_paths,
+        "sha256": hashlib.sha256(output_path.read_bytes()).hexdigest(),
+    }
+
+
 def verify_registry(registry_path: str | Path) -> dict[str, Any]:
     registry_path = Path(registry_path)
     registry = json.loads(registry_path.read_text(encoding="utf-8"))
@@ -282,6 +350,10 @@ def main() -> int:
     compose_cmd.add_argument("manifest")
     compose_cmd.add_argument("output")
 
+    production_preview_cmd = sub.add_parser("compose-production-preview")
+    production_preview_cmd.add_argument("--root", default=".")
+    production_preview_cmd.add_argument("--output", required=True)
+
     verify_cmd = sub.add_parser("verify-production")
     verify_cmd.add_argument("--root", default=".")
 
@@ -299,6 +371,9 @@ def main() -> int:
         return 0 if report["ok"] else 2
     if args.command == "compose":
         _print_json(compose_scene(args.manifest, args.output))
+        return 0
+    if args.command == "compose-production-preview":
+        _print_json(compose_production_preview(args.root, args.output))
         return 0
     if args.command == "verify-production":
         report = verify_production_manifest(args.root)
