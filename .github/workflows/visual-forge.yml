@@ -41,3 +41,14 @@ jobs:
 
       - name: Verify materialized production assets
         run: python tools/visual_forge/visual_forge.py verify-production --root .
+
+      - name: Compose production preview
+        run: python tools/visual_forge/visual_forge.py compose-production-preview --root . --output visual-forge-preview.png
+
+      - name: Upload production preview
+        uses: actions/upload-artifact@v4
+        with:
+          name: visual-forge-preview
+          path: visual-forge-preview.png
+          if-no-files-found: error
+          retention-days: 7
