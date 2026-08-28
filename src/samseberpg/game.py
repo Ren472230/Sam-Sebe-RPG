@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from typing import Protocol
 from uuid import uuid4
 
 from .clock import Clock
@@ -16,11 +17,22 @@ from .domain import (
 )
 
 
+class LivingWorldAdvancer(Protocol):
+    def advance(self, conn, ticks: int) -> list[dict[str, object]]:
+        ...
+
+
 class GameService:
-    def __init__(self, db: GameDatabase, clock: Clock) -> None:
+    def __init__(
+        self,
+        db: GameDatabase,
+        clock: Clock,
+        living_world: LivingWorldAdvancer | None = None,
+    ) -> None:
         self.db = db
         self.clock = clock
         self.synchronizer = WorldSynchronizer()
+        self.living_world = living_world
 
     def register_player(self, discord_user_id: str, name: str) -> str:
         conn = self.db.connect()
@@ -106,10 +118,19 @@ class GameService:
         )
 
     def execute(self, action: CanonicalAction, external_id: str | None = None) -> ActionResult:
+        wait_ticks = _validated_wait_ticks(action)
+        if action.action_type is ActionType.WAIT and wait_ticks is None:
+            return ActionResult(
+                success=False,
+                code="INVALID_WAIT_TICKS",
+                summary="WAIT ticks must be an integer from 1 to 60.",
+            )
+
         conn = self.db.connect()
         try:
             conn.execute("BEGIN IMMEDIATE")
-            self.synchronizer.catch_up(conn, DEFAULT_WORLD_ID, self.clock.now())
+            now = self.clock.now()
+            self.synchronizer.catch_up(conn, DEFAULT_WORLD_ID, now)
             if external_id is not None:
                 replay_row = conn.execute(
                     "SELECT result_json FROM processed_interactions WHERE external_id = ?",
@@ -148,9 +169,29 @@ class GameService:
                 return result
 
             location_id = str(player[0])
-            success, code, summary, event_location = self._resolve_action(
-                conn, action, location_id
-            )
+            if action.action_type is ActionType.WAIT:
+                if self.living_world is None:
+                    raise RuntimeError(
+                        "LivingWorldService is not configured for WAIT actions"
+                    )
+                assert wait_ticks is not None
+                self.living_world.advance(conn, wait_ticks)
+                self.synchronizer.catch_up(
+                    conn,
+                    DEFAULT_WORLD_ID,
+                    now,
+                    force=True,
+                )
+                success, code, summary, event_location = (
+                    True,
+                    "OK",
+                    f"Waited {wait_ticks} simulation tick(s).",
+                    location_id,
+                )
+            else:
+                success, code, summary, event_location = self._resolve_action(
+                    conn, action, location_id
+                )
             result = self._record_result(
                 conn,
                 action,
@@ -246,6 +287,7 @@ class GameService:
             for key, value in {
                 "destination_id": action.destination_id,
                 "source_text": action.source_text,
+                "modifiers": action.modifiers,
             }.items()
             if value is not None
         }
@@ -299,6 +341,22 @@ class GameService:
                 ),
             )
         return result
+
+
+def _validated_wait_ticks(action: CanonicalAction) -> int | None:
+    if action.action_type is not ActionType.WAIT:
+        return None
+    modifiers = action.modifiers
+    if modifiers is None:
+        return 1
+    if not isinstance(modifiers, dict):
+        return None
+    ticks = modifiers.get("ticks", 1)
+    if type(ticks) is not int:
+        return None
+    if not 1 <= ticks <= 60:
+        return None
+    return ticks
 
 
 def _visible_actor(row) -> VisibleActor:
