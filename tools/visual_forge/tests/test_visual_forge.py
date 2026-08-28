@@ -11,6 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from visual_forge import (  # noqa: E402
+    compose_production_preview,
     compose_scene,
     inspect_asset,
     validate_edit,
@@ -101,6 +102,44 @@ class VisualForgeTests(unittest.TestCase):
             self.assertTrue(report["has_alpha"])
             self.assertEqual(report["alpha_bbox"], [2, 3, 6, 7])
             self.assertEqual(len(report["sha256"]), 64)
+
+    def test_compose_production_preview_uses_materialized_village_layer_order(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            production = root / "web/public/assets/production"
+            village = production / "village"
+            village.mkdir(parents=True)
+
+            architecture = Image.new("RGBA", (4, 4), (255, 0, 0, 255))
+            gameplay = Image.new("RGBA", (2, 2), (0, 0, 255, 255))
+            architecture.save(village / "architecture.png")
+            gameplay.save(village / "gameplay.png")
+
+            manifest = {
+                "version": 2,
+                "status": "partial",
+                "canvas": {"width": 4, "height": 4},
+                "village": {
+                    "layers": {
+                        "sky": "",
+                        "distant_nature": "",
+                        "mid_nature": "",
+                        "architecture": "village/architecture.png",
+                        "gameplay": "village/gameplay.png",
+                        "foreground": "",
+                    }
+                },
+            }
+            (production / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+
+            output = root / "preview.png"
+            report = compose_production_preview(root, output)
+            self.assertEqual(report["layer_count"], 2)
+            self.assertEqual(report["layer_slots"], ["architecture", "gameplay"])
+            with Image.open(output) as image:
+                rgba = image.convert("RGBA")
+                self.assertEqual(rgba.getpixel((0, 0)), (0, 0, 255, 255))
+                self.assertEqual(rgba.getpixel((3, 3)), (255, 0, 0, 255))
 
     def test_verify_production_manifest_checks_only_materialized_paths(self):
         with tempfile.TemporaryDirectory() as tmp:
