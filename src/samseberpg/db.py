@@ -207,7 +207,15 @@ _ENTITIES = (
     ("firewood_3", "Split Firewood", "firewood", "workshop_yard", 1, {}),
     ("firewood_4", "Split Firewood", "firewood", "workshop_yard", 1, {}),
     ("firewood_5", "Split Firewood", "firewood", "workshop_yard", 1, {}),
-    ("driftwood_1", "Driftwood", "material", "river_edge", 1, {"resource_kind": "useful_wood"}),
+)
+
+_DRIFTWOOD = (
+    "driftwood_1",
+    "Driftwood",
+    "material",
+    "river_edge",
+    1,
+    {"resource_kind": "useful_wood"},
 )
 
 
@@ -228,10 +236,14 @@ class GameDatabase:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         conn = self.connect()
         try:
+            living_world_initialized = _living_world_initialized(conn)
             conn.executescript(_SCHEMA)
             conn.execute("BEGIN IMMEDIATE")
             try:
-                self._bootstrap(conn)
+                self._bootstrap(
+                    conn,
+                    bootstrap_driftwood=not living_world_initialized,
+                )
             except Exception:
                 conn.execute("ROLLBACK")
                 raise
@@ -240,7 +252,12 @@ class GameDatabase:
         finally:
             conn.close()
 
-    def _bootstrap(self, conn: sqlite3.Connection) -> None:
+    def _bootstrap(
+        self,
+        conn: sqlite3.Connection,
+        *,
+        bootstrap_driftwood: bool,
+    ) -> None:
         created_at = _sqlite_utc_now(conn)
         conn.execute(
             "INSERT OR IGNORE INTO worlds (id, name, timezone, created_at, last_simulated_at) VALUES (?, ?, ?, ?, NULL)",
@@ -306,6 +323,40 @@ class GameDatabase:
                 for entity_id, name, entity_type, location_id, portable, state in _ENTITIES
             ],
         )
+        if bootstrap_driftwood:
+            entity_id, name, entity_type, location_id, portable, state = _DRIFTWOOD
+            conn.execute(
+                "INSERT OR IGNORE INTO entities "
+                "(id, world_id, name, entity_type, location_id, owner_actor_id, portable, state_json, created_at) "
+                "VALUES (?, ?, ?, ?, ?, NULL, ?, ?, ?)",
+                (
+                    entity_id,
+                    DEFAULT_WORLD_ID,
+                    name,
+                    entity_type,
+                    location_id,
+                    portable,
+                    json.dumps(state, separators=(",", ":"), sort_keys=True),
+                    created_at,
+                ),
+            )
+
+
+def _living_world_initialized(conn: sqlite3.Connection) -> bool:
+    if (
+        conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'world_runtime'"
+        ).fetchone()
+        is None
+    ):
+        return False
+    return (
+        conn.execute(
+            "SELECT 1 FROM world_runtime WHERE world_id = ?",
+            (DEFAULT_WORLD_ID,),
+        ).fetchone()
+        is not None
+    )
 
 
 def _sqlite_utc_now(conn: sqlite3.Connection) -> str:
