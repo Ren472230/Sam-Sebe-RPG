@@ -30,6 +30,12 @@ python tools/visual_forge/visual_forge.py validate-edit original.png edited.png 
 python tools/visual_forge/visual_forge.py compose scene.json output.png
 ```
 
+Собрать проверочный кадр прямо из текущего production-манифеста:
+
+```bash
+python tools/visual_forge/visual_forge.py compose-production-preview --root . --output visual-forge-preview.png
+```
+
 Проверить активный production-манифест проекта:
 
 ```bash
@@ -66,7 +72,8 @@ python tools/visual_forge/visual_forge.py verify-registry web/public/assets/prod
 - наличие всех файлов, на которые реально ссылается production `manifest.json`;
 - возможность открыть каждый активный PNG/WebP через Pillow;
 - целостность реестра ровно из 14 канонических ID;
-- отсутствие дублирующихся/неизвестных canonical ID в реестре.
+- отсутствие дублирующихся/неизвестных canonical ID в реестре;
+- сборку реального preview из текущих материализованных village-слоёв.
 
 ## Что намеренно не входит в первую версию
 
