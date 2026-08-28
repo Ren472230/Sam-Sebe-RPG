@@ -113,7 +113,7 @@ class LivingWorldService:
         if not bool(mira_state.get("requested_wood", False)):
             return None
 
-        override_active, state = self._load_runtime(conn, "npc_kaspar")
+        _, state = self._load_runtime(conn, "npc_kaspar")
         carrying_wood = self._state_int(state, "carrying_wood")
         if carrying_wood not in (0, 1):
             raise RuntimeError("npc_kaspar carrying_wood must be 0 or 1")
@@ -127,14 +127,13 @@ class LivingWorldService:
             if location_id != "river_edge":
                 next_location = self._next_hop(conn, location_id, "river_edge")
                 if next_location is None:
-                    if override_active != 1 or state.get("goal") != goal:
-                        self._save_runtime(
-                            conn,
-                            "npc_kaspar",
-                            override_active=1,
-                            state=state,
-                            tick=tick,
-                        )
+                    self._save_runtime(
+                        conn,
+                        "npc_kaspar",
+                        override_active=1,
+                        state=state,
+                        tick=tick,
+                    )
                     return None
                 conn.execute(
                     "UPDATE actors SET location_id = ? WHERE id = 'npc_kaspar'",
@@ -170,30 +169,13 @@ class LivingWorldService:
                 or driftwood["location_id"] != "river_edge"
                 or driftwood["owner_actor_id"] is not None
             ):
-                if override_active != 1 or state.get("goal") != "collect_wood":
-                    self._save_runtime(
-                        conn,
-                        "npc_kaspar",
-                        override_active=1,
-                        state=state,
-                        tick=tick,
-                    )
-                elif override_active != 1:
-                    self._save_runtime(
-                        conn,
-                        "npc_kaspar",
-                        override_active=1,
-                        state=state,
-                        tick=tick,
-                    )
-                else:
-                    self._save_runtime(
-                        conn,
-                        "npc_kaspar",
-                        override_active=1,
-                        state=state,
-                        tick=tick,
-                    )
+                self._save_runtime(
+                    conn,
+                    "npc_kaspar",
+                    override_active=1,
+                    state=state,
+                    tick=tick,
+                )
                 return None
 
             collected = conn.execute(
@@ -269,7 +251,7 @@ class LivingWorldService:
                 summary=f"Kaspar moved from {location_id} to {next_location} to deliver wood.",
             )
 
-        mira_override, mira_state = self._load_runtime(conn, "npc_mira")
+        _, mira_state = self._load_runtime(conn, "npc_mira")
         if not bool(mira_state.get("requested_wood", False)):
             return None
         mira_state["wood_stock"] = self._state_int(mira_state, "wood_stock") + 1
