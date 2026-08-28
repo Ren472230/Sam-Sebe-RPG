@@ -5,7 +5,7 @@ from zoneinfo import ZoneInfo
 
 
 class WorldSynchronizer:
-    def catch_up(self, conn, world_id: str, now: datetime) -> None:
+    def catch_up(self, conn, world_id: str, now: datetime, *, force: bool = False) -> None:
         if now.tzinfo is None or now.utcoffset() is None:
             raise ValueError("world clock datetime must be timezone-aware")
         now_utc = now.astimezone(timezone.utc)
@@ -17,13 +17,14 @@ class WorldSynchronizer:
             raise LookupError(f"world not found: {world_id}")
 
         last_simulated_at = world[1]
-        if last_simulated_at is not None:
+        if not force and last_simulated_at is not None:
             last = datetime.fromisoformat(str(last_simulated_at).replace("Z", "+00:00"))
             if last >= now_utc:
                 return
 
         local_now = now_utc.astimezone(ZoneInfo(str(world[0])))
         minute = local_now.hour * 60 + local_now.minute
+        runtime_overrides_available = _runtime_overrides_available(conn)
 
         npc_ids = [
             str(row[0])
@@ -35,6 +36,8 @@ class WorldSynchronizer:
             ).fetchall()
         ]
         for npc_id in npc_ids:
+            if runtime_overrides_available and _override_active(conn, npc_id):
+                continue
             rows = conn.execute(
                 "SELECT start_minute_local, end_minute_local, location_id, activity "
                 "FROM npc_schedule WHERE npc_actor_id = ? "
@@ -57,6 +60,26 @@ class WorldSynchronizer:
             "UPDATE worlds SET last_simulated_at = ? WHERE id = ?",
             (_timestamp(now_utc), world_id),
         )
+
+
+def _runtime_overrides_available(conn) -> bool:
+    return (
+        conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'npc_runtime_state'"
+        ).fetchone()
+        is not None
+    )
+
+
+def _override_active(conn, npc_actor_id: str) -> bool:
+    return (
+        conn.execute(
+            "SELECT 1 FROM npc_runtime_state "
+            "WHERE npc_actor_id = ? AND override_active = 1",
+            (npc_actor_id,),
+        ).fetchone()
+        is not None
+    )
 
 
 def _window_contains(start: int, end: int, minute: int) -> bool:

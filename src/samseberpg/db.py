@@ -126,11 +126,33 @@ CREATE TABLE IF NOT EXISTS npc_memories (
     created_at TEXT NOT NULL,
     UNIQUE (npc_actor_id, subject_actor_id, fact)
 );
+CREATE TABLE IF NOT EXISTS world_runtime (
+    world_id TEXT PRIMARY KEY REFERENCES worlds(id) ON DELETE CASCADE,
+    tick INTEGER NOT NULL DEFAULT 0 CHECK (tick >= 0)
+);
+CREATE TABLE IF NOT EXISTS npc_runtime_state (
+    npc_actor_id TEXT PRIMARY KEY REFERENCES npcs(actor_id) ON DELETE CASCADE,
+    override_active INTEGER NOT NULL DEFAULT 0 CHECK (override_active IN (0, 1)),
+    state_json TEXT NOT NULL DEFAULT '{}',
+    updated_tick INTEGER NOT NULL DEFAULT 0 CHECK (updated_tick >= 0)
+);
+CREATE TABLE IF NOT EXISTS world_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    world_id TEXT NOT NULL REFERENCES worlds(id) ON DELETE CASCADE,
+    tick INTEGER NOT NULL CHECK (tick >= 0),
+    actor_id TEXT NOT NULL REFERENCES actors(id) ON DELETE CASCADE,
+    event_type TEXT NOT NULL,
+    target_id TEXT,
+    location_id TEXT REFERENCES locations(id),
+    data_json TEXT NOT NULL DEFAULT '{}',
+    summary TEXT NOT NULL
+);
 CREATE INDEX IF NOT EXISTS idx_actors_location ON actors(location_id);
 CREATE INDEX IF NOT EXISTS idx_entities_location ON entities(location_id);
 CREATE INDEX IF NOT EXISTS idx_entities_owner ON entities(owner_actor_id);
 CREATE INDEX IF NOT EXISTS idx_events_world_time ON action_events(world_id, occurred_at);
 CREATE INDEX IF NOT EXISTS idx_schedule_npc ON npc_schedule(npc_actor_id, priority DESC);
+CREATE INDEX IF NOT EXISTS idx_world_events_world_tick ON world_events(world_id, tick, id);
 """
 
 
@@ -187,6 +209,15 @@ _ENTITIES = (
     ("firewood_5", "Split Firewood", "firewood", "workshop_yard", 1, {}),
 )
 
+_DRIFTWOOD = (
+    "driftwood_1",
+    "Driftwood",
+    "material",
+    "river_edge",
+    1,
+    {"resource_kind": "useful_wood"},
+)
+
 
 class GameDatabase:
     def __init__(self, path: str | Path) -> None:
@@ -205,10 +236,14 @@ class GameDatabase:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         conn = self.connect()
         try:
+            living_world_initialized = _living_world_initialized(conn)
             conn.executescript(_SCHEMA)
             conn.execute("BEGIN IMMEDIATE")
             try:
-                self._bootstrap(conn)
+                self._bootstrap(
+                    conn,
+                    bootstrap_driftwood=not living_world_initialized,
+                )
             except Exception:
                 conn.execute("ROLLBACK")
                 raise
@@ -217,7 +252,12 @@ class GameDatabase:
         finally:
             conn.close()
 
-    def _bootstrap(self, conn: sqlite3.Connection) -> None:
+    def _bootstrap(
+        self,
+        conn: sqlite3.Connection,
+        *,
+        bootstrap_driftwood: bool,
+    ) -> None:
         created_at = _sqlite_utc_now(conn)
         conn.execute(
             "INSERT OR IGNORE INTO worlds (id, name, timezone, created_at, last_simulated_at) VALUES (?, ?, ?, ?, NULL)",
@@ -248,6 +288,25 @@ class GameDatabase:
         conn.execute(
             "UPDATE npc_schedule SET location_id = 'tavern_interior' WHERE npc_actor_id = 'npc_oren'"
         )
+        conn.execute(
+            "INSERT OR IGNORE INTO world_runtime (world_id, tick) VALUES (?, 0)",
+            (DEFAULT_WORLD_ID,),
+        )
+        runtime_defaults = (
+            ("npc_mira", {"wood_stock": 2, "work_cycles": 0, "requested_wood": False}),
+            ("npc_kaspar", {"carrying_wood": 0, "goal": None}),
+        )
+        conn.executemany(
+            "INSERT OR IGNORE INTO npc_runtime_state "
+            "(npc_actor_id, override_active, state_json, updated_tick) VALUES (?, 0, ?, 0)",
+            [
+                (
+                    npc_actor_id,
+                    json.dumps(state, separators=(",", ":"), sort_keys=True),
+                )
+                for npc_actor_id, state in runtime_defaults
+            ],
+        )
         conn.executemany(
             "INSERT OR IGNORE INTO entities (id, world_id, name, entity_type, location_id, owner_actor_id, portable, state_json, created_at) VALUES (?, ?, ?, ?, ?, NULL, ?, ?, ?)",
             [
@@ -264,6 +323,40 @@ class GameDatabase:
                 for entity_id, name, entity_type, location_id, portable, state in _ENTITIES
             ],
         )
+        if bootstrap_driftwood:
+            entity_id, name, entity_type, location_id, portable, state = _DRIFTWOOD
+            conn.execute(
+                "INSERT OR IGNORE INTO entities "
+                "(id, world_id, name, entity_type, location_id, owner_actor_id, portable, state_json, created_at) "
+                "VALUES (?, ?, ?, ?, ?, NULL, ?, ?, ?)",
+                (
+                    entity_id,
+                    DEFAULT_WORLD_ID,
+                    name,
+                    entity_type,
+                    location_id,
+                    portable,
+                    json.dumps(state, separators=(",", ":"), sort_keys=True),
+                    created_at,
+                ),
+            )
+
+
+def _living_world_initialized(conn: sqlite3.Connection) -> bool:
+    if (
+        conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'world_runtime'"
+        ).fetchone()
+        is None
+    ):
+        return False
+    return (
+        conn.execute(
+            "SELECT 1 FROM world_runtime WHERE world_id = ?",
+            (DEFAULT_WORLD_ID,),
+        ).fetchone()
+        is not None
+    )
 
 
 def _sqlite_utc_now(conn: sqlite3.Connection) -> str:

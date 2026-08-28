@@ -9,6 +9,7 @@ class ActionType(str, Enum):
     MOVE = "MOVE"
     TAKE = "TAKE"
     DROP = "DROP"
+    WAIT = "WAIT"
 
 
 @dataclass(frozen=True, slots=True)
@@ -18,6 +19,7 @@ class CanonicalAction:
     target_id: str | None = None
     destination_id: str | None = None
     source_text: str | None = None
+    modifiers: dict[str, int] | None = None
 
 
 @dataclass(frozen=True, slots=True)
