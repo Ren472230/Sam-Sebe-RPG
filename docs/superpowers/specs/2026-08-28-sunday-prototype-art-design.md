@@ -34,15 +34,13 @@ The production visual canon remains a post-prototype target and is not deleted o
 
 ## Source Art Policy
 
-Primary source: Kenney CC0 RPG-style assets.
+Primary environment/prop source: **Kenney Roguelike/RPG Pack (CC0)**.
 
-Preferred order:
+Secondary source, only if the primary pack lacks a usable player/Oren visual: **Kenney Roguelike Characters (CC0)**.
 
-1. One coherent Kenney pack for environment and props.
-2. A compatible Kenney character pack only if the primary pack does not provide usable characters.
-3. Do not mix unrelated visual families merely to fill space.
+Do not introduce a third visual family for the Sunday prototype unless a critical required gameplay object is genuinely absent from both packs.
 
-License rule: only assets with verified CC0/public-domain-style reuse terms may enter the Sunday prototype-art set. Store source attribution/license metadata in a small text or JSON file even when attribution is not legally required, so provenance remains auditable.
+License rule: only assets with verified CC0/public-domain-style reuse terms may enter the Sunday prototype-art set. Store source attribution/license metadata in `web/public/assets/prototype/provenance.json` even when attribution is not legally required, so provenance remains auditable.
 
 No paid image API is required.
 
@@ -148,7 +146,7 @@ Visual QA:
 
 ## Critical Path
 
-1. Integrate a coherent CC0 prototype asset set.
+1. Integrate the Kenney Roguelike/RPG Pack and, only if required, Kenney Roguelike Characters.
 2. Produce `village.png` and `tavern.png` at 960x540 around existing gameplay geography.
 3. Add static player/Oren/firewood sprites.
 4. Add runtime prototype-mode selection and fallback.
