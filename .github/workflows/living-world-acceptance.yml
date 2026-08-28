@@ -21,13 +21,10 @@ jobs:
           cp tests/test_living_world_acceptance.py /tmp/living-world-qa/tests/
           cp scripts/smoke_living_world_acceptance.py /tmp/living-world-qa/scripts/
 
-      - name: Compose current DEV-1 and DEV-2 without modifying their branches
+      - name: Test current MASTER integration candidate
         run: |
-          git fetch origin dev/living-world-core dev/living-world-integration
-          git config user.name "Living World QA"
-          git config user.email "qa@local.invalid"
-          git checkout -B qa-combined origin/dev/living-world-integration
-          git merge --no-edit origin/dev/living-world-core
+          git fetch origin integration/living-world-v1
+          git checkout -B qa-candidate origin/integration/living-world-v1
           cp /tmp/living-world-qa/tests/test_living_world_acceptance.py tests/test_living_world_acceptance.py
           cp /tmp/living-world-qa/scripts/smoke_living_world_acceptance.py scripts/smoke_living_world_acceptance.py
 
