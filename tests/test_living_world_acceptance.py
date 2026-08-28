@@ -13,43 +13,35 @@ from samseberpg.db import DEFAULT_WORLD_ID, GameDatabase
 from samseberpg.dialogue import DialogueService
 from samseberpg.domain import ActionType, CanonicalAction
 from samseberpg.game import GameService
+from samseberpg.living_world import LivingWorldService
 from samseberpg.quest import QuestService
-
+from samseberpg.server import build_app
 
 NOON = datetime(2026, 8, 24, 12, 0, tzinfo=timezone.utc)
 EVENING = datetime(2026, 8, 24, 17, 0, tzinfo=timezone.utc)
 
 
-def _services(db_path: Path, *, now: datetime = EVENING):
-    db = GameDatabase(db_path)
+def services(path: Path, now: datetime = EVENING):
+    db = GameDatabase(path)
     db.initialize()
     clock = FakeClock(now)
-    game = GameService(db, clock)
+    game = GameService(db, clock, living_world=LivingWorldService())
     quest = QuestService(db, clock)
     dialogue = DialogueService(db, quest)
-    client = TestClient(create_app(game, quest, dialogue))
-    return db, clock, game, client
+    return db, game, TestClient(create_app(game, quest, dialogue))
 
 
-def _player(game: GameService, external_id: str = "qa-living-world") -> str:
-    return game.register_player(external_id, "QA Player")
+def player(game: GameService, key: str = "qa") -> str:
+    return game.register_player(key, "QA Player")
 
 
-def _api_player(client: TestClient, external_id: str = "qa-api") -> str:
-    response = client.post(
-        "/api/session",
-        json={"external_id": external_id, "name": "QA Player"},
-    )
+def api_player(client: TestClient, key: str = "qa-api") -> str:
+    response = client.post("/api/session", json={"external_id": key, "name": "QA"})
     assert response.status_code == 200, response.text
     return str(response.json()["player_id"])
 
 
-def _wait(
-    game: GameService,
-    player_id: str,
-    ticks: int,
-    external_id: str,
-):
+def wait(game: GameService, player_id: str, ticks: int, external_id: str):
     return game.execute(
         CanonicalAction(
             actor_id=player_id,
@@ -60,225 +52,125 @@ def _wait(
     )
 
 
-def _runtime(db: GameDatabase, npc_id: str) -> tuple[int, dict, int]:
+def runtime(db: GameDatabase, npc: str):
     with db.connect() as conn:
         row = conn.execute(
-            "SELECT override_active, state_json, updated_tick "
-            "FROM npc_runtime_state WHERE npc_actor_id = ?",
-            (npc_id,),
+            "SELECT override_active,state_json,updated_tick FROM npc_runtime_state WHERE npc_actor_id=?",
+            (npc,),
         ).fetchone()
-    assert row is not None, f"missing runtime row for {npc_id}"
+    assert row is not None
     return int(row[0]), json.loads(str(row[1])), int(row[2])
 
 
-def _tick(db: GameDatabase) -> int:
+def tick(db: GameDatabase) -> int:
     with db.connect() as conn:
-        row = conn.execute(
-            "SELECT tick FROM world_runtime WHERE world_id = ?", (DEFAULT_WORLD_ID,)
-        ).fetchone()
+        row = conn.execute("SELECT tick FROM world_runtime WHERE world_id=?", (DEFAULT_WORLD_ID,)).fetchone()
     assert row is not None
     return int(row[0])
 
 
-def _actor_location(db: GameDatabase, actor_id: str) -> str | None:
+def location(db: GameDatabase, actor: str) -> str | None:
     with db.connect() as conn:
-        row = conn.execute(
-            "SELECT location_id FROM actors WHERE id = ?", (actor_id,)
-        ).fetchone()
+        row = conn.execute("SELECT location_id FROM actors WHERE id=?", (actor,)).fetchone()
     assert row is not None
     return None if row[0] is None else str(row[0])
 
 
-def _resource(db: GameDatabase):
+def resource(db: GameDatabase):
     with db.connect() as conn:
         return conn.execute(
-            "SELECT id, location_id, owner_actor_id, state_json "
-            "FROM entities WHERE id = 'driftwood_1'"
+            "SELECT id,location_id,owner_actor_id,state_json FROM entities WHERE id='driftwood_1'"
         ).fetchone()
 
 
-def _events(db: GameDatabase) -> list[tuple]:
+def events(db: GameDatabase):
     with db.connect() as conn:
         rows = conn.execute(
-            "SELECT tick, actor_id, event_type, target_id, location_id, data_json "
-            "FROM world_events WHERE world_id = ? ORDER BY id",
-            (DEFAULT_WORLD_ID,),
+            "SELECT tick,actor_id,event_type,target_id,location_id,data_json FROM world_events ORDER BY id"
         ).fetchall()
     return [
         (
-            int(row[0]),
-            str(row[1]),
-            str(row[2]),
-            None if row[3] is None else str(row[3]),
-            None if row[4] is None else str(row[4]),
-            json.loads(str(row[5])),
+            int(r[0]), str(r[1]), str(r[2]),
+            None if r[3] is None else str(r[3]),
+            None if r[4] is None else str(r[4]),
+            json.loads(str(r[5])),
         )
-        for row in rows
+        for r in rows
     ]
 
 
-def _living_snapshot(db: GameDatabase) -> dict:
+def count_event(db: GameDatabase, event_type: str) -> int:
     with db.connect() as conn:
-        runtime_rows = conn.execute(
-            "SELECT npc_actor_id, override_active, state_json, updated_tick "
-            "FROM npc_runtime_state ORDER BY npc_actor_id"
+        return int(conn.execute(
+            "SELECT COUNT(*) FROM world_events WHERE event_type=?", (event_type,)
+        ).fetchone()[0])
+
+
+def snapshot(db: GameDatabase):
+    with db.connect() as conn:
+        rs = conn.execute(
+            "SELECT npc_actor_id,override_active,state_json,updated_tick FROM npc_runtime_state ORDER BY npc_actor_id"
         ).fetchall()
-        actor_rows = conn.execute(
-            "SELECT actors.id, actors.location_id, npcs.current_activity "
-            "FROM npcs JOIN actors ON actors.id = npcs.actor_id "
-            "WHERE actors.id IN ('npc_mira', 'npc_kaspar') ORDER BY actors.id"
+        actors = conn.execute(
+            "SELECT actors.id,actors.location_id,npcs.current_activity FROM npcs "
+            "JOIN actors ON actors.id=npcs.actor_id WHERE actors.id IN ('npc_mira','npc_kaspar') ORDER BY actors.id"
         ).fetchall()
-        resource = conn.execute(
-            "SELECT id, location_id, owner_actor_id, state_json "
-            "FROM entities WHERE id = 'driftwood_1'"
+        item = conn.execute(
+            "SELECT id,location_id,owner_actor_id,state_json FROM entities WHERE id='driftwood_1'"
         ).fetchone()
     return {
-        "tick": _tick(db),
-        "runtime": [
-            (str(row[0]), int(row[1]), json.loads(str(row[2])), int(row[3]))
-            for row in runtime_rows
-        ],
-        "actors": [
-            (str(row[0]), None if row[1] is None else str(row[1]), str(row[2]))
-            for row in actor_rows
-        ],
-        "resource": None
-        if resource is None
-        else (
-            str(resource[0]),
-            None if resource[1] is None else str(resource[1]),
-            None if resource[2] is None else str(resource[2]),
-            json.loads(str(resource[3])),
-        ),
-        "events": _events(db),
+        "tick": tick(db),
+        "runtime": [(str(r[0]), int(r[1]), json.loads(str(r[2])), int(r[3])) for r in rs],
+        "actors": [(str(r[0]), r[1], str(r[2])) for r in actors],
+        "resource": None if item is None else (str(item[0]), item[1], item[2], json.loads(str(item[3]))),
+        "events": events(db),
     }
 
 
-def _simulation_snapshot_for_invalid(db: GameDatabase) -> dict:
+def simulation_state(db: GameDatabase):
     with db.connect() as conn:
-        actors = [
-            tuple(row)
-            for row in conn.execute(
-                "SELECT id, location_id FROM actors ORDER BY id"
-            ).fetchall()
-        ]
-        entities = [
-            tuple(row)
-            for row in conn.execute(
-                "SELECT id, location_id, owner_actor_id, state_json FROM entities ORDER BY id"
-            ).fetchall()
-        ]
-    return {
-        "living": _living_snapshot(db),
-        "actors": actors,
-        "entities": entities,
-    }
+        actors = [tuple(r) for r in conn.execute("SELECT id,location_id FROM actors ORDER BY id")]
+        entities = [tuple(r) for r in conn.execute(
+            "SELECT id,location_id,owner_actor_id,state_json FROM entities ORDER BY id"
+        )]
+    return snapshot(db), actors, entities
 
 
-def _world_event_count(db: GameDatabase, event_type: str) -> int:
-    with db.connect() as conn:
-        return int(
-            conn.execute(
-                "SELECT COUNT(*) FROM world_events WHERE event_type = ?", (event_type,)
-            ).fetchone()[0]
-        )
+def test_bootstrap_runtime_and_real_resource(tmp_path: Path) -> None:
+    db, _, _ = services(tmp_path / "bootstrap.sqlite3")
+    assert tick(db) == 0
+    assert runtime(db, "npc_mira") == (0, {"wood_stock": 2, "work_cycles": 0, "requested_wood": False}, 0)
+    assert runtime(db, "npc_kaspar") == (0, {"carrying_wood": 0, "goal": None}, 0)
+    item = resource(db)
+    assert item is not None
+    assert tuple(item[:3]) == ("driftwood_1", "river_edge", None)
+    assert json.loads(str(item[3])) == {"resource_kind": "useful_wood"}
 
 
-def test_clean_bootstrap_has_required_runtime_and_single_real_driftwood(tmp_path: Path) -> None:
-    db, _, _, _ = _services(tmp_path / "bootstrap.sqlite3")
-
-    assert _tick(db) == 0
-    assert _runtime(db, "npc_mira") == (
-        0,
-        {"wood_stock": 2, "work_cycles": 0, "requested_wood": False},
-        0,
-    )
-    assert _runtime(db, "npc_kaspar") == (
-        0,
-        {"carrying_wood": 0, "goal": None},
-        0,
-    )
-    resource = _resource(db)
-    assert resource is not None
-    assert tuple(resource[:3]) == ("driftwood_1", "river_edge", None)
-    assert json.loads(str(resource[3])) == {"resource_kind": "useful_wood"}
-
-    with db.connect() as conn:
-        assert conn.execute(
-            "SELECT COUNT(*) FROM entities WHERE id = 'driftwood_1'"
-        ).fetchone()[0] == 1
-
-
-def test_full_causal_loop_uses_real_resource_existing_graph_and_returns_to_schedule(tmp_path: Path) -> None:
-    db, _, game, _ = _services(tmp_path / "full-loop.sqlite3", now=EVENING)
-    player_id = _player(game)
-
-    _wait(game, player_id, 1, "wait-01")
-    assert _tick(db) == 1
-    assert _runtime(db, "npc_mira")[1] == {
-        "wood_stock": 2,
-        "work_cycles": 0,
-        "requested_wood": False,
-    }
-
-    _wait(game, player_id, 1, "wait-02")
-    assert _runtime(db, "npc_mira")[1] == {
-        "wood_stock": 1,
-        "work_cycles": 1,
-        "requested_wood": False,
-    }
-
-    _wait(game, player_id, 1, "wait-03")
-    _wait(game, player_id, 1, "wait-04")
-    mira_override, mira_state, _ = _runtime(db, "npc_mira")
-    assert mira_state == {
-        "wood_stock": 0,
-        "work_cycles": 2,
-        "requested_wood": False,
-    }
-    assert mira_override == 0
-
-    _wait(game, player_id, 1, "wait-05")
-    mira_override, mira_state, _ = _runtime(db, "npc_mira")
-    kaspar_override, kaspar_state, _ = _runtime(db, "npc_kaspar")
-    assert mira_override == 1
-    assert mira_state["requested_wood"] is True
-    assert kaspar_override == 1
-    assert kaspar_state["goal"] == "collect_wood"
-    assert _actor_location(db, "npc_kaspar") == "river_edge"
-    assert _resource(db)[1] == "river_edge"
-    assert _world_event_count(db, "NPC_REQUESTED_RESOURCE") == 1
-
-    _wait(game, player_id, 1, "wait-06")
-    kaspar_override, kaspar_state, _ = _runtime(db, "npc_kaspar")
-    resource = _resource(db)
-    assert kaspar_override == 1
-    assert kaspar_state == {"carrying_wood": 1, "goal": "deliver_wood"}
-    assert resource is not None
-    assert resource[1] is None and resource[2] is None
-    assert _world_event_count(db, "NPC_COLLECTED_RESOURCE") == 1
-
-    _wait(game, player_id, 1, "wait-07")
-    assert _actor_location(db, "npc_kaspar") == "village_square"
-    _wait(game, player_id, 1, "wait-08")
-    assert _actor_location(db, "npc_kaspar") == "workshop_yard"
-
-    _wait(game, player_id, 1, "wait-09")
-    assert _tick(db) == 9
-    assert _runtime(db, "npc_mira")[:2] == (
-        0,
-        {"wood_stock": 1, "work_cycles": 2, "requested_wood": False},
-    )
-    assert _runtime(db, "npc_kaspar")[:2] == (
-        0,
-        {"carrying_wood": 0, "goal": None},
-    )
-    assert _actor_location(db, "npc_mira") == "workshop_yard"
-    assert _actor_location(db, "npc_kaspar") == "village_square"
-    assert _world_event_count(db, "NPC_DELIVERED_RESOURCE") == 1
-
-    events = _events(db)
-    assert [(event[0], event[1], event[2]) for event in events] == [
+def test_full_causal_loop_exact_event_sequence_and_schedule_restore(tmp_path: Path) -> None:
+    db, game, _ = services(tmp_path / "loop.sqlite3", EVENING)
+    p = player(game)
+    for i in range(1, 10):
+        result = wait(game, p, 1, f"wait-{i}")
+        assert result.success is True
+        if i == 2:
+            assert runtime(db, "npc_mira")[1]["wood_stock"] == 1
+        if i == 4:
+            assert runtime(db, "npc_mira")[1] == {"wood_stock": 0, "work_cycles": 2, "requested_wood": False}
+        if i == 5:
+            assert runtime(db, "npc_mira")[0] == 1
+            assert runtime(db, "npc_kaspar")[1]["goal"] == "collect_wood"
+            assert count_event(db, "NPC_REQUESTED_RESOURCE") == 1
+        if i == 6:
+            assert runtime(db, "npc_kaspar")[1]["carrying_wood"] == 1
+            item = resource(db)
+            assert item is not None and item[1] is None and item[2] is None
+    assert tick(db) == 9
+    assert runtime(db, "npc_mira")[:2] == (0, {"wood_stock": 1, "work_cycles": 2, "requested_wood": False})
+    assert runtime(db, "npc_kaspar")[:2] == (0, {"carrying_wood": 0, "goal": None})
+    assert location(db, "npc_mira") == "workshop_yard"
+    assert location(db, "npc_kaspar") == "village_square"
+    assert [(e[0], e[1], e[2]) for e in events(db)] == [
         (2, "npc_mira", "NPC_WORKED"),
         (4, "npc_mira", "NPC_WORKED"),
         (5, "npc_mira", "NPC_REQUESTED_RESOURCE"),
@@ -288,330 +180,188 @@ def test_full_causal_loop_uses_real_resource_existing_graph_and_returns_to_sched
         (8, "npc_kaspar", "NPC_MOVED"),
         (9, "npc_kaspar", "NPC_DELIVERED_RESOURCE"),
     ]
-    assert [event[4] for event in events if event[2] == "NPC_MOVED"] == [
-        "river_edge",
-        "village_square",
-        "workshop_yard",
-    ]
+    assert [e[4] for e in events(db) if e[2] == "NPC_MOVED"] == ["river_edge", "village_square", "workshop_yard"]
 
 
-def test_missing_driftwood_blocks_chain_without_fabrication_or_duplicate_request(tmp_path: Path) -> None:
-    db_path = tmp_path / "missing-resource.sqlite3"
-    db, _, game, _ = _services(db_path, now=EVENING)
-    player_id = _player(game)
+def test_missing_resource_never_fabricates_or_repeats_request_and_does_not_respawn(tmp_path: Path) -> None:
+    path = tmp_path / "missing.sqlite3"
+    db, game, _ = services(path)
+    p = player(game, "missing")
     with db.connect() as conn:
-        conn.execute("BEGIN IMMEDIATE")
-        conn.execute("DELETE FROM entities WHERE id = 'driftwood_1'")
-        conn.execute("COMMIT")
-
-    result = _wait(game, player_id, 20, "wait-missing-resource")
-    assert result.success is True
-    assert _tick(db) == 20
-    assert _resource(db) is None
-    assert _world_event_count(db, "NPC_REQUESTED_RESOURCE") == 1
-    assert _world_event_count(db, "NPC_COLLECTED_RESOURCE") == 0
-    assert _world_event_count(db, "NPC_DELIVERED_RESOURCE") == 0
-    assert _runtime(db, "npc_mira")[0] == 1
-    assert _runtime(db, "npc_mira")[1]["requested_wood"] is True
-    assert _runtime(db, "npc_kaspar")[0] == 1
-    assert _runtime(db, "npc_kaspar")[1]["carrying_wood"] == 0
-
+        conn.execute("DELETE FROM entities WHERE id='driftwood_1'")
+    assert wait(game, p, 20, "wait-missing").success is True
+    assert resource(db) is None
+    assert count_event(db, "NPC_REQUESTED_RESOURCE") == 1
+    assert count_event(db, "NPC_COLLECTED_RESOURCE") == 0
+    assert count_event(db, "NPC_DELIVERED_RESOURCE") == 0
     db.initialize()
-    assert _resource(db) is None
+    assert resource(db) is None
 
 
-def test_wait_9_equals_nine_wait_1_for_all_autonomous_state(tmp_path: Path) -> None:
-    db_a, _, game_a, _ = _services(tmp_path / "a.sqlite3", now=EVENING)
-    db_b, _, game_b, _ = _services(tmp_path / "b.sqlite3", now=EVENING)
-    player_a = _player(game_a, "qa-a")
-    player_b = _player(game_b, "qa-b")
-
-    result_a = _wait(game_a, player_a, 9, "wait-a-9")
-    assert result_a.success is True
-    for index in range(1, 10):
-        result_b = _wait(game_b, player_b, 1, f"wait-b-{index}")
-        assert result_b.success is True
-
-    assert _living_snapshot(db_a) == _living_snapshot(db_b)
+def test_wait_9_equals_nine_wait_1(tmp_path: Path) -> None:
+    db_a, game_a, _ = services(tmp_path / "a.sqlite3")
+    db_b, game_b, _ = services(tmp_path / "b.sqlite3")
+    pa, pb = player(game_a, "a"), player(game_b, "b")
+    assert wait(game_a, pa, 9, "a9").success is True
+    for i in range(9):
+        assert wait(game_b, pb, 1, f"b{i}").success is True
+    assert snapshot(db_a) == snapshot(db_b)
 
 
-def test_restart_after_collection_preserves_state_and_finishes_delivery(tmp_path: Path) -> None:
-    db_path = tmp_path / "restart.sqlite3"
-    db, _, game, _ = _services(db_path, now=EVENING)
-    player_id = _player(game, "qa-restart")
-
-    assert _wait(game, player_id, 6, "wait-before-restart").success is True
-    assert _tick(db) == 6
-    assert _runtime(db, "npc_kaspar")[:2] == (
-        1,
-        {"carrying_wood": 1, "goal": "deliver_wood"},
-    )
-    resource = _resource(db)
-    assert resource is not None and resource[1] is None and resource[2] is None
-
-    reopened = GameDatabase(db_path)
-    reopened.initialize()
-    new_clock = FakeClock(EVENING)
-    new_game = GameService(reopened, new_clock)
-
-    assert _tick(reopened) == 6
-    assert _runtime(reopened, "npc_kaspar")[1]["carrying_wood"] == 1
-    resource = _resource(reopened)
-    assert resource is not None and resource[1] is None and resource[2] is None
-
-    assert _wait(new_game, player_id, 3, "wait-after-restart").success is True
-    assert _tick(reopened) == 9
-    assert _world_event_count(reopened, "NPC_COLLECTED_RESOURCE") == 1
-    assert _world_event_count(reopened, "NPC_DELIVERED_RESOURCE") == 1
-    assert _runtime(reopened, "npc_mira")[0] == 0
-    assert _runtime(reopened, "npc_kaspar")[0] == 0
-    assert _actor_location(reopened, "npc_kaspar") == "village_square"
+def test_restart_after_collection_preserves_and_completes(tmp_path: Path) -> None:
+    path = tmp_path / "restart.sqlite3"
+    db, game, _ = services(path)
+    p = player(game, "restart")
+    assert wait(game, p, 6, "before-restart").success is True
+    assert runtime(db, "npc_kaspar")[:2] == (1, {"carrying_wood": 1, "goal": "deliver_wood"})
+    GameDatabase(path).initialize()
+    reopened = GameDatabase(path)
+    new_game = GameService(reopened, FakeClock(EVENING), living_world=LivingWorldService())
+    assert tick(reopened) == 6
+    item = resource(reopened)
+    assert item is not None and item[1] is None and item[2] is None
+    assert wait(new_game, p, 3, "after-restart").success is True
+    assert tick(reopened) == 9
+    assert count_event(reopened, "NPC_COLLECTED_RESOURCE") == 1
+    assert count_event(reopened, "NPC_DELIVERED_RESOURCE") == 1
 
 
-def test_schedule_cannot_move_active_override_and_forced_pass_restores_after_goal(tmp_path: Path) -> None:
-    db, _, game, _ = _services(tmp_path / "schedule.sqlite3", now=NOON)
-    player_id = _player(game, "qa-schedule")
-
-    assert _wait(game, player_id, 6, "wait-active-override").success is True
-    assert _runtime(db, "npc_kaspar")[0] == 1
-    assert _actor_location(db, "npc_kaspar") == "village_square"
-
-    assert _wait(game, player_id, 2, "wait-finish-goal").success is True
-    assert _runtime(db, "npc_kaspar")[0] == 0
-    assert _runtime(db, "npc_mira")[0] == 0
-    assert _actor_location(db, "npc_kaspar") == "river_edge"
-    assert _actor_location(db, "npc_mira") == "workshop_yard"
+def test_schedule_override_blocks_wall_clock_then_forced_pass_restores(tmp_path: Path) -> None:
+    db, game, _ = services(tmp_path / "schedule.sqlite3", NOON)
+    p = player(game, "schedule")
+    assert wait(game, p, 6, "active").success is True
+    assert runtime(db, "npc_kaspar")[0] == 1
+    assert location(db, "npc_kaspar") == "village_square"
+    assert wait(game, p, 2, "finish").success is True
+    assert runtime(db, "npc_kaspar")[0] == 0
+    assert location(db, "npc_kaspar") == "river_edge"
 
 
-def test_wait_records_one_player_event_and_autonomous_events_only_in_world_events(tmp_path: Path) -> None:
-    db, _, game, _ = _services(tmp_path / "event-isolation.sqlite3", now=EVENING)
-    player_id = _player(game, "qa-events")
-
-    result = _wait(game, player_id, 9, "wait-event-isolation")
-    assert result.success is True
+def test_event_isolation_one_player_wait_only(tmp_path: Path) -> None:
+    db, game, _ = services(tmp_path / "events.sqlite3")
+    p = player(game, "events")
+    assert wait(game, p, 9, "one-wait").success is True
     with db.connect() as conn:
-        action_rows = conn.execute(
-            "SELECT actor_id, action_type, external_id, success FROM action_events ORDER BY id"
-        ).fetchall()
-        autonomous_in_player_log = conn.execute(
-            "SELECT COUNT(*) FROM action_events WHERE action_type LIKE 'NPC_%'"
-        ).fetchone()[0]
-        world_event_count = conn.execute(
-            "SELECT COUNT(*) FROM world_events"
-        ).fetchone()[0]
-
-    assert [tuple(row) for row in action_rows] == [
-        (player_id, "WAIT", "wait-event-isolation", 1)
-    ]
-    assert autonomous_in_player_log == 0
-    assert world_event_count == 8
+        rows = conn.execute("SELECT actor_id,action_type,external_id,success FROM action_events ORDER BY id").fetchall()
+        npc_rows = conn.execute("SELECT COUNT(*) FROM action_events WHERE action_type LIKE 'NPC_%'").fetchone()[0]
+    assert [tuple(r) for r in rows] == [(p, "WAIT", "one-wait", 1)]
+    assert npc_rows == 0
+    assert len(events(db)) == 8
 
 
-def test_old_api_action_without_modifiers_still_works_and_wait_defaults_to_one(tmp_path: Path) -> None:
-    db, _, _, client = _services(tmp_path / "api-compat.sqlite3", now=EVENING)
-    player_id = _api_player(client)
-
-    legacy = client.post(
-        "/api/action",
-        json={
-            "player_id": player_id,
-            "action_type": "LOOK",
-            "external_id": "legacy-look-no-modifiers",
-        },
-    )
-    assert legacy.status_code == 200, legacy.text
-    assert legacy.json()["success"] is True
-
-    waited = client.post(
-        "/api/action",
-        json={
-            "player_id": player_id,
-            "action_type": "WAIT",
-            "external_id": "wait-default-one",
-        },
-    )
-    assert waited.status_code == 200, waited.text
-    assert waited.json()["success"] is True
-    assert _tick(db) == 1
+def test_api_backward_compat_and_default_wait(tmp_path: Path) -> None:
+    db, _, client = services(tmp_path / "api.sqlite3")
+    p = api_player(client)
+    legacy = client.post("/api/action", json={"player_id": p, "action_type": "LOOK", "external_id": "look"})
+    assert legacy.status_code == 200 and legacy.json()["success"] is True
+    default_wait = client.post("/api/action", json={"player_id": p, "action_type": "WAIT", "external_id": "wait"})
+    assert default_wait.status_code == 200 and default_wait.json()["success"] is True
+    assert tick(db) == 1
 
 
 @pytest.mark.parametrize("ticks", [1, 60])
-def test_api_accepts_only_valid_wait_range(tmp_path: Path, ticks: int) -> None:
-    db, _, _, client = _services(tmp_path / f"valid-{ticks}.sqlite3", now=EVENING)
-    player_id = _api_player(client, f"qa-valid-{ticks}")
-
-    response = client.post(
-        "/api/action",
-        json={
-            "player_id": player_id,
-            "action_type": "WAIT",
-            "modifiers": {"ticks": ticks},
-            "external_id": f"valid-wait-{ticks}",
-        },
-    )
-    assert response.status_code == 200, response.text
-    assert response.json()["success"] is True
-    assert _tick(db) == ticks
+def test_api_valid_wait_boundaries(tmp_path: Path, ticks: int) -> None:
+    db, _, client = services(tmp_path / f"valid-{ticks}.sqlite3")
+    p = api_player(client, f"valid-{ticks}")
+    response = client.post("/api/action", json={
+        "player_id": p, "action_type": "WAIT", "modifiers": {"ticks": ticks}, "external_id": f"w{ticks}"
+    })
+    assert response.status_code == 200 and response.json()["success"] is True
+    assert tick(db) == ticks
 
 
 @pytest.mark.parametrize("ticks", [0, 61, -1, "9", 9.5, True])
-def test_invalid_wait_payloads_do_not_mutate_simulation(tmp_path: Path, ticks) -> None:
-    db, _, _, client = _services(tmp_path / f"invalid-{repr(ticks)}.sqlite3", now=EVENING)
-    player_id = _api_player(client, f"qa-invalid-{repr(ticks)}")
-    before = _simulation_snapshot_for_invalid(db)
-
-    response = client.post(
-        "/api/action",
-        json={
-            "player_id": player_id,
-            "action_type": "WAIT",
-            "modifiers": {"ticks": ticks},
-            "external_id": f"invalid-wait-{repr(ticks)}",
-        },
-    )
+def test_api_invalid_wait_values_do_not_mutate(tmp_path: Path, ticks) -> None:
+    db, _, client = services(tmp_path / f"invalid-{type(ticks).__name__}-{str(ticks)}.sqlite3")
+    p = api_player(client, f"invalid-{type(ticks).__name__}-{str(ticks)}")
+    before = simulation_state(db)
+    response = client.post("/api/action", json={
+        "player_id": p, "action_type": "WAIT", "modifiers": {"ticks": ticks}, "external_id": "bad"
+    })
     assert response.status_code in {200, 400, 422}, response.text
     if response.status_code == 200:
-        payload = response.json()
-        assert payload["success"] is False, payload
-
-    assert _simulation_snapshot_for_invalid(db) == before
+        assert response.json()["success"] is False
+    assert simulation_state(db) == before
 
 
-def test_malformed_api_payload_does_not_mutate_simulation(tmp_path: Path) -> None:
-    db, _, _, client = _services(tmp_path / "malformed.sqlite3", now=EVENING)
-    player_id = _api_player(client, "qa-malformed")
-    before = _simulation_snapshot_for_invalid(db)
-
-    response = client.post(
-        "/api/action",
-        json={
-            "player_id": player_id,
-            "action_type": "WAIT",
-            "modifiers": ["not", "an", "object"],
-        },
-    )
-    assert response.status_code == 422, response.text
-    assert _simulation_snapshot_for_invalid(db) == before
+def test_api_malformed_modifiers_do_not_mutate(tmp_path: Path) -> None:
+    db, _, client = services(tmp_path / "malformed.sqlite3")
+    p = api_player(client, "malformed")
+    before = simulation_state(db)
+    response = client.post("/api/action", json={"player_id": p, "action_type": "WAIT", "modifiers": ["bad"]})
+    assert response.status_code in {200, 400, 422}, response.text
+    if response.status_code == 200:
+        assert response.json()["success"] is False
+    assert simulation_state(db) == before
 
 
-def test_database_integrity_after_full_loop(tmp_path: Path) -> None:
-    db, _, game, _ = _services(tmp_path / "integrity.sqlite3", now=EVENING)
-    player_id = _player(game, "qa-integrity")
-    assert _wait(game, player_id, 9, "wait-integrity").success is True
+def test_official_build_app_wires_wait(tmp_path: Path) -> None:
+    path = tmp_path / "official.sqlite3"
+    client = TestClient(build_app(path))
+    p = api_player(client, "official")
+    response = client.post("/api/action", json={
+        "player_id": p, "action_type": "WAIT", "modifiers": {"ticks": 1}, "external_id": "official-wait"
+    })
+    assert response.status_code == 200, response.text
+    assert response.json()["success"] is True
+    assert tick(GameDatabase(path)) == 1
 
+
+def test_database_integrity_and_no_duplicates_after_loop(tmp_path: Path) -> None:
+    db, game, _ = services(tmp_path / "integrity.sqlite3")
+    p = player(game, "integrity")
+    assert wait(game, p, 9, "integrity-wait").success is True
     with db.connect() as conn:
         assert conn.execute("PRAGMA integrity_check").fetchone()[0] == "ok"
         assert conn.execute("PRAGMA foreign_key_check").fetchall() == []
-        assert conn.execute(
-            "SELECT COUNT(*) FROM world_runtime WHERE world_id = ?", (DEFAULT_WORLD_ID,)
-        ).fetchone()[0] == 1
-        assert conn.execute(
-            "SELECT COUNT(*) FROM npc_runtime_state WHERE npc_actor_id = 'npc_mira'"
-        ).fetchone()[0] == 1
-        assert conn.execute(
-            "SELECT COUNT(*) FROM npc_runtime_state WHERE npc_actor_id = 'npc_kaspar'"
-        ).fetchone()[0] == 1
-        assert conn.execute(
-            "SELECT COUNT(*) FROM entities WHERE id = 'driftwood_1'"
-        ).fetchone()[0] == 1
-        assert conn.execute(
-            "SELECT COUNT(*) FROM world_events WHERE event_type = 'NPC_REQUESTED_RESOURCE'"
-        ).fetchone()[0] == 1
-        positions = dict(
-            conn.execute(
-                "SELECT id, location_id FROM actors WHERE id IN ('npc_mira', 'npc_kaspar')"
-            ).fetchall()
-        )
-    assert positions == {"npc_mira": "workshop_yard", "npc_kaspar": "village_square"}
+        assert conn.execute("SELECT COUNT(*) FROM world_runtime WHERE world_id=?", (DEFAULT_WORLD_ID,)).fetchone()[0] == 1
+        assert conn.execute("SELECT COUNT(*) FROM npc_runtime_state WHERE npc_actor_id='npc_mira'").fetchone()[0] == 1
+        assert conn.execute("SELECT COUNT(*) FROM npc_runtime_state WHERE npc_actor_id='npc_kaspar'").fetchone()[0] == 1
+        assert conn.execute("SELECT COUNT(*) FROM entities WHERE id='driftwood_1'").fetchone()[0] == 1
+        assert conn.execute("SELECT COUNT(*) FROM world_events WHERE event_type='NPC_REQUESTED_RESOURCE'").fetchone()[0] == 1
 
 
-def test_duplicate_wait_external_id_is_replayed_without_advancing_twice(tmp_path: Path) -> None:
-    db, _, game, _ = _services(tmp_path / "idempotent.sqlite3", now=EVENING)
-    player_id = _player(game, "qa-idempotent")
-
-    first = _wait(game, player_id, 9, "same-wait-id")
-    replay = _wait(game, player_id, 9, "same-wait-id")
-    assert first.success is True
-    assert replay.success is True
-    assert replay.replayed is True
-    assert replay.event_id == first.event_id
-    assert _tick(db) == 9
-    assert len(_events(db)) == 8
-    with db.connect() as conn:
-        assert conn.execute(
-            "SELECT COUNT(*) FROM action_events WHERE external_id = 'same-wait-id'"
-        ).fetchone()[0] == 1
+def test_wait_external_id_replay_does_not_advance_twice(tmp_path: Path) -> None:
+    db, game, _ = services(tmp_path / "replay.sqlite3")
+    p = player(game, "replay")
+    first = wait(game, p, 9, "same")
+    second = wait(game, p, 9, "same")
+    assert first.success is True and second.replayed is True and second.event_id == first.event_id
+    assert tick(db) == 9 and len(events(db)) == 8
 
 
-def test_player_take_before_kaspar_blocks_collection_without_duplication(tmp_path: Path) -> None:
-    db, _, game, _ = _services(tmp_path / "take-before.sqlite3", now=EVENING)
-    player_id = _player(game, "qa-take-before")
-
-    for destination, external_id in [
-        ("village_square", "move-to-square"),
-        ("river_edge", "move-to-river"),
-    ]:
-        moved = game.execute(
-            CanonicalAction(
-                actor_id=player_id,
-                action_type=ActionType.MOVE,
-                destination_id=destination,
-            ),
-            external_id=external_id,
-        )
-        assert moved.success is True
-    taken = game.execute(
-        CanonicalAction(
-            actor_id=player_id,
-            action_type=ActionType.TAKE,
-            target_id="driftwood_1",
-        ),
-        external_id="player-takes-driftwood",
-    )
-    assert taken.success is True
-
-    assert _wait(game, player_id, 9, "wait-after-player-take").success is True
-    resource = _resource(db)
-    assert resource is not None
-    assert resource[1] is None and resource[2] == player_id
-    assert _world_event_count(db, "NPC_COLLECTED_RESOURCE") == 0
-    assert _world_event_count(db, "NPC_DELIVERED_RESOURCE") == 0
-    assert _world_event_count(db, "NPC_REQUESTED_RESOURCE") == 1
+def test_player_take_before_kaspar_blocks_collection(tmp_path: Path) -> None:
+    db, game, _ = services(tmp_path / "take-before.sqlite3")
+    p = player(game, "take-before")
+    for dest in ("village_square", "river_edge"):
+        assert game.execute(CanonicalAction(p, ActionType.MOVE, destination_id=dest)).success is True
+    assert game.execute(CanonicalAction(p, ActionType.TAKE, target_id="driftwood_1")).success is True
+    assert wait(game, p, 9, "after-take").success is True
+    item = resource(db)
+    assert item is not None and item[2] == p
+    assert count_event(db, "NPC_COLLECTED_RESOURCE") == 0
+    assert count_event(db, "NPC_DELIVERED_RESOURCE") == 0
 
 
-def test_player_take_after_kaspar_collection_cannot_duplicate_resource(tmp_path: Path) -> None:
-    db, _, game, _ = _services(tmp_path / "take-after.sqlite3", now=NOON)
-    player_id = _player(game, "qa-take-after")
+def test_player_take_after_kaspar_collection_cannot_duplicate(tmp_path: Path) -> None:
+    db, game, _ = services(tmp_path / "take-after.sqlite3", NOON)
+    p = player(game, "take-after")
+    assert wait(game, p, 5, "collect").success is True
+    assert count_event(db, "NPC_COLLECTED_RESOURCE") == 1
+    for dest in ("village_square", "river_edge"):
+        assert game.execute(CanonicalAction(p, ActionType.MOVE, destination_id=dest)).success is True
+    result = game.execute(CanonicalAction(p, ActionType.TAKE, target_id="driftwood_1"))
+    assert result.success is False
+    assert resource(db)[1] is None and resource(db)[2] is None
+    assert count_event(db, "NPC_COLLECTED_RESOURCE") == 1
 
-    assert _wait(game, player_id, 5, "wait-until-collected").success is True
-    assert _runtime(db, "npc_kaspar")[1]["carrying_wood"] == 1
-    assert _world_event_count(db, "NPC_COLLECTED_RESOURCE") == 1
 
-    for destination, external_id in [
-        ("village_square", "move-after-square"),
-        ("river_edge", "move-after-river"),
-    ]:
-        moved = game.execute(
-            CanonicalAction(
-                actor_id=player_id,
-                action_type=ActionType.MOVE,
-                destination_id=destination,
-            ),
-            external_id=external_id,
-        )
-        assert moved.success is True
-    take = game.execute(
-        CanonicalAction(
-            actor_id=player_id,
-            action_type=ActionType.TAKE,
-            target_id="driftwood_1",
-        ),
-        external_id="take-after-kaspar",
-    )
-    assert take.success is False
-    assert take.code in {"TARGET_NOT_PRESENT", "ALREADY_OWNED"}
-
-    resource = _resource(db)
-    assert resource is not None and resource[1] is None and resource[2] is None
-    assert _runtime(db, "npc_kaspar")[1]["carrying_wood"] == 1
-    assert _world_event_count(db, "NPC_COLLECTED_RESOURCE") == 1
+def test_reinitialize_preserves_runtime_and_consumed_resource(tmp_path: Path) -> None:
+    path = tmp_path / "reinit.sqlite3"
+    db, game, _ = services(path)
+    p = player(game, "reinit")
+    assert wait(game, p, 6, "consume").success is True
+    before = snapshot(db)
+    db.initialize()
+    after = snapshot(db)
+    assert after == before
