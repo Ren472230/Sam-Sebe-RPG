@@ -212,11 +212,8 @@ def compose_production_preview(
             raise FileNotFoundError(f"materialized layer is missing: {relative}")
 
         image = _load_rgba(candidate)
-        if image.width > width or image.height > height:
-            raise ValueError(
-                f"layer exceeds production canvas: {relative} "
-                f"{image.size} > {(width, height)}"
-            )
+        if image.size != (width, height):
+            image = image.resize((width, height), Image.Resampling.BILINEAR)
         scene.alpha_composite(image, dest=(0, 0))
         used_slots.append(slot)
         used_paths.append(relative)
@@ -313,7 +310,7 @@ def verify_production_manifest(repo_root: str | Path) -> dict[str, Any]:
             report = inspect_asset(candidate)
             report["relative_path"] = relative
             inspected.append(report)
-        except Exception as exc:  # validation command should report all failures at once
+        except Exception as exc:
             invalid.append({"path": relative, "error": str(exc)})
 
     return {
