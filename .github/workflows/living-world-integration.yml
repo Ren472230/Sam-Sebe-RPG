@@ -1,0 +1,89 @@
+name: Living World Integration Gate
+
+on:
+  push:
+    branches:
+      - integration/living-world-v1
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: living-world-integration-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend + persistence
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install backend
+        run: python -m pip install -e ".[dev]"
+      - name: Full Python suite
+        run: python -m pytest -q tests
+      - name: Existing vertical-slice smoke
+        env:
+          OPENAI_API_KEY: ""
+        run: PYTHONPATH=src python scripts/smoke_vertical_slice.py
+      - name: SQLite integrity and reopen
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from tempfile import TemporaryDirectory
+          from samseberpg.db import GameDatabase
+
+          with TemporaryDirectory() as tmp:
+              path = Path(tmp) / "integration.sqlite3"
+              db = GameDatabase(path)
+              db.initialize()
+              with db.connect() as conn:
+                  integrity = conn.execute("PRAGMA integrity_check").fetchall()
+                  foreign_keys = conn.execute("PRAGMA foreign_key_check").fetchall()
+              assert [row[0] for row in integrity] == ["ok"], integrity
+              assert foreign_keys == [], foreign_keys
+              with db.connect() as conn:
+                  assert conn.execute("SELECT 1").fetchone()[0] == 1
+          print("SQLite integrity/reopen PASS")
+          PY
+
+  client:
+    name: Client contract + build + Chromium
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install backend for browser server
+        run: python -m pip install -e ".[dev]"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: web/package.json
+      - name: Install client dependencies
+        working-directory: web
+        run: npm install
+      - name: TypeScript API contract
+        working-directory: web
+        run: npm run test:contract
+      - name: Production build
+        working-directory: web
+        run: npm run build
+      - name: Install Chromium
+        working-directory: web
+        run: npx playwright install --with-deps chromium
+      - name: Real browser critical route
+        working-directory: web
+        env:
+          OPENAI_API_KEY: ""
+        run: npm run test:e2e
