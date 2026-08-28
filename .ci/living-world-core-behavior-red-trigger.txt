@@ -1,0 +1,1 @@
+Trigger the isolated RED verification for Living World deterministic behavior tests.
