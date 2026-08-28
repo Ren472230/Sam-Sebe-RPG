@@ -1,7 +1,7 @@
 name: Living World Core RED
 
 on:
-  push:
+  pull_request:
     branches: ["ci/living-world-core-red"]
 
 jobs:
