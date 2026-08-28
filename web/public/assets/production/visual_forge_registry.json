@@ -1,0 +1,106 @@
+{
+  "version": 1,
+  "policy": "free-first",
+  "source_of_truth": "web/public/assets/production/ASSET_MAPPING.md",
+  "note": "Registry reflects repository materialization, not images that may exist only in ChatGPT conversation history.",
+  "assets": [
+    {
+      "id": "SKY_001",
+      "kind": "environment",
+      "status": "candidate",
+      "runtime_derivative": "",
+      "note": "Physical candidate exists, but mountains are baked into the sky image; not promoted to independent L0."
+    },
+    {
+      "id": "DISTANT_MOUNTAINS_001",
+      "kind": "environment",
+      "status": "unmaterialized",
+      "runtime_derivative": "",
+      "note": "Historical evidence only; no repository bytes materialized."
+    },
+    {
+      "id": "DISTANT_FOREST_001",
+      "kind": "environment",
+      "status": "rejected-slot",
+      "runtime_derivative": "",
+      "note": "Candidate has usable alpha but a large mountain ridge is baked into the forest layer."
+    },
+    {
+      "id": "MID_NATURE_001",
+      "kind": "environment",
+      "status": "unmaterialized",
+      "runtime_derivative": "",
+      "note": "Historical evidence only; no repository bytes materialized."
+    },
+    {
+      "id": "GROUND_PATH_001",
+      "kind": "environment",
+      "status": "active",
+      "runtime_derivative": "village/L4_GAMEPLAY_PARTIAL.webp",
+      "note": "Accepted source contributes to the active deterministic gameplay derivative."
+    },
+    {
+      "id": "TAVERN_001",
+      "kind": "architecture",
+      "status": "unmaterialized",
+      "runtime_derivative": "",
+      "note": "Exterior canonical slot is not materialized in the repository; TavernScene interior is a separate absent visual."
+    },
+    {
+      "id": "HOUSE_002",
+      "kind": "architecture",
+      "status": "active",
+      "runtime_derivative": "village/L3_ARCHITECTURE_PARTIAL.webp",
+      "note": "Accepted source contributes to the active deterministic architecture derivative."
+    },
+    {
+      "id": "WORKSHOP_001",
+      "kind": "architecture",
+      "status": "active",
+      "runtime_derivative": "village/L3_ARCHITECTURE_PARTIAL.webp",
+      "note": "Accepted source contributes to the active deterministic architecture derivative."
+    },
+    {
+      "id": "WELL_001",
+      "kind": "architecture",
+      "status": "active",
+      "runtime_derivative": "village/L4_GAMEPLAY_PARTIAL.webp",
+      "note": "Accepted source contributes to the active deterministic gameplay derivative."
+    },
+    {
+      "id": "BUSH_001",
+      "kind": "flora",
+      "status": "accepted-unmaterialized",
+      "runtime_derivative": "",
+      "note": "Historically locked and technically accepted; bytes are not materialized in this repository branch."
+    },
+    {
+      "id": "GRASS_MASS_001",
+      "kind": "flora",
+      "status": "accepted-unmaterialized",
+      "runtime_derivative": "",
+      "note": "Historically locked and technically accepted; bytes are not materialized in this repository branch."
+    },
+    {
+      "id": "FOREGROUND_FLORA_001",
+      "kind": "flora",
+      "status": "accepted-unmaterialized",
+      "runtime_derivative": "",
+      "note": "Historically locked and technically accepted; bytes are not materialized in this repository branch."
+    },
+    {
+      "id": "NPC_MASTER_001",
+      "kind": "character",
+      "status": "candidate",
+      "runtime_derivative": "",
+      "note": "Physical candidate exists but the cream background is baked; not promoted as an isolated runtime cutout."
+    },
+    {
+      "id": "NPC_002",
+      "kind": "character",
+      "status": "accepted-unmaterialized",
+      "runtime_derivative": "",
+      "note": "Visual identity accepted, but no repository runtime bytes or gameplay role are materialized."
+    }
+  ]
+}
