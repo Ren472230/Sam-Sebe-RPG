@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict
+from typing import Any
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
@@ -22,6 +23,7 @@ class ActionRequest(BaseModel):
     target_id: str | None = None
     destination_id: str | None = None
     source_text: str | None = None
+    modifiers: Any | None = None
     external_id: str | None = None
 
 
@@ -90,6 +92,7 @@ def create_app(game: GameService, quest: QuestService, dialogue: DialogueService
                 target_id=request.target_id,
                 destination_id=request.destination_id,
                 source_text=request.source_text,
+                modifiers=request.modifiers,
             ),
             external_id=request.external_id,
         )
