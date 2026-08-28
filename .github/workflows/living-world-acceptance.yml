@@ -1,0 +1,47 @@
+name: Living World acceptance
+
+on:
+  push:
+    branches:
+      - test/living-world-acceptance
+  workflow_dispatch:
+
+jobs:
+  acceptance:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout QA branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Preserve independent QA gate
+        run: |
+          mkdir -p /tmp/living-world-qa/tests /tmp/living-world-qa/scripts
+          cp tests/test_living_world_acceptance.py /tmp/living-world-qa/tests/
+          cp scripts/smoke_living_world_acceptance.py /tmp/living-world-qa/scripts/
+
+      - name: Compose current DEV-1 and DEV-2 without modifying their branches
+        run: |
+          git fetch origin dev/living-world-core dev/living-world-integration
+          git config user.name "Living World QA"
+          git config user.email "qa@local.invalid"
+          git checkout -B qa-combined origin/dev/living-world-integration
+          git merge --no-edit origin/dev/living-world-core
+          cp /tmp/living-world-qa/tests/test_living_world_acceptance.py tests/test_living_world_acceptance.py
+          cp /tmp/living-world-qa/scripts/smoke_living_world_acceptance.py scripts/smoke_living_world_acceptance.py
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install
+        run: python -m pip install -e ".[dev]"
+
+      - name: Independent acceptance suite
+        run: python -m pytest -q
+
+      - name: Existing vertical slice smoke
+        if: always()
+        run: python scripts/smoke_vertical_slice.py
