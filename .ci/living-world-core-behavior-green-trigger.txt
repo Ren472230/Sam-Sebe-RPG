@@ -1,0 +1,1 @@
+Trigger the isolated GREEN verification for Living World deterministic behavior tests.
