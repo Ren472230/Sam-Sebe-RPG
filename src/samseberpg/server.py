@@ -8,6 +8,7 @@ from .clock import SystemClock
 from .db import GameDatabase
 from .dialogue import DialogueService, OpenAIResponsesProvider
 from .game import GameService
+from .living_world import LivingWorldService
 from .quest import QuestService
 
 
@@ -15,7 +16,7 @@ def build_app(db_path: str | Path = "data/world.sqlite3", *, provider=None):
     db = GameDatabase(db_path)
     db.initialize()
     clock = SystemClock()
-    game = GameService(db, clock)
+    game = GameService(db, clock, living_world=LivingWorldService())
     quest = QuestService(db, clock)
     if provider is None and os.environ.get("OPENAI_API_KEY"):
         provider = OpenAIResponsesProvider()
