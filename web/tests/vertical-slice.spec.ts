@@ -109,15 +109,23 @@ async function collectOneFirewood(page: Page, expectedCount: number): Promise<vo
   await expect(page.locator("#hud")).toContainText(`дрова ${expectedCount}/5`);
 }
 
-test("player can finish the critical firewood route in the real browser and reload into canonical scene", async ({ page }) => {
+test("player can finish the firewood route with prototype art and reload persistent state", async ({ page }) => {
   test.setTimeout(120_000);
   await page.goto("/");
-  await expect(page.locator("body")).toHaveAttribute("data-art-mode", "greybox");
-  await expect(page.locator("body")).toHaveAttribute("data-scene", "village");
+  const body = page.locator("body");
+  await expect(body).toHaveAttribute("data-scene", "village");
+  await expect(body).toHaveAttribute("data-art-mode", "prototype");
+  await expect(body).toHaveAttribute("data-village-art", "prototype");
+  await expect(body).toHaveAttribute("data-player-art", "prototype");
+  await expect(body).toHaveAttribute("data-firewood-art", "prototype");
   await expect(page.locator("#hud")).toContainText("Workshop Yard");
   await page.screenshot({ path: "test-results/01-village.png", fullPage: true });
 
   await enterTavernFromVillage(page);
+  await expect(body).toHaveAttribute("data-art-mode", "prototype");
+  await expect(body).toHaveAttribute("data-tavern-art", "prototype");
+  await expect(body).toHaveAttribute("data-player-art", "prototype");
+  await expect(body).toHaveAttribute("data-oren-art", "prototype");
   await approachOren(page);
   await expect(page.getByRole("button", { name: "Взяться за дрова" })).toBeVisible();
   await page.screenshot({ path: "test-results/02-oren-offer.png", fullPage: true });
@@ -147,8 +155,11 @@ test("player can finish the critical firewood route in the real browser and relo
   await page.screenshot({ path: "test-results/03-completed.png", fullPage: true });
 
   await page.reload();
-  await expect(page.locator("body")).toHaveAttribute("data-art-mode", "greybox");
-  await expect(page.locator("body")).toHaveAttribute("data-scene", "tavern");
+  await expect(body).toHaveAttribute("data-scene", "tavern");
+  await expect(body).toHaveAttribute("data-art-mode", "prototype");
+  await expect(body).toHaveAttribute("data-tavern-art", "prototype");
+  await expect(body).toHaveAttribute("data-player-art", "prototype");
+  await expect(body).toHaveAttribute("data-oren-art", "prototype");
   await expect(page.locator("#hud")).toContainText("дрова доставлены ✓");
   await expect(page.locator("#hud")).toContainText("монеты 15");
   await expect(page.locator("#hud")).toContainText("доверие Орена 10");

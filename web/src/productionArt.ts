@@ -1,6 +1,15 @@
 import Phaser from "phaser";
 
 import {
+  createPrototypeFirewood,
+  createPrototypeOren,
+  createPrototypePlayer,
+  preloadTavernPrototypeArt,
+  preloadVillagePrototypeArt,
+  renderTavernPrototypeBackground,
+  renderVillagePrototypeBackground
+} from "./prototypeArt";
+import {
   EMPTY_PRODUCTION_MANIFEST,
   VILLAGE_PARALLAX_COEFFICIENTS,
   getProductionReadiness,
@@ -59,6 +68,7 @@ export function setProductionManifest(manifest: NormalizedProductionManifest): v
 }
 
 export function preloadVillageProductionArt(scene: Phaser.Scene): void {
+  preloadVillagePrototypeArt(scene);
   for (const layer of villageLayerNames()) {
     queueImage(scene, VILLAGE_KEYS[layer], currentManifest.village.layers[layer]);
   }
@@ -67,6 +77,7 @@ export function preloadVillageProductionArt(scene: Phaser.Scene): void {
 }
 
 export function preloadTavernProductionArt(scene: Phaser.Scene): void {
+  preloadTavernPrototypeArt(scene);
   if (currentReadiness.tavern.ready) {
     queueImage(scene, KEYS.tavernBackground, currentManifest.tavern.layers.background);
     queueImage(scene, KEYS.tavernForeground, currentManifest.tavern.layers.foreground);
@@ -76,6 +87,8 @@ export function preloadTavernProductionArt(scene: Phaser.Scene): void {
 }
 
 export function renderVillageProductionBackground(scene: Phaser.Scene): boolean {
+  if (renderVillagePrototypeBackground(scene)) return true;
+
   const declared = villageLayerNames().filter((layer) => Boolean(currentManifest.village.layers[layer]));
   const loaded = declared.filter((layer) => scene.textures.exists(VILLAGE_KEYS[layer]));
   const runtimeMissing = declared
@@ -102,6 +115,7 @@ export function renderVillageProductionBackground(scene: Phaser.Scene): boolean 
 }
 
 export function renderVillageProductionForeground(scene: Phaser.Scene): void {
+  if (document.body.dataset.villageArt === "prototype") return;
   const layer: VillageLayerName = "foreground";
   if (!currentManifest.village.layers[layer]) return;
   if (scene.textures.exists(VILLAGE_KEYS[layer])) {
@@ -112,6 +126,8 @@ export function renderVillageProductionForeground(scene: Phaser.Scene): void {
 }
 
 export function renderTavernProductionBackground(scene: Phaser.Scene): boolean {
+  if (renderTavernPrototypeBackground(scene)) return true;
+
   if (!currentReadiness.tavern.ready || !scene.textures.exists(KEYS.tavernBackground)) {
     markSceneFallback("tavern", currentReadiness.tavern.ready ? ["texture:tavern.background"] : []);
     return false;
@@ -124,11 +140,16 @@ export function renderTavernProductionBackground(scene: Phaser.Scene): boolean {
 }
 
 export function renderTavernProductionForeground(scene: Phaser.Scene): void {
+  if (document.body.dataset.tavernArt === "prototype") return;
   if (!currentReadiness.tavern.ready || !currentManifest.tavern.layers.foreground) return;
   if (scene.textures.exists(KEYS.tavernForeground)) addFullCanvasLayer(scene, KEYS.tavernForeground, 40);
 }
 
 export function createProductionPlayer(scene: Phaser.Scene, x: number, y: number): Phaser.GameObjects.Image | null {
+  if (document.body.dataset.artMode === "prototype") {
+    const prototype = createPrototypePlayer(scene, x, y);
+    if (prototype) return prototype;
+  }
   if (!currentReadiness.player || !scene.textures.exists(KEYS.player)) {
     if (currentReadiness.player) document.body.dataset.playerArt = "fallback-load-error";
     return null;
@@ -141,6 +162,10 @@ export function createProductionPlayer(scene: Phaser.Scene, x: number, y: number
 }
 
 export function createProductionOren(scene: Phaser.Scene, x: number, y: number): Phaser.GameObjects.Image | null {
+  if (document.body.dataset.artMode === "prototype") {
+    const prototype = createPrototypeOren(scene, x, y);
+    if (prototype) return prototype;
+  }
   if (!currentReadiness.oren || !scene.textures.exists(KEYS.oren)) {
     if (currentReadiness.oren) document.body.dataset.orenArt = "fallback-load-error";
     return null;
@@ -153,6 +178,10 @@ export function createProductionOren(scene: Phaser.Scene, x: number, y: number):
 }
 
 export function createProductionFirewood(scene: Phaser.Scene, x: number, y: number): Phaser.GameObjects.Image | null {
+  if (document.body.dataset.artMode === "prototype") {
+    const prototype = createPrototypeFirewood(scene, x, y);
+    if (prototype) return prototype;
+  }
   if (!currentReadiness.firewood || !scene.textures.exists(KEYS.firewood)) {
     if (currentReadiness.firewood) document.body.dataset.firewoodArt = "fallback-load-error";
     return null;
