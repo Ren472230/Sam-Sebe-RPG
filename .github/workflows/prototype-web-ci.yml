@@ -1,0 +1,39 @@
+name: Prototype Web CI
+
+on:
+  push:
+    branches:
+      - dev/prototype-art-svg
+    paths:
+      - "web/**"
+      - ".github/workflows/prototype-web-ci.yml"
+  pull_request:
+    paths:
+      - "web/**"
+      - ".github/workflows/prototype-web-ci.yml"
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install web dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Run web contract tests
+        run: npm run test:contract
+
+      - name: Build web client
+        run: npm run build
