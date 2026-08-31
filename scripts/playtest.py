@@ -27,6 +27,13 @@ def reset_save(database: Path) -> None:
         path.unlink(missing_ok=True)
 
 
+def _configure_stdio() -> None:
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if callable(reconfigure):
+            reconfigure(encoding="utf-8", errors="replace")
+
+
 def _version(command: str) -> str | None:
     executable = shutil.which(command)
     if executable is None:
@@ -239,6 +246,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
 
 def main(argv: list[str] | None = None) -> int:
+    _configure_stdio()
     args = parse_args(argv)
     ok, messages = preflight()
     for message in messages:
