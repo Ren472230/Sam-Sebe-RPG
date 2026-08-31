@@ -79,7 +79,8 @@ async function approachOren(page: Page): Promise<void> {
 }
 
 async function leaveTavern(page: Page): Promise<void> {
-  await page.getByRole("button", { name: "Закрыть" }).click().catch(() => undefined);
+  const closeButton = page.getByRole("button", { name: "Закрыть" });
+  if (await closeButton.isVisible()) await closeButton.click();
   await moveAndInteractWhenHint(page, ["s", "a"], "выйти в деревню");
   await expect(page.locator("body")).toHaveAttribute("data-scene", "village");
   // Wait for the newly-created VillageScene to publish its own spawn coordinates.
