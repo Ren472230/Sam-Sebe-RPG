@@ -1,6 +1,13 @@
 import { expect, test, type Page } from "@playwright/test";
 
 type PlayerPosition = { x: number; y: number };
+type ActionPayload = {
+  success: boolean;
+  code: string;
+  summary: string;
+  event_id: number | null;
+  replayed: boolean;
+};
 
 async function playerPosition(page: Page): Promise<PlayerPosition> {
   return page.evaluate(() => ({
@@ -109,7 +116,59 @@ async function collectOneFirewood(page: Page, expectedCount: number): Promise<vo
   await expect(page.locator("#hud")).toContainText(`дрова ${expectedCount}/5`);
 }
 
-test("player can finish the firewood route with prototype art and reload persistent state", async ({ page }) => {
+async function verifyLivingWorldApi(page: Page): Promise<void> {
+  const session = await page.request.post("/api/session", {
+    data: { external_id: "browser-world-probe", name: "World Probe" }
+  });
+  expect(session.ok()).toBeTruthy();
+  const { player_id: playerId } = await session.json() as { player_id: string };
+
+  const waitOneResponse = await page.request.post("/api/action", {
+    data: {
+      player_id: playerId,
+      action_type: "WAIT",
+      modifiers: { ticks: 1 },
+      external_id: "browser-wait-1"
+    }
+  });
+  expect(waitOneResponse.ok()).toBeTruthy();
+  const waitOne = await waitOneResponse.json() as ActionPayload;
+  expect(waitOne.success).toBe(true);
+  expect(waitOne.code).toBe("OK");
+  expect(waitOne.summary).toBe("Waited 1 simulation tick(s).");
+  expect(waitOne.replayed).toBe(false);
+
+  const waitNineResponse = await page.request.post("/api/action", {
+    data: {
+      player_id: playerId,
+      action_type: "WAIT",
+      modifiers: { ticks: 9 },
+      external_id: "browser-wait-9"
+    }
+  });
+  expect(waitNineResponse.ok()).toBeTruthy();
+  const waitNine = await waitNineResponse.json() as ActionPayload;
+  expect(waitNine.success).toBe(true);
+  expect(waitNine.code).toBe("OK");
+  expect(waitNine.summary).toBe("Waited 9 simulation tick(s).");
+  expect(waitNine.replayed).toBe(false);
+
+  const replayResponse = await page.request.post("/api/action", {
+    data: {
+      player_id: playerId,
+      action_type: "WAIT",
+      modifiers: { ticks: 9 },
+      external_id: "browser-wait-9"
+    }
+  });
+  expect(replayResponse.ok()).toBeTruthy();
+  const replay = await replayResponse.json() as ActionPayload;
+  expect(replay.success).toBe(true);
+  expect(replay.replayed).toBe(true);
+  expect(replay.event_id).toBe(waitNine.event_id);
+}
+
+test("player can finish the firewood route with prototype art, persistent state, and live Living World", async ({ page }) => {
   test.setTimeout(120_000);
   await page.goto("/");
   const body = page.locator("body");
@@ -164,4 +223,6 @@ test("player can finish the firewood route with prototype art and reload persist
   await expect(page.locator("#hud")).toContainText("монеты 15");
   await expect(page.locator("#hud")).toContainText("доверие Орена 10");
   await page.screenshot({ path: "test-results/04-reloaded.png", fullPage: true });
+
+  await verifyLivingWorldApi(page);
 });
