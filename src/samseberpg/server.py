@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+from datetime import datetime
 import os
 from pathlib import Path
 
 from .api import create_app
-from .clock import SystemClock
+from .clock import Clock, FakeClock, SystemClock
 from .db import GameDatabase
 from .dialogue import DialogueService, OpenAIResponsesProvider
 from .game import GameService
@@ -12,10 +13,21 @@ from .living_world import LivingWorldService
 from .quest import QuestService
 
 
+def configured_clock() -> Clock:
+    raw = os.environ.get("SAM_SEBE_PLAYTEST_TIME", "").strip()
+    if not raw:
+        return SystemClock()
+    try:
+        current = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+    except ValueError as exc:
+        raise ValueError("SAM_SEBE_PLAYTEST_TIME must be an ISO-8601 datetime with timezone") from exc
+    return FakeClock(current)
+
+
 def build_app(db_path: str | Path = "data/world.sqlite3", *, provider=None):
     db = GameDatabase(db_path)
     db.initialize()
-    clock = SystemClock()
+    clock = configured_clock()
     game = GameService(db, clock, living_world=LivingWorldService())
     quest = QuestService(db, clock)
     if provider is None and os.environ.get("OPENAI_API_KEY"):
