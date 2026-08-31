@@ -47,6 +47,24 @@ def test_launcher_has_non_destructive_preflight_mode() -> None:
     assert "PLAYTEST PREFLIGHT: PASS" in completed.stdout
 
 
+def test_preflight_rejects_node_below_22(monkeypatch) -> None:
+    launcher = _load_launcher()
+
+    def fake_version(command: str) -> str | None:
+        if command == "node":
+            return "v20.19.0"
+        if command == "npm":
+            return "10.8.2"
+        return None
+
+    monkeypatch.setattr(launcher, "_version", fake_version)
+
+    ok, messages = launcher.preflight()
+
+    assert ok is False
+    assert any("Node.js 22+" in message for message in messages)
+
+
 def test_reset_save_removes_sqlite_sidecars_only_for_requested_path(tmp_path: Path) -> None:
     launcher = _load_launcher()
     database = tmp_path / "world.sqlite3"
