@@ -16,7 +16,7 @@ on:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     defaults:
       run:
         working-directory: web
@@ -29,11 +29,33 @@ jobs:
         with:
           node-version: "22"
 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
       - name: Install web dependencies
         run: npm install --no-audit --no-fund
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
 
       - name: Run web contract tests
         run: npm run test:contract
 
       - name: Build web client
         run: npm run build
+
+      - name: Run browser vertical slice
+        run: npm run test:e2e
+
+      - name: Upload browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: prototype-browser-evidence
+          path: |
+            web/test-results
+            web/playwright-report
+          if-no-files-found: warn
+          retention-days: 7
