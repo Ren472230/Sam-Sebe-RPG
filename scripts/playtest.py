@@ -43,6 +43,12 @@ def _version(command: str) -> str | None:
     return (completed.stdout or completed.stderr).strip()
 
 
+def _node_major(version: str) -> int | None:
+    normalized = version.strip().lstrip("vV")
+    major = normalized.split(".", 1)[0]
+    return int(major) if major.isdigit() else None
+
+
 def preflight() -> tuple[bool, list[str]]:
     messages: list[str] = []
     ok = True
@@ -54,9 +60,13 @@ def preflight() -> tuple[bool, list[str]]:
         messages.append(f"[OK] Python {sys.version.split()[0]}")
 
     node_version = _version("node")
+    node_major = None if node_version is None else _node_major(node_version)
     if node_version is None:
         ok = False
         messages.append("[FAIL] Node.js не найден — нужен Node.js 22+")
+    elif node_major is None or node_major < 22:
+        ok = False
+        messages.append(f"[FAIL] Node.js {node_version} — нужен Node.js 22+")
     else:
         messages.append(f"[OK] Node.js {node_version}")
 
