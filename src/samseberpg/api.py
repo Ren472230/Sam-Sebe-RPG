@@ -6,6 +6,7 @@ from typing import Any
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
+from .db import DEFAULT_WORLD_ID
 from .dialogue import DialogueService
 from .domain import ActionType, CanonicalAction
 from .game import GameService
@@ -82,6 +83,7 @@ def create_app(game: GameService, quest: QuestService, dialogue: DialogueService
             "oren_relation": relation,
             "world": world,
             "oren_trust": relation["trust"],
+            "world_pulse": _world_pulse(game),
         }
 
     @app.post("/api/action")
@@ -146,3 +148,28 @@ def _economy_and_oren_relation(
         else {key: int(row[index]) for index, key in enumerate(keys)}
     )
     return int(player[0]), relation
+
+
+def _world_pulse(game: GameService) -> dict[str, object]:
+    with game.db.connect() as conn:
+        runtime = conn.execute(
+            "SELECT tick FROM world_runtime WHERE world_id = ?",
+            (DEFAULT_WORLD_ID,),
+        ).fetchone()
+        rows = conn.execute(
+            "SELECT tick, actor_id, event_type, summary FROM world_events "
+            "WHERE world_id = ? ORDER BY id DESC LIMIT 5",
+            (DEFAULT_WORLD_ID,),
+        ).fetchall()
+
+    tick = 0 if runtime is None else int(runtime[0])
+    latest_events = [
+        {
+            "tick": int(row[0]),
+            "actor_id": str(row[1]),
+            "event_type": str(row[2]),
+            "summary": str(row[3]),
+        }
+        for row in reversed(rows)
+    ]
+    return {"tick": tick, "latest_events": latest_events}
