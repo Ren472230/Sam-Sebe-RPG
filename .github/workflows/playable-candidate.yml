@@ -3,14 +3,14 @@ name: Playable Candidate Gate
 on:
   push:
     branches:
-      - integration/playable-candidate-v1
+      - main
   pull_request:
     branches:
       - main
   workflow_dispatch:
 
 concurrency:
-  group: playable-candidate-v3-${{ github.ref }}
+  group: playable-candidate-v4-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -50,6 +50,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
+      - name: Playtest launcher preflight
+        run: python scripts/playtest.py --check
       - name: Install web dependencies
         working-directory: web
         run: npm install --no-audit --no-fund
@@ -63,7 +65,7 @@ jobs:
         working-directory: web
         run: npx playwright install --with-deps chromium
       - name: Reset browser database
-        run: rm -f data/e2e-world.sqlite3
+        run: rm -f data/e2e-world.sqlite3 data/e2e-world.sqlite3-wal data/e2e-world.sqlite3-shm
       - name: Real browser integrated route
         working-directory: web
         env:
