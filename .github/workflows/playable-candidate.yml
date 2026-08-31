@@ -1,0 +1,81 @@
+name: Playable Candidate Gate
+
+on:
+  push:
+    branches:
+      - integration/playable-candidate-v1
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: playable-candidate-v3-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend + Living World
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install backend
+        run: python -m pip install -e ".[dev]"
+      - name: Full Python suite
+        run: python -m pytest -q tests
+      - name: Vertical slice smoke
+        env:
+          OPENAI_API_KEY: ""
+        run: PYTHONPATH=src python scripts/smoke_vertical_slice.py
+      - name: Living World acceptance smoke
+        run: PYTHONPATH=src python scripts/smoke_living_world_acceptance.py
+
+  browser:
+    name: Web contract + build + real browser
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install backend for browser server
+        run: python -m pip install -e ".[dev]"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install web dependencies
+        working-directory: web
+        run: npm install --no-audit --no-fund
+      - name: Web contract tests
+        working-directory: web
+        run: npm run test:contract
+      - name: Production build
+        working-directory: web
+        run: npm run build
+      - name: Install Chromium
+        working-directory: web
+        run: npx playwright install --with-deps chromium
+      - name: Reset browser database
+        run: rm -f data/e2e-world.sqlite3
+      - name: Real browser integrated route
+        working-directory: web
+        env:
+          OPENAI_API_KEY: ""
+        run: npm run test:e2e
+      - name: Upload browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playable-candidate-browser-evidence
+          path: |
+            web/test-results
+            web/playwright-report
+          if-no-files-found: ignore
+          retention-days: 14
