@@ -37,12 +37,25 @@ export type OrenRelation = {
   romance: number;
 };
 
+export type WorldPulseEvent = {
+  tick: number;
+  actor_id: string;
+  event_type: string;
+  summary: string;
+};
+
+export type WorldPulse = {
+  tick: number;
+  latest_events: WorldPulseEvent[];
+};
+
 export type GameSnapshot = {
   world: WorldView;
   quest: QuestState;
   coins: number;
   oren_relation: OrenRelation;
   oren_trust: number;
+  world_pulse: WorldPulse;
 };
 
 export type ActionResult = {
@@ -73,6 +86,7 @@ type FrozenStateResponse = {
   quest: QuestState;
   coins: number;
   oren_relation: OrenRelation;
+  world_pulse?: unknown;
 };
 
 export class ApiError extends Error {
@@ -117,15 +131,17 @@ export class GameApi {
       quest: response.quest,
       coins: response.coins,
       oren_relation: response.oren_relation,
-      oren_trust: response.oren_relation.trust
+      oren_trust: response.oren_relation.trust,
+      world_pulse: mapWorldPulse(response.world_pulse)
     };
   }
 
   action(input: {
     player_id: string;
-    action_type: "LOOK" | "MOVE" | "TAKE" | "DROP";
+    action_type: "LOOK" | "MOVE" | "TAKE" | "DROP" | "WAIT";
     target_id?: string | null;
     destination_id?: string | null;
+    modifiers?: Record<string, unknown> | null;
     external_id?: string;
   }): Promise<ActionResult> {
     return this.request("/api/action", {
@@ -135,6 +151,7 @@ export class GameApi {
         action_type: input.action_type,
         target_id: input.target_id ?? null,
         destination_id: input.destination_id ?? null,
+        modifiers: input.modifiers ?? null,
         external_id: input.external_id ?? requestId(input.action_type.toLowerCase())
       })
     });
@@ -210,6 +227,29 @@ function isFrozenStateResponse(value: unknown): value is FrozenStateResponse {
     && typeof quest.owned_firewood === "number"
     && typeof value.coins === "number"
     && typeof relation.trust === "number";
+}
+
+function mapWorldPulse(value: unknown): WorldPulse {
+  if (!isRecord(value) || typeof value.tick !== "number" || !Array.isArray(value.latest_events)) {
+    return { tick: 0, latest_events: [] };
+  }
+  return {
+    tick: value.tick,
+    latest_events: value.latest_events.filter(isWorldPulseEvent).map((event) => ({
+      tick: event.tick,
+      actor_id: event.actor_id,
+      event_type: event.event_type,
+      summary: event.summary
+    }))
+  };
+}
+
+function isWorldPulseEvent(value: unknown): value is WorldPulseEvent {
+  return isRecord(value)
+    && typeof value.tick === "number"
+    && typeof value.actor_id === "string"
+    && typeof value.event_type === "string"
+    && typeof value.summary === "string";
 }
 
 function mapActor(actor: CanonicalActor): VisibleActor {
