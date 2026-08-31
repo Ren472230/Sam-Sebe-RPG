@@ -1,0 +1,54 @@
+name: Visual Forge Gate
+
+on:
+  push:
+    branches:
+      - dev/production-visual-integration
+    paths:
+      - "tools/visual_forge/**"
+      - "web/public/assets/production/**"
+      - ".github/workflows/visual-forge.yml"
+  pull_request:
+    paths:
+      - "tools/visual_forge/**"
+      - "web/public/assets/production/**"
+      - ".github/workflows/visual-forge.yml"
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: tools/visual_forge/requirements.txt
+
+      - name: Install Visual Forge dependencies
+        run: python -m pip install -r tools/visual_forge/requirements.txt
+
+      - name: Run Visual Forge unit tests
+        run: python -m unittest discover -s tools/visual_forge/tests -v
+
+      - name: Verify canonical asset registry
+        run: python tools/visual_forge/visual_forge.py verify-registry web/public/assets/production/visual_forge_registry.json
+
+      - name: Verify materialized production assets
+        run: python tools/visual_forge/visual_forge.py verify-production --root .
+
+      - name: Compose production preview
+        run: python tools/visual_forge/visual_forge.py compose-production-preview --root . --output visual-forge-preview.png
+
+      - name: Upload production preview
+        uses: actions/upload-artifact@v4
+        with:
+          name: visual-forge-preview
+          path: visual-forge-preview.png
+          if-no-files-found: error
+          retention-days: 7
