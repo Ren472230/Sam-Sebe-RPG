@@ -21,6 +21,7 @@ class ActionRequest(BaseModel):
     player_id: str
     action_type: ActionType
     target_id: str | None = None
+    recipient_id: str | None = None
     destination_id: str | None = None
     source_text: str | None = None
     modifiers: Any | None = None
@@ -90,6 +91,7 @@ def create_app(game: GameService, quest: QuestService, dialogue: DialogueService
                 actor_id=request.player_id,
                 action_type=request.action_type,
                 target_id=request.target_id,
+                recipient_id=request.recipient_id,
                 destination_id=request.destination_id,
                 source_text=request.source_text,
                 modifiers=request.modifiers,

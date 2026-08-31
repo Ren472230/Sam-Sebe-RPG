@@ -1,14 +1,28 @@
 {
-  "version": 1,
-  "status": "awaiting_assets",
+  "version": 2,
+  "status": "partial",
   "canvas": { "width": 960, "height": 540 },
-  "runtime_note": "Keep awaiting_assets until all required P0 WebP exports exist. Then switch status to ready; gameplay anchors remain unchanged.",
+  "runtime_note": "Partial Start Village production mode: only ACCEPT materialized derivatives are active. Missing canonical slots remain greybox/fallback and are not faked.",
   "village": {
     "layers": {
-      "sky": "village/sky.webp",
-      "far_world": "village/far_world.webp",
-      "mid_world": "village/mid_world.webp",
-      "foreground": "village/foreground.webp"
+      "sky": "",
+      "distant_nature": "",
+      "mid_nature": "",
+      "architecture": "village/L3_ARCHITECTURE_PARTIAL.webp",
+      "gameplay": "village/L4_GAMEPLAY_PARTIAL.webp",
+      "foreground": ""
+    },
+    "parallax": {
+      "enabled": false,
+      "coefficients": {
+        "sky": 0.005,
+        "distant_nature": 0.045,
+        "mid_nature": 0.16,
+        "architecture": 0.43,
+        "gameplay": 1.0,
+        "foreground": 1.4
+      },
+      "activation_note": "Disabled for this partial materialization: no approved seam-safe L0/L1/L2 overscan layers are available."
     },
     "anchors": {
       "player_start": [430, 455],
@@ -16,32 +30,25 @@
       "well": [485, 360],
       "workshop": [230, 264],
       "firewood_strip": { "x": [112, 260], "y": [428, 449] }
+    },
+    "derivative_sources": {
+      "architecture": ["WORKSHOP_001", "HOUSE_002"],
+      "gameplay": ["GROUND_PATH_001", "WELL_001"]
     }
   },
   "tavern": {
-    "layers": {
-      "background": "tavern/background.webp",
-      "foreground": "tavern/foreground.webp"
-    },
-    "anchors": {
-      "player_entry": [270, 425],
-      "oren": [650, 325],
-      "exit": [110, 420]
-    }
+    "layers": { "background": "", "foreground": "" },
+    "anchors": { "player_entry": [270, 425], "oren": [650, 325], "exit": [110, 420] },
+    "runtime_note": "No approved TavernScene interior asset is materialized. TavernScene remains greybox."
   },
-  "characters": {
-    "player": "characters/player.webp",
-    "oren": "characters/oren.webp"
-  },
-  "props": {
-    "firewood": "props/firewood.webp"
-  },
-  "ui": {
-    "dialogue_frame": "ui/dialogue_frame.webp"
-  },
-  "optional": [
-    "village/foreground.webp",
-    "tavern/foreground.webp",
-    "ui/dialogue_frame.webp"
-  ]
+  "characters": { "player": "", "oren": "" },
+  "props": { "firewood": "" },
+  "ui": { "dialogue_frame": "" },
+  "fallback_policy": {
+    "village": "render materialized partial L3/L4 over the existing readable greybox; never synthesize absent L0/L1/L2/L5 slots",
+    "tavern": "greybox until an approved interior background is present and loaded",
+    "player": "existing gameplay fallback",
+    "oren": "existing gameplay fallback",
+    "firewood": "existing canonical-entity gameplay fallback"
+  }
 }

@@ -21,6 +21,16 @@ class LivingWorldAdvancer(Protocol):
     def advance(self, conn, ticks: int) -> list[dict[str, object]]:
         ...
 
+    def give_resource(
+        self,
+        conn,
+        *,
+        player_id: str,
+        entity_id: str,
+        recipient_id: str,
+    ) -> tuple[bool, str, str]:
+        ...
+
 
 class GameService:
     def __init__(
@@ -192,6 +202,13 @@ class GameService:
                 success, code, summary, event_location = self._resolve_action(
                     conn, action, location_id
                 )
+                if action.action_type is ActionType.GIVE and success:
+                    self.synchronizer.catch_up(
+                        conn,
+                        DEFAULT_WORLD_ID,
+                        now,
+                        force=True,
+                    )
             result = self._record_result(
                 conn,
                 action,
@@ -268,6 +285,40 @@ class GameService:
             )
             return True, "OK", f"Dropped {action.target_id}.", location_id
 
+        if action.action_type is ActionType.GIVE:
+            if action.target_id is None:
+                return False, "ITEM_REQUIRED", "An item is required for GIVE.", location_id
+            if action.recipient_id is None:
+                return False, "RECIPIENT_REQUIRED", "A recipient is required for GIVE.", location_id
+
+            entity = conn.execute(
+                "SELECT owner_actor_id FROM entities WHERE id = ?",
+                (action.target_id,),
+            ).fetchone()
+            if entity is None or entity[0] != action.actor_id:
+                return False, "ITEM_NOT_OWNED", "Item is not owned by this player.", location_id
+
+            recipient = conn.execute(
+                "SELECT actor_type, location_id FROM actors WHERE id = ?",
+                (action.recipient_id,),
+            ).fetchone()
+            if recipient is None or str(recipient[0]) != "npc":
+                return False, "RECIPIENT_NOT_FOUND", "Recipient is not a valid NPC.", location_id
+            if recipient[1] != location_id:
+                return False, "RECIPIENT_NOT_PRESENT", "Recipient is not present here.", location_id
+            if self.living_world is None:
+                raise RuntimeError(
+                    "LivingWorldService is not configured for GIVE actions"
+                )
+
+            success, code, summary = self.living_world.give_resource(
+                conn,
+                player_id=action.actor_id,
+                entity_id=action.target_id,
+                recipient_id=action.recipient_id,
+            )
+            return success, code, summary, location_id
+
         raise ValueError(f"unsupported action type: {action.action_type}")
 
     def _record_result(
@@ -285,6 +336,7 @@ class GameService:
         evidence = {
             key: value
             for key, value in {
+                "recipient_id": action.recipient_id,
                 "destination_id": action.destination_id,
                 "source_text": action.source_text,
                 "modifiers": action.modifiers,
