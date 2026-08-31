@@ -123,9 +123,11 @@ export class GameApi {
 
   action(input: {
     player_id: string;
-    action_type: "LOOK" | "MOVE" | "TAKE" | "DROP";
+    action_type: "LOOK" | "MOVE" | "TAKE" | "DROP" | "GIVE" | "WAIT";
     target_id?: string | null;
+    recipient_id?: string | null;
     destination_id?: string | null;
+    modifiers?: { ticks?: number } | null;
     external_id?: string;
   }): Promise<ActionResult> {
     return this.request("/api/action", {
@@ -134,7 +136,9 @@ export class GameApi {
         player_id: input.player_id,
         action_type: input.action_type,
         target_id: input.target_id ?? null,
+        recipient_id: input.recipient_id ?? null,
         destination_id: input.destination_id ?? null,
+        modifiers: input.modifiers ?? null,
         external_id: input.external_id ?? requestId(input.action_type.toLowerCase())
       })
     });
