@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: playable-candidate-v4-${{ github.ref }}
+  group: playable-candidate-v5-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -83,3 +83,25 @@ jobs:
             web/playwright-report
           if-no-files-found: ignore
           retention-days: 14
+
+  launcher-windows:
+    name: Windows launcher smoke
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install backend
+        run: python -m pip install -e .
+      - name: Install web dependencies
+        working-directory: web
+        run: npm install --no-audit --no-fund
+      - name: Playtest launcher preflight
+        run: python scripts/playtest.py --check
+      - name: Windows launcher smoke
+        run: python scripts/playtest.py --smoke --reset --no-open --db data/windows-launcher-smoke.sqlite3
