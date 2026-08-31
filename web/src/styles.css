@@ -46,6 +46,107 @@ button { font: inherit; }
   font-weight: 700;
 }
 
+#world-panel {
+  margin-top: 10px;
+  padding: 14px 16px;
+  background: #232629;
+  border: 1px solid #4a4f53;
+  border-left: 6px solid #61d4d8;
+  color: #eee9dd;
+}
+
+.world-panel-heading,
+.world-status-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.world-panel-heading {
+  margin-bottom: 10px;
+  color: #65d5d9;
+  font-size: 16px;
+}
+
+.world-panel-heading span {
+  color: #b7b5af;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.world-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.world-status-row {
+  min-height: 42px;
+  padding: 8px 10px;
+  background: #1c1f21;
+  border: 1px solid #41464a;
+  font-size: 13px;
+}
+
+.world-status-row span:first-child {
+  color: #e0a34c;
+  font-weight: 800;
+}
+
+.world-visible,
+.world-result,
+.world-events {
+  margin-top: 10px;
+  color: #d5d1c8;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.world-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.world-actions button {
+  border: 1px solid #8a8d8f;
+  background: #eee8dc;
+  color: #202326;
+  padding: 8px 11px;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.world-actions button:hover,
+.world-actions button:focus-visible {
+  outline: 3px solid #65d5d9;
+  outline-offset: 2px;
+}
+
+.world-actions button:disabled {
+  cursor: progress;
+  opacity: .55;
+}
+
+.world-events {
+  padding-top: 8px;
+  border-top: 1px solid #41464a;
+}
+
+.world-events-title {
+  display: block;
+  margin-bottom: 4px;
+  color: #eee8dc;
+  font-weight: 800;
+}
+
+.world-result {
+  min-height: 22px;
+  color: #65d5d9;
+}
+
 #dialogue {
   position: absolute;
   left: 54px;
@@ -77,4 +178,5 @@ button { font: inherit; }
   body { min-width: 720px; }
   #app { width: calc(100vw - 16px); margin: 8px; }
   #dialogue { left: 24px; right: 24px; }
+  .world-summary { grid-template-columns: 1fr; }
 }

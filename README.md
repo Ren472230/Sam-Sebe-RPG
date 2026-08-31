@@ -1,100 +1,168 @@
-# Sam-Sebe-RPG — Shared World Kernel
+# Сам-себе-RPG — играбельный кандидат
 
-A deliberately small multiplayer-first kernel for **Emergent RPG / Living World / Сам-себе-RPG**.
+Текущая цель репозитория — **не расширять игру новыми большими системами, а провести первый полноценный ручной игровой тест уже работающего вертикального среза**.
 
-The current milestone proves that 2–5 players can inhabit one canonical SQLite village, mutate shared state atomically, survive retries/restarts, and lazily synchronize deterministic NPC schedules to real time.
+Сейчас в одной сборке есть:
 
-## Implemented scope
+- браузерная деревня и таверна с временным цельным прототипным визуалом;
+- движение `WASD` и взаимодействие `E`;
+- диалог с Ореном;
+- квест на 5 дров;
+- награда 15 монет и 10 доверия;
+- сохранение SQLite после обновления страницы и перезапуска сервера;
+- детерминированный диалог без обязательного ключа OpenAI;
+- Living World v1: Мира расходует древесину, Каспар реагирует и использует реальный общий ресурс;
+- вмешательство игрока: можно опередить Каспара, забрать `driftwood_1` и отдать его Мире;
+- идемпотентность повторных запросов и автоматические приёмочные проверки.
 
-- one shared village with three locations;
-- three scheduled NPCs and twelve entities;
-- Discord user ID → persistent player actor mapping;
-- shared observation;
-- deterministic `LOOK`, `MOVE`, `TAKE`, `DROP`;
-- one SQLite write transaction per gameplay action;
-- append-only `ActionEvent` evidence for successes and gameplay failures;
-- idempotency by external interaction ID;
-- restart persistence;
-- `SystemClock` / `FakeClock`;
-- lazy NPC schedule catch-up;
-- serialized concurrent mutations with `BEGIN IMMEDIATE`;
-- no Discord SDK or LLM dependency in the core.
+Production-визуал остаётся отдельным каноном и пока материализован частично. Временный `prototype` нужен только для того, чтобы уже сейчас нормально играть и тестировать механику.
 
-Deferred: Discord adapter/UI, LLM parsing, voice, combat, crafting, progression, large-world generation, Redis/PostgreSQL/microservices.
+## Самый простой запуск игрового теста
 
-## Requirements
+Требования:
 
-- Python 3.12+
-- pytest for development/testing
+- Python 3.12+;
+- Node.js 22+;
+- npm.
 
-## Setup
+Из корня репозитория сначала можно безопасно проверить окружение:
 
-```bash
-python -m venv .venv
-source .venv/bin/activate  # Windows: .venv\\Scripts\\activate
+```powershell
+python scripts/playtest.py --check
+```
+
+Команда ничего не удаляет и ничего не запускает.
+
+Для **чистого первого прохода**:
+
+```powershell
+python scripts/playtest.py --reset
+```
+
+Скрипт:
+
+1. проверяет окружение;
+2. при необходимости устанавливает зависимости проекта;
+3. использует отдельное сохранение `data/playtest-world.sqlite3`;
+4. при `--reset` удаляет только это сохранение и его SQLite-служебные файлы;
+5. запускает сервер на `127.0.0.1:8000`;
+6. запускает браузерную игру на `127.0.0.1:5173`;
+7. открывает браузер;
+8. фиксирует воспроизводимое время Живого мира для первого теста;
+9. отключает обязательность внешнего ИИ в этом режиме.
+
+Чтобы продолжить то же сохранение позже:
+
+```powershell
+python scripts/playtest.py
+```
+
+Остановка обоих процессов: `Ctrl+C` в окне запуска.
+
+## Что делать в игре
+
+Основная сцена:
+
+- `WASD` — движение;
+- `E` — взаимодействие;
+- кнопки в диалоге — действия в разговоре.
+
+Под сценой находится панель **«Живой мир»**. Она показывает только понятное игроку состояние Миры и Каспара, последние события мира и доступные действия. Внутренние идентификаторы целей симуляции игроку не показываются.
+
+Панель также даёт временный игровой доступ к мастерской, площади и реке, пока для этих частей мира не материализованы отдельные полноценные визуальные сцены.
+
+## Первый ручной игровой тест
+
+Сценарий на 30–60 минут, правила подсказок, критерии наблюдения и шаблон фиксации проблем:
+
+`docs/release/PLAYTEST_01.md`
+
+Главные вопросы теста:
+
+1. Понимает ли игрок, где он и что может делать?
+2. Находит ли Орена и проходит ли основной квест без знания архитектуры?
+3. Замечает ли, что NPC делают что-то самостоятельно?
+4. Возникает ли естественное желание вмешаться в ситуацию Миры и Каспара?
+5. Понимает ли последствия вмешательства?
+6. Видит ли после обновления/перезапуска, что мир помнит его действия?
+
+## Автоматическая проверка перед игровым тестом
+
+Серверная часть:
+
+```powershell
 python -m pip install -e ".[dev]"
+python -m pytest -q tests
+python scripts/smoke_vertical_slice.py
+python scripts/smoke_living_world_acceptance.py
 ```
 
-## Tests
+Браузерная часть:
 
-```bash
-pytest -q
+```powershell
+cd web
+npm install
+npm run test:contract
+npm run build
+npx playwright install chromium
+npm run test:e2e
 ```
 
-Concurrency proof:
+Основной облачный барьер находится в:
 
-```bash
-pytest -q tests/test_concurrency.py
-```
+`.github/workflows/playable-candidate.yml`
 
-## Executable multiplayer proof
+Он должен одновременно подтвердить сервер, Living World, старый квестовый маршрут, сборку клиента и реальный Chromium-проход.
 
-After installing the package:
+## Архитектурный контракт
 
-```bash
-python scripts/demo_shared_world.py
-```
-
-The demo creates a clean temporary SQLite database and proves:
-
-1. Player A and Player B both see `stone_flat_1`.
-2. Player A takes it.
-3. Player B immediately stops seeing it.
-4. Reopening the database preserves Player A's ownership.
-5. `FakeClock` advances from 08:00 to 20:00 UTC.
-6. The next world touch lazily moves Mira to `village_square` with her evening activity.
-
-## Architecture
+SQLite остаётся авторитетным состоянием мира.
 
 ```text
-adapter / tests / future Discord
-            |
-            v
-     CanonicalAction
-            |
-            v
-       GameService
-         /      \
-        v        v
-WorldSynchronizer  deterministic rules
-        \        /
-         v      v
-        SQLite
- state + ActionEvent + idempotency
+браузер / API / тесты
+        |
+        v
+ CanonicalAction
+        |
+        v
+   GameService
+   /        \
+  v          v
+LivingWorld  WorldSynchronizer
+   \        /
+      SQLite
 ```
 
-SQLite is authoritative. LLMs and Discord adapters are not allowed to write canonical state directly.
+Игрок и NPC конкурируют за одни и те же канонические предметы. Клиент, диалоговая модель и визуальный слой не имеют права самостоятельно создавать авторитетное состояние мира.
 
-## Source map
+## Основные файлы
 
-- `src/samseberpg/domain.py` — typed actions/results/views
-- `src/samseberpg/clock.py` — replaceable world clock
-- `src/samseberpg/db.py` — schema, connection policy, village bootstrap
-- `src/samseberpg/world.py` — deterministic lazy NPC catch-up
-- `src/samseberpg/game.py` — player registration, observation, authoritative actions
-- `tests/` — persistence, shared state, idempotency, time and concurrency proofs
-- `scripts/demo_shared_world.py` — clean end-to-end proof
+- `src/samseberpg/game.py` — авторитетные игровые действия;
+- `src/samseberpg/living_world.py` — Living World v1;
+- `src/samseberpg/api.py` — HTTP API и проекция состояния для клиента;
+- `src/samseberpg/server.py` — сервер и конфигурация времени игрового теста;
+- `src/samseberpg/db.py` — SQLite-схема и начальное состояние;
+- `web/src/scenes/` — текущие игровые сцены;
+- `web/src/ui/WorldPanel.ts` — наблюдение и вмешательство в Живой мир;
+- `web/tests/vertical-slice.spec.ts` — реальный браузерный критический маршрут;
+- `scripts/playtest.py` — единая точка ручного запуска;
+- `docs/release/PLAYTEST_01.md` — сценарий первого игрового теста;
+- `tests/` — серверные и приёмочные инварианты.
 
-## Next slice
+## Что сознательно не делаем до первого игрового теста
 
-Only after this kernel stays green should development move to the Discord gameplay adapter (`/look`, `/me`, `/act`) while keeping the simulation package independent of Discord and LLM SDKs.
+Не являются текущим критическим путём:
+
+- Living World v2;
+- LLM-автономность NPC;
+- GOAP/utility AI;
+- бой и крафт;
+- фракции и экономическая симуляция;
+- мультиплеер;
+- процедурные квесты;
+- десятки новых NPC;
+- новый движок или новый клиентский фреймворк;
+- новый визуальный канон;
+- полный параллакс и сложная анимационная система.
+
+Сначала: **запустить → сыграть → зафиксировать реальные проблемы → исправить P0/P1 → повторить тест**.

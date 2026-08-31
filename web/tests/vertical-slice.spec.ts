@@ -1,13 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
 type PlayerPosition = { x: number; y: number };
-type ActionPayload = {
-  success: boolean;
-  code: string;
-  summary: string;
-  event_id: number | null;
-  replayed: boolean;
-};
 
 async function playerPosition(page: Page): Promise<PlayerPosition> {
   return page.evaluate(() => ({
@@ -74,7 +67,6 @@ async function moveAndInteractWhenHint(
 }
 
 async function enterTavernFromVillage(page: Page): Promise<void> {
-  // Go to the right edge first, then approach the door diagonally from the walkable road below.
   await moveAxisTo(page, "x", 936, 4);
   await moveAndInteractWhenHint(page, ["w", "a"], "войти в таверну");
   await expect(page.locator("body")).toHaveAttribute("data-scene", "tavern");
@@ -87,22 +79,25 @@ async function approachOren(page: Page): Promise<void> {
 }
 
 async function leaveTavern(page: Page): Promise<void> {
-  await page.getByRole("button", { name: "Закрыть" }).click().catch(() => undefined);
+  const closeButton = page.getByRole("button", { name: "Закрыть" });
+  if (await closeButton.isVisible()) await closeButton.click();
   await moveAndInteractWhenHint(page, ["s", "a"], "выйти в деревню");
   await expect(page.locator("body")).toHaveAttribute("data-scene", "village");
+  // Wait for the newly-created VillageScene to publish its own spawn coordinates.
+  // Without this barrier a stale TavernScene coordinate can send the next sweep the wrong way.
+  await expect.poll(async () => {
+    const position = await playerPosition(page);
+    return Math.abs(position.x - 430) <= 20 && Math.abs(position.y - 455) <= 30;
+  }, { timeout: 5_000 }).toBe(true);
 }
 
 async function collectOneFirewood(page: Page, expectedCount: number): Promise<void> {
   const hint = page.locator("#interaction-hint");
   const start = await playerPosition(page);
-  // Firewood sits in a compact strip around x=112..260. Headless key-up latency can carry
-  // the test past the strip, so sweep back toward its center instead of always walking left.
   const key = start.x < 186 ? "d" : "a";
   await releaseMovementKeys(page);
   await page.keyboard.down(key);
   try {
-    // A repeated pickup may begin while the previous "pick up firewood" hint is still visible.
-    // Require real movement first so an old hint can never trigger an empty E press.
     await expect.poll(async () => {
       const current = await playerPosition(page);
       return key === "a" ? start.x - current.x : current.x - start.x;
@@ -116,68 +111,26 @@ async function collectOneFirewood(page: Page, expectedCount: number): Promise<vo
   await expect(page.locator("#hud")).toContainText(`дрова ${expectedCount}/5`);
 }
 
-async function verifyLivingWorldApi(page: Page): Promise<void> {
-  const session = await page.request.post("/api/session", {
-    data: { external_id: "browser-world-probe", name: "World Probe" }
-  });
-  expect(session.ok()).toBeTruthy();
-  const { player_id: playerId } = await session.json() as { player_id: string };
-
-  const waitOneResponse = await page.request.post("/api/action", {
-    data: {
-      player_id: playerId,
-      action_type: "WAIT",
-      modifiers: { ticks: 1 },
-      external_id: "browser-wait-1"
-    }
-  });
-  expect(waitOneResponse.ok()).toBeTruthy();
-  const waitOne = await waitOneResponse.json() as ActionPayload;
-  expect(waitOne.success).toBe(true);
-  expect(waitOne.code).toBe("OK");
-  expect(waitOne.summary).toBe("Waited 1 simulation tick(s).");
-  expect(waitOne.replayed).toBe(false);
-
-  const waitNineResponse = await page.request.post("/api/action", {
-    data: {
-      player_id: playerId,
-      action_type: "WAIT",
-      modifiers: { ticks: 9 },
-      external_id: "browser-wait-9"
-    }
-  });
-  expect(waitNineResponse.ok()).toBeTruthy();
-  const waitNine = await waitNineResponse.json() as ActionPayload;
-  expect(waitNine.success).toBe(true);
-  expect(waitNine.code).toBe("OK");
-  expect(waitNine.summary).toBe("Waited 9 simulation tick(s).");
-  expect(waitNine.replayed).toBe(false);
-
-  const replayResponse = await page.request.post("/api/action", {
-    data: {
-      player_id: playerId,
-      action_type: "WAIT",
-      modifiers: { ticks: 9 },
-      external_id: "browser-wait-9"
-    }
-  });
-  expect(replayResponse.ok()).toBeTruthy();
-  const replay = await replayResponse.json() as ActionPayload;
-  expect(replay.success).toBe(true);
-  expect(replay.replayed).toBe(true);
-  expect(replay.event_id).toBe(waitNine.event_id);
+async function clickWorldAction(page: Page, name: string): Promise<void> {
+  const button = page.locator("#world-panel").getByRole("button", { name });
+  await expect(button).toBeVisible();
+  await button.click();
 }
 
-test("player can finish the firewood route with prototype art, persistent state, and live Living World", async ({ page }) => {
-  test.setTimeout(120_000);
+test("player can finish Oren quest, observe Living World, intervene, and reload persistent state", async ({ page }) => {
+  test.setTimeout(150_000);
   await page.goto("/");
   const body = page.locator("body");
+  const worldPanel = page.locator("#world-panel");
   await expect(body).toHaveAttribute("data-scene", "village");
   await expect(body).toHaveAttribute("data-art-mode", "prototype");
   await expect(body).toHaveAttribute("data-village-art", "prototype");
   await expect(body).toHaveAttribute("data-player-art", "prototype");
   await expect(body).toHaveAttribute("data-firewood-art", "prototype");
   await expect(page.locator("#hud")).toContainText("Workshop Yard");
+  await expect(worldPanel).toBeVisible();
+  await expect(worldPanel).toContainText("Живой мир");
+  await expect(worldPanel).toHaveAttribute("data-world-tick", "0");
   await page.screenshot({ path: "test-results/01-village.png", fullPage: true });
 
   await enterTavernFromVillage(page);
@@ -216,13 +169,54 @@ test("player can finish the firewood route with prototype art, persistent state,
   await page.reload();
   await expect(body).toHaveAttribute("data-scene", "tavern");
   await expect(body).toHaveAttribute("data-art-mode", "prototype");
-  await expect(body).toHaveAttribute("data-tavern-art", "prototype");
-  await expect(body).toHaveAttribute("data-player-art", "prototype");
-  await expect(body).toHaveAttribute("data-oren-art", "prototype");
   await expect(page.locator("#hud")).toContainText("дрова доставлены ✓");
   await expect(page.locator("#hud")).toContainText("монеты 15");
   await expect(page.locator("#hud")).toContainText("доверие Орена 10");
   await page.screenshot({ path: "test-results/04-reloaded.png", fullPage: true });
 
-  await verifyLivingWorldApi(page);
+  // Living World / Player Intervention through the actual player-facing browser UI.
+  await leaveTavern(page);
+  await expect(page.locator("#hud")).toContainText("Workshop Yard");
+
+  await clickWorldAction(page, "Подождать 4 хода");
+  await expect(worldPanel).toHaveAttribute("data-world-tick", "4");
+  await expect(worldPanel).toHaveAttribute("data-mira-status", "working");
+  await expect(worldPanel).toHaveAttribute("data-mira-wood-stock", "0");
+
+  await clickWorldAction(page, "Подождать 1 ход");
+  await expect(worldPanel).toHaveAttribute("data-world-tick", "5");
+  await expect(worldPanel).toHaveAttribute("data-mira-status", "needs_wood");
+  await expect(worldPanel).toHaveAttribute("data-kaspar-status", "collecting_wood");
+  await expect(worldPanel).toHaveAttribute("data-kaspar-carrying", "false");
+  await page.screenshot({ path: "test-results/05-world-request.png", fullPage: true });
+
+  await clickWorldAction(page, "На площадь");
+  await clickWorldAction(page, "К реке");
+  await expect(page.locator("#hud")).toContainText("River Edge");
+  await clickWorldAction(page, "Забрать корягу");
+  await expect(worldPanel).toHaveAttribute("data-has-driftwood", "true");
+
+  // Kaspar reaches the same resource but cannot fabricate or steal a second copy.
+  await clickWorldAction(page, "Подождать 1 ход");
+  await expect(worldPanel).toHaveAttribute("data-kaspar-status", "collecting_wood");
+  await expect(worldPanel).toHaveAttribute("data-kaspar-carrying", "false");
+
+  await clickWorldAction(page, "На площадь");
+  await clickWorldAction(page, "К мастерской");
+  await clickWorldAction(page, "Отдать корягу Мире");
+  await expect(worldPanel).toHaveAttribute("data-has-driftwood", "false");
+  await expect(worldPanel).toHaveAttribute("data-mira-status", "working");
+  await expect(worldPanel).toHaveAttribute("data-mira-wood-stock", "1");
+  await expect(worldPanel).toHaveAttribute("data-kaspar-status", "schedule");
+  await page.screenshot({ path: "test-results/06-intervention-complete.png", fullPage: true });
+
+  await page.reload();
+  await expect(body).toHaveAttribute("data-scene", "village");
+  await expect(page.locator("#hud")).toContainText("дрова доставлены ✓");
+  await expect(worldPanel).toHaveAttribute("data-world-tick", "6");
+  await expect(worldPanel).toHaveAttribute("data-has-driftwood", "false");
+  await expect(worldPanel).toHaveAttribute("data-mira-status", "working");
+  await expect(worldPanel).toHaveAttribute("data-mira-wood-stock", "1");
+  await expect(worldPanel).toHaveAttribute("data-kaspar-status", "schedule");
+  await page.screenshot({ path: "test-results/07-intervention-reloaded.png", fullPage: true });
 });

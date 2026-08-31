@@ -7,6 +7,7 @@ import { VillageScene } from "./scenes/VillageScene";
 import { TavernScene } from "./scenes/TavernScene";
 import { ClientState } from "./state";
 import { DialoguePanel } from "./ui/DialoguePanel";
+import { WorldPanel } from "./ui/WorldPanel";
 import "./styles.css";
 
 async function bootstrap(): Promise<void> {
@@ -20,6 +21,7 @@ async function bootstrap(): Promise<void> {
   const dialogue = new DialoguePanel(state);
   setRuntime({ api, state, dialogue });
   bindHud(state);
+  new WorldPanel(state);
 
   const initialScenes = state.snapshot?.world.location_id === "tavern_interior"
     ? [TavernScene, VillageScene]

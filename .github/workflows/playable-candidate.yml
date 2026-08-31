@@ -3,14 +3,14 @@ name: Playable Candidate Gate
 on:
   push:
     branches:
-      - integration/playable-candidate-v1
+      - main
   pull_request:
     branches:
       - main
   workflow_dispatch:
 
 concurrency:
-  group: playable-candidate-v3-${{ github.ref }}
+  group: playable-candidate-v5-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -50,9 +50,13 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
+      - name: Playtest launcher preflight
+        run: python scripts/playtest.py --check
       - name: Install web dependencies
         working-directory: web
         run: npm install --no-audit --no-fund
+      - name: One-command launcher smoke
+        run: python scripts/playtest.py --smoke --reset --no-open --db data/launcher-smoke.sqlite3
       - name: Web contract tests
         working-directory: web
         run: npm run test:contract
@@ -63,7 +67,7 @@ jobs:
         working-directory: web
         run: npx playwright install --with-deps chromium
       - name: Reset browser database
-        run: rm -f data/e2e-world.sqlite3
+        run: rm -f data/e2e-world.sqlite3 data/e2e-world.sqlite3-wal data/e2e-world.sqlite3-shm
       - name: Real browser integrated route
         working-directory: web
         env:
@@ -79,3 +83,25 @@ jobs:
             web/playwright-report
           if-no-files-found: ignore
           retention-days: 14
+
+  launcher-windows:
+    name: Windows launcher smoke
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install backend
+        run: python -m pip install -e .
+      - name: Install web dependencies
+        working-directory: web
+        run: npm install --no-audit --no-fund
+      - name: Playtest launcher preflight
+        run: python scripts/playtest.py --check
+      - name: Windows launcher smoke
+        run: python scripts/playtest.py --smoke --reset --no-open --db data/windows-launcher-smoke.sqlite3
