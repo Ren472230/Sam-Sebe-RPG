@@ -9,6 +9,7 @@ class ActionType(str, Enum):
     MOVE = "MOVE"
     TAKE = "TAKE"
     DROP = "DROP"
+    GIVE = "GIVE"
     WAIT = "WAIT"
 
 
@@ -17,6 +18,7 @@ class CanonicalAction:
     actor_id: str
     action_type: ActionType
     target_id: str | None = None
+    recipient_id: str | None = None
     destination_id: str | None = None
     source_text: str | None = None
     modifiers: dict[str, int] | None = None

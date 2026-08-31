@@ -46,6 +46,74 @@ class LivingWorldService:
 
         return events
 
+    def give_resource(
+        self,
+        conn: sqlite3.Connection,
+        *,
+        player_id: str,
+        entity_id: str,
+        recipient_id: str,
+    ) -> tuple[bool, str, str]:
+        if recipient_id != "npc_mira":
+            return False, "UNSUPPORTED_RECIPIENT", "This resource request belongs to Mira."
+        if entity_id != "driftwood_1":
+            return False, "UNSUPPORTED_RESOURCE", "Mira needs the useful driftwood resource."
+
+        entity = conn.execute(
+            "SELECT owner_actor_id, state_json FROM entities WHERE id = ?",
+            (entity_id,),
+        ).fetchone()
+        if entity is None or entity["owner_actor_id"] != player_id:
+            return False, "ITEM_NOT_OWNED", "Item is not owned by this player."
+        resource_state = json.loads(str(entity["state_json"]))
+        if not isinstance(resource_state, dict) or resource_state.get("resource_kind") != "useful_wood":
+            return False, "UNSUPPORTED_RESOURCE", "Mira needs useful wood."
+
+        _, mira_state = self._load_runtime(conn, "npc_mira")
+        if not bool(mira_state.get("requested_wood", False)):
+            return False, "RESOURCE_NOT_NEEDED", "Mira is not requesting wood right now."
+
+        _, kaspar_state = self._load_runtime(conn, "npc_kaspar")
+        if self._state_int(kaspar_state, "carrying_wood") != 0:
+            return False, "RESOURCE_UNAVAILABLE", "Kaspar is already carrying the requested wood."
+
+        tick_row = conn.execute(
+            "SELECT tick FROM world_runtime WHERE world_id = ?",
+            (DEFAULT_WORLD_ID,),
+        ).fetchone()
+        if tick_row is None:
+            raise RuntimeError(f"missing world runtime for {DEFAULT_WORLD_ID}")
+        tick = int(tick_row[0])
+
+        consumed = conn.execute(
+            "UPDATE entities SET location_id = NULL, owner_actor_id = NULL "
+            "WHERE id = ? AND owner_actor_id = ?",
+            (entity_id, player_id),
+        )
+        if consumed.rowcount != 1:
+            return False, "ITEM_NOT_OWNED", "Item is not owned by this player."
+
+        mira_state["wood_stock"] = self._state_int(mira_state, "wood_stock") + 1
+        mira_state["requested_wood"] = False
+        self._save_runtime(
+            conn,
+            "npc_mira",
+            override_active=0,
+            state=mira_state,
+            tick=tick,
+        )
+
+        kaspar_state["carrying_wood"] = 0
+        kaspar_state["goal"] = None
+        self._save_runtime(
+            conn,
+            "npc_kaspar",
+            override_active=0,
+            state=kaspar_state,
+            tick=tick,
+        )
+        return True, "OK", "Gave driftwood_1 to Mira and satisfied her wood request."
+
     def _advance_mira(
         self, conn: sqlite3.Connection, tick: int
     ) -> dict[str, object] | None:
