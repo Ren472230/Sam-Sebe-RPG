@@ -8,6 +8,22 @@
   <body>
     <div id="app">
       <header id="hud" aria-live="polite"></header>
+      <section id="world-pulse" aria-live="polite">
+        <div class="world-pulse-copy">
+          <div class="world-pulse-heading">
+            <h2>Живой мир</h2>
+            <span id="world-pulse-tick">Шаг 0</span>
+          </div>
+          <p id="world-pulse-nearby">Рядом: —</p>
+          <ul id="world-pulse-events">
+            <li>Мир пока тих.</li>
+          </ul>
+        </div>
+        <div class="world-pulse-actions" aria-label="Управление временем мира">
+          <button type="button" data-wait-ticks="1">Подождать 1 шаг</button>
+          <button type="button" data-wait-ticks="5">Подождать 5 шагов</button>
+        </div>
+      </section>
       <main id="game"></main>
       <div id="interaction-hint"></div>
       <section id="dialogue" aria-live="polite" hidden></section>
