@@ -28,7 +28,8 @@ export default defineConfig({
       reuseExistingServer: false,
       env: {
         ...process.env,
-        SAM_SEBE_DB: "data/e2e-world.sqlite3"
+        SAM_SEBE_DB: "data/e2e-world.sqlite3",
+        SAM_SEBE_PLAYTEST_TIME: "2026-08-24T17:00:00+00:00"
       }
     },
     {
