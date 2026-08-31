@@ -83,7 +83,7 @@ function hasTavernTextures(scene: Phaser.Scene): boolean {
 
 function queueImage(scene: Phaser.Scene, key: string, path: string): void {
   if (scene.textures.exists(key)) return;
-  scene.load.image(key, prototypeAssetUrl(path));
+  scene.load.svg(key, prototypeAssetUrl(path));
 }
 
 function addFullCanvasLayer(scene: Phaser.Scene, key: string, depth: number): Phaser.GameObjects.Image {
