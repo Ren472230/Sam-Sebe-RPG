@@ -176,7 +176,6 @@ test("player can finish Oren quest, observe Living World, intervene, and reload 
 
   // Living World / Player Intervention through the actual player-facing browser UI.
   await leaveTavern(page);
-  await clickWorldAction(page, "К мастерской");
   await expect(page.locator("#hud")).toContainText("Workshop Yard");
 
   await clickWorldAction(page, "Подождать 4 хода");
