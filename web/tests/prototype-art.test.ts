@@ -46,10 +46,12 @@ test("checked-in prototype art is complete and non-trivial", () => {
 
 test("runtime bridge gives complete prototype art precedence without deleting existing fallbacks", () => {
   const source = readFileSync(new URL("../src/productionArt.ts", import.meta.url), "utf8");
+  const prototypeRuntime = readFileSync(new URL("../src/prototypeArt.ts", import.meta.url), "utf8");
   assert.match(source, /preloadVillagePrototypeArt\(scene\)/);
   assert.match(source, /preloadTavernPrototypeArt\(scene\)/);
   assert.match(source, /if \(renderVillagePrototypeBackground\(scene\)\) return true;/);
   assert.match(source, /if \(renderTavernPrototypeBackground\(scene\)\) return true;/);
   assert.match(source, /document\.body\.dataset\.villageArt === "prototype"/);
   assert.match(source, /document\.body\.dataset\.tavernArt === "prototype"/);
+  assert.match(prototypeRuntime, /scene\.load\.svg\(key, prototypeAssetUrl\(path\)\)/);
 });
