@@ -55,6 +55,8 @@ jobs:
       - name: Install web dependencies
         working-directory: web
         run: npm install --no-audit --no-fund
+      - name: One-command launcher smoke
+        run: python scripts/playtest.py --smoke --reset --no-open --db data/launcher-smoke.sqlite3
       - name: Web contract tests
         working-directory: web
         run: npm run test:contract
