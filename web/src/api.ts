@@ -37,12 +37,35 @@ export type OrenRelation = {
   romance: number;
 };
 
+export type LivingWorldEvent = {
+  tick: number;
+  actor_id: string;
+  event_type: string;
+  location_id: string | null;
+};
+
+export type LivingWorldState = {
+  tick: number;
+  mira: {
+    location_id: string;
+    status: "working" | "needs_wood";
+    wood_stock: number;
+  };
+  kaspar: {
+    location_id: string;
+    status: "schedule" | "collecting_wood" | "delivering_wood";
+    carrying_wood: boolean;
+  };
+  recent_events: LivingWorldEvent[];
+};
+
 export type GameSnapshot = {
   world: WorldView;
   quest: QuestState;
   coins: number;
   oren_relation: OrenRelation;
   oren_trust: number;
+  living_world: LivingWorldState;
 };
 
 export type ActionResult = {
@@ -73,6 +96,7 @@ type FrozenStateResponse = {
   quest: QuestState;
   coins: number;
   oren_relation: OrenRelation;
+  living_world: LivingWorldState;
 };
 
 export class ApiError extends Error {
@@ -117,7 +141,8 @@ export class GameApi {
       quest: response.quest,
       coins: response.coins,
       oren_relation: response.oren_relation,
-      oren_trust: response.oren_relation.trust
+      oren_trust: response.oren_relation.trust,
+      living_world: response.living_world
     };
   }
 
@@ -191,6 +216,23 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
 
+function isLivingWorldState(value: unknown): value is LivingWorldState {
+  if (!isRecord(value) || !isRecord(value.mira) || !isRecord(value.kaspar)) return false;
+  return typeof value.tick === "number"
+    && typeof value.mira.location_id === "string"
+    && (value.mira.status === "working" || value.mira.status === "needs_wood")
+    && typeof value.mira.wood_stock === "number"
+    && typeof value.kaspar.location_id === "string"
+    && (value.kaspar.status === "schedule" || value.kaspar.status === "collecting_wood" || value.kaspar.status === "delivering_wood")
+    && typeof value.kaspar.carrying_wood === "boolean"
+    && Array.isArray(value.recent_events)
+    && value.recent_events.every((event) => isRecord(event)
+      && typeof event.tick === "number"
+      && typeof event.actor_id === "string"
+      && typeof event.event_type === "string"
+      && (event.location_id === null || typeof event.location_id === "string"));
+}
+
 function isFrozenStateResponse(value: unknown): value is FrozenStateResponse {
   if (!isRecord(value)) return false;
   const location = value.location;
@@ -213,7 +255,8 @@ function isFrozenStateResponse(value: unknown): value is FrozenStateResponse {
     && typeof quest.required_firewood === "number"
     && typeof quest.owned_firewood === "number"
     && typeof value.coins === "number"
-    && typeof relation.trust === "number";
+    && typeof relation.trust === "number"
+    && isLivingWorldState(value.living_world);
 }
 
 function mapActor(actor: CanonicalActor): VisibleActor {
