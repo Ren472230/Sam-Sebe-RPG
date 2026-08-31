@@ -55,6 +55,69 @@ test("dialogue sends text field from frozen contract", async () => {
   }
 });
 
+test("action forwards WAIT modifiers required by Living World", async () => {
+  const originalFetch = globalThis.fetch;
+  let capturedBody = "";
+  globalThis.fetch = async (_input, init) => {
+    capturedBody = String(init?.body ?? "");
+    return new Response(JSON.stringify({ success: true, code: "OK", summary: "waited", event_id: 1, replayed: false }), {
+      status: 200,
+      headers: { "content-type": "application/json" }
+    });
+  };
+  try {
+    await new GameApi().action({
+      player_id: "player_1",
+      action_type: "WAIT",
+      modifiers: { ticks: 5 },
+      external_id: "wait-five"
+    });
+    assert.deepEqual(JSON.parse(capturedBody), {
+      player_id: "player_1",
+      action_type: "WAIT",
+      target_id: null,
+      recipient_id: null,
+      destination_id: null,
+      modifiers: { ticks: 5 },
+      external_id: "wait-five"
+    });
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("action forwards GIVE recipient required by Player Intervention", async () => {
+  const originalFetch = globalThis.fetch;
+  let capturedBody = "";
+  globalThis.fetch = async (_input, init) => {
+    capturedBody = String(init?.body ?? "");
+    return new Response(JSON.stringify({ success: true, code: "OK", summary: "given", event_id: 2, replayed: false }), {
+      status: 200,
+      headers: { "content-type": "application/json" }
+    });
+  };
+  try {
+    await new GameApi().action({
+      player_id: "player_1",
+      action_type: "GIVE",
+      target_id: "driftwood_1",
+      recipient_id: "npc_mira",
+      external_id: "give-driftwood"
+    });
+    assert.deepEqual(JSON.parse(capturedBody), {
+      player_id: "player_1",
+      action_type: "GIVE",
+      target_id: "driftwood_1",
+      recipient_id: "npc_mira",
+      destination_id: null,
+      modifiers: null,
+      external_id: "give-driftwood"
+    });
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("network failure becomes readable ApiError", async () => {
   const originalFetch = globalThis.fetch;
   globalThis.fetch = async () => { throw new TypeError("fetch failed"); };
