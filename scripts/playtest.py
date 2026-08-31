@@ -126,7 +126,7 @@ def _stop(process: subprocess.Popen[bytes] | None) -> None:
         process.wait(timeout=5)
 
 
-def launch(database: Path, *, open_browser: bool) -> int:
+def launch(database: Path, *, open_browser: bool, smoke: bool = False) -> int:
     ensure_dependencies()
     database.parent.mkdir(parents=True, exist_ok=True)
 
@@ -160,6 +160,10 @@ def launch(database: Path, *, open_browser: bool) -> int:
         _wait_for(GAME_URL, frontend, "Браузерная игра")
 
         print("PLAYTEST READY", flush=True)
+        if smoke:
+            print("PLAYTEST LAUNCH SMOKE: PASS", flush=True)
+            return 0
+
         print(f"Открой: {GAME_URL}", flush=True)
         print("Управление: WASD — движение, E — взаимодействие; панель Живого мира — наблюдение и вмешательство.", flush=True)
         print("Для остановки нажми Ctrl+C в этом окне.", flush=True)
@@ -185,6 +189,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--check", action="store_true", help="только проверить окружение; ничего не менять и не запускать")
     parser.add_argument("--reset", action="store_true", help="удалить только сохранение игрового теста перед запуском")
     parser.add_argument("--no-open", action="store_true", help="не открывать браузер автоматически")
+    parser.add_argument("--smoke", action="store_true", help="поднять обе части, проверить готовность и сразу корректно остановить")
     parser.add_argument("--db", type=Path, default=DEFAULT_DB, help="путь к отдельному SQLite-сохранению игрового теста")
     return parser.parse_args(argv)
 
@@ -206,7 +211,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"Сохранение сброшено: {database}", flush=True)
 
     try:
-        return launch(database, open_browser=not args.no_open)
+        return launch(database, open_browser=not args.no_open, smoke=args.smoke)
     except Exception as exc:
         print(f"PLAYTEST START: FAIL — {exc}", file=sys.stderr, flush=True)
         return 1
