@@ -87,3 +87,58 @@ test("malformed state response becomes readable ApiError", async () => {
     globalThis.fetch = originalFetch;
   }
 });
+
+test("getState maps world pulse into the client snapshot", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => new Response(JSON.stringify({
+    player_id: "player_1",
+    location: { id: "workshop_yard", name: "Workshop Yard", description: "yard" },
+    visible_actors: [{ actor_id: "npc_mira", name: "Mira", actor_type: "npc" }],
+    visible_entities: [],
+    inventory: [],
+    quest: { quest_type: "bring_5_firewood", status: "available", required_firewood: 5, owned_firewood: 0 },
+    coins: 10,
+    oren_relation: { familiarity: 0, trust: 0, affinity: 0, fear: 0, conflict: 0, romance: 0 },
+    world_pulse: {
+      tick: 5,
+      latest_events: [
+        { tick: 5, actor_id: "npc_mira", event_type: "NPC_REQUESTED_RESOURCE", summary: "Mira requested useful wood." }
+      ]
+    }
+  }), { status: 200, headers: { "content-type": "application/json" } });
+  try {
+    const snapshot = await new GameApi().getState("player_1");
+    assert.equal(snapshot.world_pulse.tick, 5);
+    assert.equal(snapshot.world_pulse.latest_events[0]?.event_type, "NPC_REQUESTED_RESOURCE");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("action forwards WAIT ticks to the backend", async () => {
+  const originalFetch = globalThis.fetch;
+  let capturedBody = "";
+  globalThis.fetch = async (_input, init) => {
+    capturedBody = String(init?.body ?? "");
+    return new Response(JSON.stringify({
+      success: true,
+      code: "OK",
+      summary: "Waited 5 simulation tick(s).",
+      event_id: 1,
+      replayed: false
+    }), { status: 200, headers: { "content-type": "application/json" } });
+  };
+  try {
+    await new GameApi().action({
+      player_id: "player_1",
+      action_type: "WAIT",
+      modifiers: { ticks: 5 },
+      external_id: "wait-five"
+    });
+    const body = JSON.parse(capturedBody);
+    assert.equal(body.action_type, "WAIT");
+    assert.deepEqual(body.modifiers, { ticks: 5 });
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
