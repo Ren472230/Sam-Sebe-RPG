@@ -5,6 +5,7 @@ import importlib.util
 import os
 from pathlib import Path
 import shutil
+import signal
 import subprocess
 import sys
 import time
@@ -115,14 +116,47 @@ def _wait_for(url: str, process: subprocess.Popen[bytes], label: str, timeout: f
     raise RuntimeError(f"{label} не стал доступен: {url}")
 
 
+def _start_process(command: list[str], *, cwd: Path, env: dict[str, str]) -> subprocess.Popen[bytes]:
+    if os.name == "nt":
+        return subprocess.Popen(
+            command,
+            cwd=cwd,
+            env=env,
+            creationflags=subprocess.CREATE_NEW_PROCESS_GROUP,
+        )
+    return subprocess.Popen(command, cwd=cwd, env=env, start_new_session=True)
+
+
 def _stop(process: subprocess.Popen[bytes] | None) -> None:
-    if process is None or process.poll() is not None:
+    if process is None:
         return
-    process.terminate()
+
+    if os.name == "nt":
+        if process.poll() is None:
+            subprocess.run(
+                ["taskkill", "/PID", str(process.pid), "/T", "/F"],
+                capture_output=True,
+                check=False,
+            )
+        try:
+            process.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            process.wait(timeout=5)
+        return
+
+    try:
+        os.killpg(process.pid, signal.SIGTERM)
+    except ProcessLookupError:
+        return
+
     try:
         process.wait(timeout=5)
     except subprocess.TimeoutExpired:
-        process.kill()
+        try:
+            os.killpg(process.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
         process.wait(timeout=5)
 
 
@@ -144,7 +178,7 @@ def launch(database: Path, *, open_browser: bool, smoke: bool = False) -> int:
     try:
         print(f"Сохранение: {database}", flush=True)
         print("Запускаю сервер...", flush=True)
-        backend = subprocess.Popen(
+        backend = _start_process(
             [sys.executable, "-m", "samseberpg.server"],
             cwd=ROOT,
             env=env,
@@ -152,7 +186,7 @@ def launch(database: Path, *, open_browser: bool, smoke: bool = False) -> int:
         _wait_for(BACKEND_HEALTH, backend, "Сервер")
 
         print("Запускаю браузерную игру...", flush=True)
-        frontend = subprocess.Popen(
+        frontend = _start_process(
             [npm, "run", "dev", "--", "--host", "127.0.0.1"],
             cwd=WEB_DIR,
             env=env,
