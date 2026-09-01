@@ -10,6 +10,7 @@ from .db import DEFAULT_WORLD_ID
 from .dialogue import DialogueService
 from .domain import ActionType, CanonicalAction
 from .game import GameService
+from .playtest import PlaytestService
 from .quest import QuestService
 
 
@@ -45,8 +46,18 @@ class DialogueRequest(BaseModel):
         return self.user_text or ""
 
 
+class PlaytestEventRequest(BaseModel):
+    session_id: str
+    player_id: str | None = None
+    event_type: str
+    success: bool = True
+    summary: str = ""
+    evidence: dict[str, Any] | None = None
+
+
 def create_app(game: GameService, quest: QuestService, dialogue: DialogueService) -> FastAPI:
     app = FastAPI(title="Sam-Sebe-RPG Vertical Slice")
+    playtest = PlaytestService(game.db, game.clock)
 
     @app.get("/api/health")
     def health() -> dict[str, bool]:
@@ -120,6 +131,28 @@ def create_app(game: GameService, quest: QuestService, dialogue: DialogueService
     def npc_dialogue(request: DialogueRequest):
         try:
             return asdict(dialogue.talk(request.player_id, request.resolved_text()))
+        except LookupError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    @app.post("/api/playtest/event")
+    def record_playtest_event(request: PlaytestEventRequest) -> dict[str, int]:
+        try:
+            event_id = playtest.record(
+                request.session_id,
+                request.event_type,
+                player_id=request.player_id,
+                success=request.success,
+                summary=request.summary,
+                evidence=request.evidence,
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        return {"event_id": event_id}
+
+    @app.get("/api/playtest/report/{session_id}")
+    def playtest_report(session_id: str, commit: str | None = None):
+        try:
+            return playtest.report(session_id, commit=commit)
         except LookupError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
 
