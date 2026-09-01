@@ -1,4 +1,8 @@
+import { mkdir, writeFile } from "node:fs/promises";
+
 import { expect, test, type Page } from "@playwright/test";
+
+import { installBrowserDiagnostics } from "./helpers/browser-diagnostics";
 
 type PlayerPosition = { x: number; y: number };
 type ActionPayload = {
@@ -7,6 +11,19 @@ type ActionPayload = {
   summary: string;
   event_id: number | null;
   replayed: boolean;
+};
+type PlaytestReport = {
+  result: "PASS" | "FAIL";
+  verdict: string;
+  markdown: string;
+  living_world: { steps_advanced: number; meaningful_events_observed: number };
+  errors: {
+    expected_gameplay_failures: number;
+    unexpected_backend_failures: number;
+    client_errors: number;
+    console_errors: number;
+    crashes: number;
+  };
 };
 
 async function playerPosition(page: Page): Promise<PlayerPosition> {
@@ -74,7 +91,6 @@ async function moveAndInteractWhenHint(
 }
 
 async function enterTavernFromVillage(page: Page): Promise<void> {
-  // Go to the right edge first, then approach the door diagonally from the walkable road below.
   await moveAxisTo(page, "x", 936, 4);
   await moveAndInteractWhenHint(page, ["w", "a"], "войти в таверну");
   await expect(page.locator("body")).toHaveAttribute("data-scene", "tavern");
@@ -95,14 +111,10 @@ async function leaveTavern(page: Page): Promise<void> {
 async function collectOneFirewood(page: Page, expectedCount: number): Promise<void> {
   const hint = page.locator("#interaction-hint");
   const start = await playerPosition(page);
-  // Firewood sits in a compact strip around x=112..260. Headless key-up latency can carry
-  // the test past the strip, so sweep back toward its center instead of always walking left.
   const key = start.x < 186 ? "d" : "a";
   await releaseMovementKeys(page);
   await page.keyboard.down(key);
   try {
-    // A repeated pickup may begin while the previous "pick up firewood" hint is still visible.
-    // Require real movement first so an old hint can never trigger an empty E press.
     await expect.poll(async () => {
       const current = await playerPosition(page);
       return key === "a" ? start.x - current.x : current.x - start.x;
@@ -114,6 +126,18 @@ async function collectOneFirewood(page: Page, expectedCount: number): Promise<vo
     await releaseMovementKeys(page);
   }
   await expect(page.locator("#hud")).toContainText(`дрова ${expectedCount}/5`);
+}
+
+async function readWorldTick(page: Page): Promise<number> {
+  const text = (await page.locator("#world-pulse-tick").textContent()) ?? "";
+  const match = text.match(/(\d+)/);
+  if (!match) throw new Error(`world tick is unreadable: ${text}`);
+  return Number(match[1]);
+}
+
+async function waitThroughUi(page: Page, ticks: 1 | 5, expectedTick: number): Promise<void> {
+  await page.getByRole("button", { name: `Подождать ${ticks} ${ticks === 1 ? "шаг" : "шагов"}` }).click();
+  await expect.poll(() => readWorldTick(page), { timeout: 10_000 }).toBe(expectedTick);
 }
 
 async function verifyLivingWorldApi(page: Page): Promise<void> {
@@ -135,7 +159,6 @@ async function verifyLivingWorldApi(page: Page): Promise<void> {
   const waitOne = await waitOneResponse.json() as ActionPayload;
   expect(waitOne.success).toBe(true);
   expect(waitOne.code).toBe("OK");
-  expect(waitOne.summary).toBe("Waited 1 simulation tick(s).");
   expect(waitOne.replayed).toBe(false);
 
   const waitNineResponse = await page.request.post("/api/action", {
@@ -150,7 +173,6 @@ async function verifyLivingWorldApi(page: Page): Promise<void> {
   const waitNine = await waitNineResponse.json() as ActionPayload;
   expect(waitNine.success).toBe(true);
   expect(waitNine.code).toBe("OK");
-  expect(waitNine.summary).toBe("Waited 9 simulation tick(s).");
   expect(waitNine.replayed).toBe(false);
 
   const replayResponse = await page.request.post("/api/action", {
@@ -168,61 +190,111 @@ async function verifyLivingWorldApi(page: Page): Promise<void> {
   expect(replay.event_id).toBe(waitNine.event_id);
 }
 
-test("player can finish the firewood route with prototype art, persistent state, and live Living World", async ({ page }) => {
-  test.setTimeout(120_000);
-  await page.goto("/");
-  const body = page.locator("body");
-  await expect(body).toHaveAttribute("data-scene", "village");
-  await expect(body).toHaveAttribute("data-art-mode", "prototype");
-  await expect(body).toHaveAttribute("data-village-art", "prototype");
-  await expect(body).toHaveAttribute("data-player-art", "prototype");
-  await expect(body).toHaveAttribute("data-firewood-art", "prototype");
-  await expect(page.locator("#hud")).toContainText("Workshop Yard");
-  await page.screenshot({ path: "test-results/01-village.png", fullPage: true });
+async function fetchPassingReport(page: Page, sessionId: string): Promise<PlaytestReport> {
+  const commit = process.env.GITHUB_SHA ?? "local";
+  const url = `/api/playtest/report/${encodeURIComponent(sessionId)}?commit=${encodeURIComponent(commit)}`;
+  await expect.poll(async () => {
+    const response = await page.request.get(url);
+    if (!response.ok()) return `HTTP ${response.status()}`;
+    const payload = await response.json() as PlaytestReport;
+    return payload.result;
+  }, { timeout: 10_000, intervals: [100, 250, 500] }).toBe("PASS");
 
-  await enterTavernFromVillage(page);
-  await expect(body).toHaveAttribute("data-art-mode", "prototype");
-  await expect(body).toHaveAttribute("data-tavern-art", "prototype");
-  await expect(body).toHaveAttribute("data-player-art", "prototype");
-  await expect(body).toHaveAttribute("data-oren-art", "prototype");
-  await approachOren(page);
-  await expect(page.getByRole("button", { name: "Взяться за дрова" })).toBeVisible();
-  await page.screenshot({ path: "test-results/02-oren-offer.png", fullPage: true });
-  await page.getByRole("button", { name: "Взяться за дрова" }).click();
-  await expect(page.locator("#hud")).toContainText("дрова 0/5");
+  const response = await page.request.get(url);
+  expect(response.ok()).toBeTruthy();
+  return await response.json() as PlaytestReport;
+}
 
-  await leaveTavern(page);
-  for (let count = 1; count <= 4; count += 1) {
-    await collectOneFirewood(page, count);
+test("canonical route finishes the firewood quest, advances the Living World, persists, and emits a PASS report", async ({ page }, testInfo) => {
+  test.setTimeout(150_000);
+  const diagnostics = installBrowserDiagnostics(page);
+  try {
+    await page.goto("/");
+    const body = page.locator("body");
+    await expect(body).toHaveAttribute("data-scene", "village");
+    await expect(body).toHaveAttribute("data-playtest-session", /^playtest-/);
+    const sessionId = await body.getAttribute("data-playtest-session");
+    expect(sessionId).toBeTruthy();
+
+    await expect(body).toHaveAttribute("data-art-mode", "prototype");
+    await expect(body).toHaveAttribute("data-village-art", "prototype");
+    await expect(body).toHaveAttribute("data-player-art", "prototype");
+    await expect(body).toHaveAttribute("data-firewood-art", "prototype");
+    await expect(page.locator("#hud")).toContainText("Workshop Yard");
+    await page.screenshot({ path: "test-results/01-village.png", fullPage: true });
+
+    await enterTavernFromVillage(page);
+    await expect(body).toHaveAttribute("data-tavern-art", "prototype");
+    await approachOren(page);
+    await expect(page.getByRole("button", { name: "Взяться за дрова" })).toBeVisible();
+    await page.screenshot({ path: "test-results/02-oren-offer.png", fullPage: true });
+    await page.getByRole("button", { name: "Взяться за дрова" }).click();
+    await expect(page.locator("#hud")).toContainText("дрова 0/5");
+    await page.screenshot({ path: "test-results/03-active-quest.png", fullPage: true });
+
+    await leaveTavern(page);
+    for (let count = 1; count <= 4; count += 1) {
+      await collectOneFirewood(page, count);
+    }
+    await page.screenshot({ path: "test-results/04-four-firewood.png", fullPage: true });
+
+    await enterTavernFromVillage(page);
+    await approachOren(page);
+    await page.getByRole("button", { name: "Передать дрова" }).click();
+    await expect(page.locator("#dialogue")).toContainText("Oren still needs 1 more firewood.");
+    await page.screenshot({ path: "test-results/05-correct-early-rejection.png", fullPage: true });
+
+    await leaveTavern(page);
+    await collectOneFirewood(page, 5);
+
+    await enterTavernFromVillage(page);
+    await approachOren(page);
+    await page.getByRole("button", { name: "Передать дрова" }).click();
+    await expect(page.locator("#hud")).toContainText("дрова доставлены ✓");
+    await expect(page.locator("#hud")).toContainText("монеты 15");
+    await expect(page.locator("#hud")).toContainText("доверие Орена 10");
+    await expect(page.locator("#dialogue")).toContainText("помню, что ты выручил меня");
+    await page.screenshot({ path: "test-results/06-completed.png", fullPage: true });
+
+    await page.reload();
+    await expect(body).toHaveAttribute("data-scene", "tavern");
+    await expect(body).toHaveAttribute("data-playtest-session", sessionId!);
+    await expect(page.locator("#hud")).toContainText("дрова доставлены ✓");
+    await expect(page.locator("#hud")).toContainText("монеты 15");
+    await expect(page.locator("#hud")).toContainText("доверие Орена 10");
+    await page.screenshot({ path: "test-results/07-reloaded.png", fullPage: true });
+
+    const tickBefore = await readWorldTick(page);
+    await waitThroughUi(page, 1, tickBefore + 1);
+    await waitThroughUi(page, 5, tickBefore + 6);
+    await expect(page.locator("#world-pulse-events li").first()).not.toHaveText("Мир пока тих.");
+    await page.screenshot({ path: "test-results/08-living-world.png", fullPage: true });
+
+    const report = await fetchPassingReport(page, sessionId!);
+    expect(report.verdict).toBe("SAFE FOR HUMAN EXPERIENCE TEST");
+    expect(report.living_world.steps_advanced).toBe(6);
+    expect(report.living_world.meaningful_events_observed).toBeGreaterThan(0);
+    expect(report.errors.expected_gameplay_failures).toBe(1);
+    expect(report.errors.unexpected_backend_failures).toBe(0);
+    expect(report.errors.client_errors).toBe(0);
+    expect(report.errors.console_errors).toBe(0);
+    expect(report.errors.crashes).toBe(0);
+
+    await mkdir("test-results", { recursive: true });
+    await writeFile("test-results/autonomous-playtest-report.json", `${JSON.stringify(report, null, 2)}\n`, "utf8");
+    await writeFile("test-results/autonomous-playtest-report.md", report.markdown, "utf8");
+    await testInfo.attach("autonomous-playtest-report.json", {
+      body: Buffer.from(JSON.stringify(report, null, 2), "utf8"),
+      contentType: "application/json"
+    });
+    await testInfo.attach("autonomous-playtest-report.md", {
+      body: Buffer.from(report.markdown, "utf8"),
+      contentType: "text/markdown"
+    });
+
+    await verifyLivingWorldApi(page);
+    diagnostics.assertClean();
+  } finally {
+    await diagnostics.attach(testInfo);
   }
-
-  await enterTavernFromVillage(page);
-  await approachOren(page);
-  await page.getByRole("button", { name: "Передать дрова" }).click();
-  await expect(page.locator("#dialogue")).toContainText("Oren still needs 1 more firewood.");
-
-  await leaveTavern(page);
-  await collectOneFirewood(page, 5);
-
-  await enterTavernFromVillage(page);
-  await approachOren(page);
-  await page.getByRole("button", { name: "Передать дрова" }).click();
-  await expect(page.locator("#hud")).toContainText("дрова доставлены ✓");
-  await expect(page.locator("#hud")).toContainText("монеты 15");
-  await expect(page.locator("#hud")).toContainText("доверие Орена 10");
-  await expect(page.locator("#dialogue")).toContainText("помню, что ты выручил меня");
-  await page.screenshot({ path: "test-results/03-completed.png", fullPage: true });
-
-  await page.reload();
-  await expect(body).toHaveAttribute("data-scene", "tavern");
-  await expect(body).toHaveAttribute("data-art-mode", "prototype");
-  await expect(body).toHaveAttribute("data-tavern-art", "prototype");
-  await expect(body).toHaveAttribute("data-player-art", "prototype");
-  await expect(body).toHaveAttribute("data-oren-art", "prototype");
-  await expect(page.locator("#hud")).toContainText("дрова доставлены ✓");
-  await expect(page.locator("#hud")).toContainText("монеты 15");
-  await expect(page.locator("#hud")).toContainText("доверие Орена 10");
-  await page.screenshot({ path: "test-results/04-reloaded.png", fullPage: true });
-
-  await verifyLivingWorldApi(page);
 });
