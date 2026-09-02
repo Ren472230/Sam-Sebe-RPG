@@ -248,11 +248,21 @@ class DialogueService:
                 "FROM relations WHERE source_actor_id = ? AND target_actor_id = ?",
                 (npc_id, player_id),
             ).fetchone()
-            relation_keys = ("familiarity", "trust", "affinity", "fear", "conflict", "romance")
+            relation_keys = (
+                "familiarity",
+                "trust",
+                "affinity",
+                "fear",
+                "conflict",
+                "romance",
+            )
             relation = (
                 {key: 0 for key in relation_keys}
                 if relation_row is None
-                else {key: int(relation_row[index]) for index, key in enumerate(relation_keys)}
+                else {
+                    key: int(relation_row[index])
+                    for index, key in enumerate(relation_keys)
+                }
             )
 
             memories = tuple(
@@ -278,12 +288,15 @@ class DialogueService:
                 "SELECT state_json FROM npc_runtime_state WHERE npc_actor_id = ?",
                 (npc_id,),
             ).fetchone()
-            runtime_state = {} if runtime_row is None else json.loads(str(runtime_row[0]))
+            runtime_state = (
+                {} if runtime_row is None else json.loads(str(runtime_row[0]))
+            )
 
             nearby_actors = tuple(
                 str(row[0])
                 for row in conn.execute(
-                    "SELECT name FROM actors WHERE location_id = ? AND id <> ? ORDER BY name",
+                    "SELECT name FROM actors "
+                    "WHERE location_id = ? AND id <> ? ORDER BY name",
                     (npc_location, npc_id),
                 ).fetchall()
             )
@@ -334,6 +347,7 @@ class OpenAIResponsesProvider:
     def __init__(self, *, client=None, model: str | None = None) -> None:
         if client is None:
             from openai import OpenAI
+
             client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
         self.client = client
         self.model = model or os.environ.get("OPENAI_MODEL", "gpt-5")
@@ -360,7 +374,10 @@ class OpenAIResponsesProvider:
                         "type": "object",
                         "properties": {
                             "text": {"type": "string"},
-                            "proposal": {"type": "string", "enum": [OFFER_PROPOSAL, "none"]},
+                            "proposal": {
+                                "type": "string",
+                                "enum": [OFFER_PROPOSAL, "none"],
+                            },
                             "social_action": {
                                 "type": "string",
                                 "enum": [REMEMBER_MIRA_WOOD_COMMITMENT, "none"],
@@ -394,6 +411,13 @@ class OpenAIResponsesProvider:
 def _fallback(context: DialogueContext) -> DialogueDecision:
     if context.npc_id == "npc_mira":
         if bool(context.runtime_state.get("requested_wood")):
+            if _is_mira_wood_commitment(context.user_text):
+                return DialogueDecision(
+                    text="Мира коротко кивает: «Договорились. Принесёшь древесину — я продолжу работу.»",
+                    used_fallback=True,
+                    social_action=REMEMBER_MIRA_WOOD_COMMITMENT,
+                    npc_id=context.npc_id,
+                )
             return DialogueDecision(
                 text="Мира отрывается от верстака: «Работа встала. Нужна пригодная древесина, а запас кончился.»",
                 used_fallback=True,
@@ -425,7 +449,11 @@ def _fallback(context: DialogueContext) -> DialogueDecision:
 
     state = context.quest
     if state is None:
-        return DialogueDecision(text="Орен молча кивает.", used_fallback=True, npc_id=context.npc_id)
+        return DialogueDecision(
+            text="Орен молча кивает.",
+            used_fallback=True,
+            npc_id=context.npc_id,
+        )
     if state.status == "available":
         return DialogueDecision(
             text="Орен кивает на почти пустую поленницу: «Если не трудно, принеси мне пять поленьев дров со двора мастерской.»",
@@ -453,4 +481,15 @@ def _fallback(context: DialogueContext) -> DialogueDecision:
 
 
 def _sqlite_utc_now(conn) -> str:
-    return str(conn.execute("SELECT strftime('%Y-%m-%dT%H:%M:%fZ', 'now')").fetchone()[0])
+    return str(
+        conn.execute("SELECT strftime('%Y-%m-%dT%H:%M:%fZ', 'now')").fetchone()[0]
+    )
+
+
+def _is_mira_wood_commitment(user_text: str) -> bool:
+    text = user_text.lower()
+    promises = ("принесу", "принести", "достану", "найду", "притащу")
+    resources = ("древес", "дерев", "коряг", "wood")
+    return any(token in text for token in promises) and any(
+        token in text for token in resources
+    )
