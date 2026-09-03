@@ -110,7 +110,7 @@ async function leaveTavern(page: Page): Promise<void> {
 
 async function collectOneFirewood(page: Page, expectedCount: number): Promise<void> {
   const hint = page.locator("#interaction-hint");
-  const targetXs = [260, 224, 188, 151, 112];
+  const targetXs = [112, 151, 188, 224, 112];
   const targetX = targetXs[expectedCount - 1];
   if (targetX === undefined) throw new Error(`unsupported firewood count: ${expectedCount}`);
 
