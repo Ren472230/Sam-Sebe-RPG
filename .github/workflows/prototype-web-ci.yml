@@ -62,6 +62,7 @@ jobs:
           name: prototype-browser-evidence
           path: |
             web/test-results
+            web/test-results-living-npc
             web/playwright-report
             web/playwright-report-living-npc
           if-no-files-found: warn
