@@ -39,21 +39,21 @@ export class DialoguePanel {
     this.sending = true;
     this.transcript.push({ speaker: "player", text: clean });
     this.render();
+    let resolvedDecision: DialogueDecision | undefined;
     try {
       const decision = await this.state.api.dialogue(
         this.state.playerId,
         this.npcId,
         clean
       );
+      resolvedDecision = decision;
       await this.state.refresh();
       this.transcript.push({ speaker: "npc", text: decision.text });
-      this.render(decision);
     } catch (error) {
       this.transcript.push({ speaker: "system", text: readableError(error) });
-      this.render();
     } finally {
       this.sending = false;
-      this.render();
+      this.render(resolvedDecision);
     }
   }
 
