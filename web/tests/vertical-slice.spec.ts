@@ -114,7 +114,7 @@ async function collectOneFirewood(page: Page, expectedCount: number): Promise<vo
   const targetX = targetXs[expectedCount - 1];
   if (targetX === undefined) throw new Error(`unsupported firewood count: ${expectedCount}`);
 
-  await moveAxisTo(page, "x", targetX, 8);
+  await moveAxisTo(page, "x", targetX, 20);
   await expect(hint).toContainText("подобрать дрова", { timeout: 10_000 });
   await page.keyboard.press("e");
   await releaseMovementKeys(page);
