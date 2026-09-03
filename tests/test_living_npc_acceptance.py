@@ -161,9 +161,9 @@ def test_living_npc_alternate_route_kaspar_resolves_problem_without_player(
         CanonicalAction(
             actor_id=player_id,
             action_type=ActionType.WAIT,
-            modifiers={"ticks": 8},
+            modifiers={"ticks": 9},
         ),
-        external_id="living-npc-observe-eight",
+        external_id="living-npc-observe-nine",
     )
     assert waited.success is True
 
