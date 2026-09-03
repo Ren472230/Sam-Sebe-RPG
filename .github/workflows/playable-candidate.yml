@@ -38,7 +38,7 @@ jobs:
   browser:
     name: Web contract + build + real browser
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -69,6 +69,11 @@ jobs:
         env:
           OPENAI_API_KEY: ""
         run: npm run test:e2e
+      - name: Living NPC browser acceptance
+        working-directory: web
+        env:
+          OPENAI_API_KEY: ""
+        run: npm run test:e2e:living-npc
       - name: Upload browser evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -76,6 +81,8 @@ jobs:
           name: playable-candidate-browser-evidence
           path: |
             web/test-results
+            web/test-results-living-npc
             web/playwright-report
+            web/playwright-report-living-npc
           if-no-files-found: ignore
           retention-days: 14

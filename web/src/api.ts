@@ -49,6 +49,31 @@ export type WorldPulse = {
   latest_events: WorldPulseEvent[];
 };
 
+export type AdjacentLocation = { id: string; name: string };
+export type MiraLivingState = {
+  location_id: string | null;
+  wood_stock: number;
+  work_cycles: number;
+  requested_wood: boolean;
+};
+export type KasparLivingState = {
+  location_id: string | null;
+  goal: string | null;
+  carrying_wood: number;
+};
+export type DriftwoodState = {
+  location_id: string | null;
+  owner_actor_id: string | null;
+};
+export type LivingNpcProjection = {
+  tick: number;
+  adjacent_locations: AdjacentLocation[];
+  nearby_npc_ids: string[];
+  mira: MiraLivingState;
+  kaspar: KasparLivingState;
+  driftwood: DriftwoodState;
+};
+
 export type GameSnapshot = {
   world: WorldView;
   quest: QuestState;
@@ -56,6 +81,7 @@ export type GameSnapshot = {
   oren_relation: OrenRelation;
   oren_trust: number;
   world_pulse: WorldPulse;
+  living_npc: LivingNpcProjection;
 };
 
 export type ActionResult = {
@@ -69,8 +95,10 @@ export type ActionResult = {
 export type QuestResult = ActionResult & { state: QuestState };
 
 export type DialogueDecision = {
+  npc_id: string;
   text: string;
   proposal: string | null;
+  social_action: string | null;
   used_fallback: boolean;
 };
 
@@ -87,6 +115,7 @@ type FrozenStateResponse = {
   coins: number;
   oren_relation: OrenRelation;
   world_pulse?: unknown;
+  living_npc?: unknown;
 };
 
 export class ApiError extends Error {
@@ -132,14 +161,16 @@ export class GameApi {
       coins: response.coins,
       oren_relation: response.oren_relation,
       oren_trust: response.oren_relation.trust,
-      world_pulse: mapWorldPulse(response.world_pulse)
+      world_pulse: mapWorldPulse(response.world_pulse),
+      living_npc: mapLivingNpc(response.living_npc)
     };
   }
 
   action(input: {
     player_id: string;
-    action_type: "LOOK" | "MOVE" | "TAKE" | "DROP" | "WAIT";
+    action_type: "LOOK" | "MOVE" | "TAKE" | "DROP" | "GIVE" | "WAIT";
     target_id?: string | null;
+    recipient_id?: string | null;
     destination_id?: string | null;
     modifiers?: Record<string, unknown> | null;
     external_id?: string;
@@ -150,6 +181,7 @@ export class GameApi {
         player_id: input.player_id,
         action_type: input.action_type,
         target_id: input.target_id ?? null,
+        recipient_id: input.recipient_id ?? null,
         destination_id: input.destination_id ?? null,
         modifiers: input.modifiers ?? null,
         external_id: input.external_id ?? requestId(input.action_type.toLowerCase())
@@ -171,10 +203,15 @@ export class GameApi {
     });
   }
 
-  dialogue(playerId: string, text: string): Promise<DialogueDecision> {
+  dialogue(playerId: string, text: string): Promise<DialogueDecision>;
+  dialogue(playerId: string, npcId: string, text: string): Promise<DialogueDecision>;
+  dialogue(playerId: string, npcOrText: string, maybeText?: string): Promise<DialogueDecision> {
+    const body = maybeText === undefined
+      ? { player_id: playerId, text: npcOrText }
+      : { player_id: playerId, npc_id: npcOrText, text: maybeText };
     return this.request("/api/dialogue", {
       method: "POST",
-      body: JSON.stringify({ player_id: playerId, text })
+      body: JSON.stringify(body)
     });
   }
 
@@ -242,6 +279,51 @@ function mapWorldPulse(value: unknown): WorldPulse {
       summary: event.summary
     }))
   };
+}
+
+function mapLivingNpc(value: unknown): LivingNpcProjection {
+  const empty: LivingNpcProjection = {
+    tick: 0,
+    adjacent_locations: [],
+    nearby_npc_ids: [],
+    mira: { location_id: null, wood_stock: 0, work_cycles: 0, requested_wood: false },
+    kaspar: { location_id: null, goal: null, carrying_wood: 0 },
+    driftwood: { location_id: null, owner_actor_id: null }
+  };
+  if (!isRecord(value)) return empty;
+  const mira = isRecord(value.mira) ? value.mira : {};
+  const kaspar = isRecord(value.kaspar) ? value.kaspar : {};
+  const driftwood = isRecord(value.driftwood) ? value.driftwood : {};
+  const adjacent = Array.isArray(value.adjacent_locations)
+    ? value.adjacent_locations.filter(isAdjacentLocation).map((entry) => ({ id: entry.id, name: entry.name }))
+    : [];
+  const nearby = Array.isArray(value.nearby_npc_ids)
+    ? value.nearby_npc_ids.filter((entry): entry is string => typeof entry === "string")
+    : [];
+  return {
+    tick: typeof value.tick === "number" ? value.tick : 0,
+    adjacent_locations: adjacent,
+    nearby_npc_ids: nearby,
+    mira: {
+      location_id: typeof mira.location_id === "string" ? mira.location_id : null,
+      wood_stock: typeof mira.wood_stock === "number" ? mira.wood_stock : 0,
+      work_cycles: typeof mira.work_cycles === "number" ? mira.work_cycles : 0,
+      requested_wood: mira.requested_wood === true
+    },
+    kaspar: {
+      location_id: typeof kaspar.location_id === "string" ? kaspar.location_id : null,
+      goal: typeof kaspar.goal === "string" ? kaspar.goal : null,
+      carrying_wood: typeof kaspar.carrying_wood === "number" ? kaspar.carrying_wood : 0
+    },
+    driftwood: {
+      location_id: typeof driftwood.location_id === "string" ? driftwood.location_id : null,
+      owner_actor_id: typeof driftwood.owner_actor_id === "string" ? driftwood.owner_actor_id : null
+    }
+  };
+}
+
+function isAdjacentLocation(value: unknown): value is AdjacentLocation {
+  return isRecord(value) && typeof value.id === "string" && typeof value.name === "string";
 }
 
 function isWorldPulseEvent(value: unknown): value is WorldPulseEvent {

@@ -126,6 +126,17 @@ CREATE TABLE IF NOT EXISTS npc_memories (
     created_at TEXT NOT NULL,
     UNIQUE (npc_actor_id, subject_actor_id, fact)
 );
+CREATE TABLE IF NOT EXISTS dialogue_turns (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    world_id TEXT NOT NULL REFERENCES worlds(id) ON DELETE CASCADE,
+    npc_actor_id TEXT NOT NULL REFERENCES npcs(actor_id) ON DELETE CASCADE,
+    player_actor_id TEXT NOT NULL REFERENCES players(actor_id) ON DELETE CASCADE,
+    user_text TEXT NOT NULL,
+    npc_text TEXT NOT NULL,
+    proposal_json TEXT NOT NULL DEFAULT '{}',
+    used_fallback INTEGER NOT NULL DEFAULT 0 CHECK (used_fallback IN (0, 1)),
+    created_at TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS world_runtime (
     world_id TEXT PRIMARY KEY REFERENCES worlds(id) ON DELETE CASCADE,
     tick INTEGER NOT NULL DEFAULT 0 CHECK (tick >= 0)
@@ -153,6 +164,7 @@ CREATE INDEX IF NOT EXISTS idx_entities_owner ON entities(owner_actor_id);
 CREATE INDEX IF NOT EXISTS idx_events_world_time ON action_events(world_id, occurred_at);
 CREATE INDEX IF NOT EXISTS idx_schedule_npc ON npc_schedule(npc_actor_id, priority DESC);
 CREATE INDEX IF NOT EXISTS idx_world_events_world_tick ON world_events(world_id, tick, id);
+CREATE INDEX IF NOT EXISTS idx_dialogue_turns_pair ON dialogue_turns(npc_actor_id, player_actor_id, id DESC);
 """
 
 

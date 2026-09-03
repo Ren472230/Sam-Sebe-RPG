@@ -7,11 +7,12 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "typecheck": "tsc --noEmit",
-    "test:contract": "node --test --experimental-strip-types tests/api-contract.test.ts tests/playtest-contract.test.ts tests/production-art.test.ts tests/production-assets-materialized.test.ts tests/prototype-art.test.ts",
+    "test:contract": "node --test --experimental-strip-types tests/api-contract.test.ts tests/living-npc-contract.test.ts tests/playtest-contract.test.ts tests/production-art.test.ts tests/production-assets-materialized.test.ts tests/prototype-art.test.ts",
     "preview": "vite preview",
     "test:e2e": "node scripts/reset-e2e.mjs && playwright test",
     "test:e2e:canonical": "node scripts/reset-e2e.mjs && playwright test tests/vertical-slice.spec.ts",
-    "test:e2e:exploratory": "node scripts/reset-e2e.mjs && playwright test tests/exploratory.spec.ts"
+    "test:e2e:exploratory": "node scripts/reset-e2e.mjs && playwright test tests/exploratory.spec.ts",
+    "test:e2e:living-npc": "node scripts/reset-living-npc-e2e.mjs && playwright test -c playwright.living-npc.config.ts"
   },
   "dependencies": {
     "phaser": "3.90.0"
