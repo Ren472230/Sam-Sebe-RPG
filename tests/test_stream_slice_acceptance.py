@@ -81,7 +81,6 @@ def test_stream_slice_full_causal_route_survives_reopen(tmp_path: Path) -> None:
     # Kaspar independently completes the existing resource loop by tick 9.
     _wait(game, player_id, 4, "stream-to-kaspar-delivery")
     _move(game, player_id, "village_square")
-    _move(game, player_id, "workshop_yard")
     after_contact = dialogue.talk(
         player_id,
         "Что Мира тебе обо мне говорила?",
@@ -92,7 +91,6 @@ def test_stream_slice_full_causal_route_survives_reopen(tmp_path: Path) -> None:
 
     # The temporary visitor arrives at tick 10 and Oren receives his road news.
     _wait(game, player_id, 1, "stream-to-wayfarer-arrival")
-    _move(game, player_id, "village_square")
     _move(game, player_id, "tavern_interior")
 
     talen = dialogue.talk(
