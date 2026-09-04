@@ -484,6 +484,7 @@ class LivingWorldService:
         event_id = int(cursor.lastrowid)
         return {
             "id": event_id,
+            "world_event_id": event_id,
             "world_id": DEFAULT_WORLD_ID,
             "tick": tick,
             "actor_id": actor_id,

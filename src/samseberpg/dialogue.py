@@ -5,7 +5,7 @@ import os
 from dataclasses import dataclass
 from typing import Protocol
 
-from .db import GameDatabase
+from .db import DEFAULT_WORLD_ID, GameDatabase
 from .domain import QuestState
 from .npc_profiles import get_npc_profile
 from .quest import QUEST_TYPE, QuestService
@@ -15,6 +15,10 @@ _ALLOWED_PROPOSALS = {OFFER_PROPOSAL}
 REMEMBER_MIRA_WOOD_COMMITMENT = "remember_commitment:bring_useful_wood_to_mira"
 _ALLOWED_SOCIAL_ACTIONS = {REMEMBER_MIRA_WOOD_COMMITMENT}
 MIRA_COMMITMENT_FACT = "The player promised Mira to bring useful wood while her workshop was blocked."
+
+
+def player_mira_commitment_fact_key(player_id: str) -> str:
+    return f"player_promised_mira_useful_wood:{player_id}"
 
 
 @dataclass(frozen=True, slots=True)
@@ -48,6 +52,7 @@ class DialogueContext:
     relation: dict[str, int]
     quest: QuestState | None
     memories: tuple[str, ...]
+    known_facts: tuple[str, ...]
     recent_dialogue: tuple[DialogueTurn, ...]
     runtime_state: dict[str, object]
     nearby_actors: tuple[str, ...]
@@ -61,6 +66,7 @@ class DialogueContext:
             for turn in self.recent_dialogue
         ) or "none"
         memories = " | ".join(self.memories) or "none"
+        known_facts = " | ".join(self.known_facts) or "none"
         events = " | ".join(self.own_events) or "none"
         nearby_actors = ", ".join(self.nearby_actors) or "none"
         nearby_entities = ", ".join(self.nearby_entities) or "none"
@@ -77,6 +83,7 @@ class DialogueContext:
             f"runtime_state: {json.dumps(self.runtime_state, ensure_ascii=False, sort_keys=True)}",
             f"relation_to_player: {json.dumps(self.relation, ensure_ascii=False, sort_keys=True)}",
             f"relevant_memories: {memories}",
+            f"known_facts: {known_facts}",
             f"recent_dialogue: {history}",
             f"nearby_actors: {nearby_actors}",
             f"nearby_entities: {nearby_entities}",
@@ -180,6 +187,30 @@ class DialogueService:
                         "reinforcement_count = reinforcement_count + 1",
                         (context.player_id, MIRA_COMMITMENT_FACT, now),
                     )
+                    tick_row = conn.execute(
+                        "SELECT tick FROM world_runtime WHERE world_id = ?",
+                        (DEFAULT_WORLD_ID,),
+                    ).fetchone()
+                    if tick_row is None:
+                        raise RuntimeError(f"missing world runtime for {DEFAULT_WORLD_ID}")
+                    conn.execute(
+                        "INSERT INTO npc_knowledge "
+                        "(world_id, knower_actor_id, subject_actor_id, fact_key, fact_text, "
+                        "source_kind, source_actor_id, source_world_event_id, source_knowledge_id, "
+                        "confidence, shareable, learned_tick, created_at) "
+                        "VALUES (?, 'npc_mira', ?, ?, ?, 'player_dialogue', ?, NULL, NULL, "
+                        "100, 1, ?, ?) "
+                        "ON CONFLICT(knower_actor_id, fact_key) DO NOTHING",
+                        (
+                            DEFAULT_WORLD_ID,
+                            context.player_id,
+                            player_mira_commitment_fact_key(context.player_id),
+                            MIRA_COMMITMENT_FACT,
+                            context.player_id,
+                            int(tick_row[0]),
+                            now,
+                        ),
+                    )
             player_id = context.player_id
             conn.execute(
                 "INSERT INTO dialogue_turns "
@@ -274,6 +305,13 @@ class DialogueService:
                     (npc_id, player_id),
                 ).fetchall()
             )
+            knowledge_rows = conn.execute(
+                "SELECT fact_text, source_kind, source_actor_id, confidence "
+                "FROM npc_knowledge WHERE knower_actor_id = ? "
+                "ORDER BY confidence DESC, learned_tick DESC, id DESC LIMIT 8",
+                (npc_id,),
+            ).fetchall()
+            known_facts = tuple(_format_known_fact(row) for row in knowledge_rows)
             recent_rows = conn.execute(
                 "SELECT user_text, npc_text FROM dialogue_turns "
                 "WHERE npc_actor_id = ? AND player_actor_id = ? "
@@ -334,6 +372,7 @@ class DialogueService:
             relation=relation,
             quest=quest_state,
             memories=memories,
+            known_facts=known_facts,
             recent_dialogue=recent_dialogue,
             runtime_state=runtime_state,
             nearby_actors=nearby_actors,
@@ -429,6 +468,12 @@ def _fallback(context: DialogueContext) -> DialogueDecision:
             npc_id=context.npc_id,
         )
     if context.npc_id == "npc_kaspar":
+        if _asks_about_social_knowledge(context.user_text) and _has_mira_commitment_report(context):
+            return DialogueDecision(
+                text="Каспар пожимает плечом: «Мира говорила, что ты обещал помочь ей с древесиной.»",
+                used_fallback=True,
+                npc_id=context.npc_id,
+            )
         if int(context.runtime_state.get("carrying_wood", 0) or 0) > 0:
             return DialogueDecision(
                 text="Каспар кивает на древесину: «Нашёл, что нужно. Теперь бы донести.»",
@@ -478,6 +523,28 @@ def _fallback(context: DialogueContext) -> DialogueDecision:
         used_fallback=True,
         npc_id=context.npc_id,
     )
+
+
+def _format_known_fact(row) -> str:
+    source_actor = row["source_actor_id"]
+    source = "unknown" if source_actor is None else str(source_actor)
+    return (
+        f"source={source} kind={row['source_kind']}: {row['fact_text']} "
+        f"[confidence={int(row['confidence'])}]"
+    )
+
+
+def _has_mira_commitment_report(context: DialogueContext) -> bool:
+    return any(
+        "source=npc_mira" in fact
+        and "mira said the player promised to bring useful wood" in fact.lower()
+        for fact in context.known_facts
+    )
+
+
+def _asks_about_social_knowledge(user_text: str) -> bool:
+    text = user_text.lower()
+    return any(token in text for token in ("слыш", "обо мне", "обещ", "мира"))
 
 
 def _sqlite_utc_now(conn) -> str:
