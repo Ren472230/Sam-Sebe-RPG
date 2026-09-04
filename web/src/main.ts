@@ -6,6 +6,12 @@ import { setRuntime } from "./runtime";
 import { VillageScene } from "./scenes/VillageScene";
 import { TavernScene } from "./scenes/TavernScene";
 import { ClientState } from "./state";
+import {
+  actorDisplayName,
+  isStreamMode,
+  streamEventLabel,
+  streamPhaseLabel
+} from "./streamMode";
 import { DialoguePanel } from "./ui/DialoguePanel";
 import "./styles.css";
 
@@ -13,14 +19,18 @@ async function bootstrap(): Promise<void> {
   const artManifest = await loadProductionManifest();
   setProductionManifest(artManifest);
 
+  const streamMode = isStreamMode(window.location.search);
+  document.body.classList.toggle("stream-mode", streamMode);
+
   const api = new GameApi();
   const playerId = await api.createSession("Ren");
   const state = new ClientState(api, playerId);
   await state.refresh();
   const dialogue = new DialoguePanel(state);
   setRuntime({ api, state, dialogue });
-  bindHud(state);
-  bindWorldPulse(state, dialogue);
+  bindHud(state, streamMode);
+  bindWorldPulse(state, dialogue, streamMode);
+  if (streamMode) bindStreamStatus(state);
 
   const initialScenes = state.snapshot?.world.location_id === "tavern_interior"
     ? [TavernScene, VillageScene]
@@ -37,11 +47,15 @@ async function bootstrap(): Promise<void> {
   });
 }
 
-function bindHud(state: ClientState): void {
+function bindHud(state: ClientState, streamMode: boolean): void {
   const hud = document.getElementById("hud");
   if (!hud) return;
   state.subscribe((snapshot) => {
     document.body.dataset.scene = snapshot.world.location_id === "tavern_interior" ? "tavern" : "village";
+    if (streamMode) {
+      hud.textContent = `${snapshot.world.location_name}  ·  шаг ${snapshot.world_pulse.tick}`;
+      return;
+    }
     const label = snapshot.quest.status === "available"
       ? "нет активной задачи"
       : snapshot.quest.status === "active"
@@ -51,7 +65,84 @@ function bindHud(state: ClientState): void {
   });
 }
 
-function bindWorldPulse(state: ClientState, dialogue: DialoguePanel): void {
+function bindStreamStatus(state: ClientState): void {
+  const app = document.getElementById("app");
+  const pulse = document.getElementById("world-pulse");
+  if (!app || !pulse) return;
+
+  const root = document.createElement("section");
+  root.id = "stream-status";
+  root.setAttribute("aria-live", "polite");
+
+  const heading = document.createElement("div");
+  heading.className = "stream-status-heading";
+  const title = document.createElement("strong");
+  title.textContent = "Сейчас в деревне";
+  const phase = document.createElement("span");
+  phase.className = "stream-status-phase";
+  heading.append(title, phase);
+
+  const location = document.createElement("p");
+  location.className = "stream-status-location";
+  const activities = document.createElement("ul");
+  activities.className = "stream-status-activities";
+  const recent = document.createElement("ul");
+  recent.className = "stream-status-events";
+  root.append(heading, location, activities, recent);
+  app.insertBefore(root, pulse);
+
+  state.subscribe((snapshot) => {
+    phase.textContent = `Шаг ${snapshot.world_pulse.tick} · ${streamPhaseLabel(snapshot.world_pulse.tick)}`;
+    location.textContent = `Место: ${snapshot.world.location_name}`;
+
+    activities.replaceChildren();
+    const nearbyNpcs = snapshot.world.visible_actors.filter((actor) => actor.actor_type === "npc");
+    if (nearbyNpcs.length === 0) {
+      const item = document.createElement("li");
+      item.textContent = "Поблизости сейчас тихо.";
+      activities.append(item);
+    } else {
+      for (const actor of nearbyNpcs) {
+        const item = document.createElement("li");
+        item.textContent = streamActivityLabel(snapshot, actor.actor_id, actor.name);
+        activities.append(item);
+      }
+    }
+
+    recent.replaceChildren();
+    const publicEvents = snapshot.world_pulse.latest_events.slice(-4).reverse();
+    if (publicEvents.length === 0) {
+      const item = document.createElement("li");
+      item.textContent = "Мир пока тих.";
+      recent.append(item);
+    } else {
+      for (const event of publicEvents) {
+        const item = document.createElement("li");
+        item.textContent = streamEventLabel(event);
+        recent.append(item);
+      }
+    }
+  });
+}
+
+function streamActivityLabel(snapshot: GameSnapshot, actorId: string, fallback: string): string {
+  const name = actorDisplayName(actorId, fallback);
+  if (actorId === "npc_mira") {
+    return snapshot.living_npc.mira.requested_wood
+      ? `${name} ждёт древесину для мастерской`
+      : `${name} работает в мастерской`;
+  }
+  if (actorId === "npc_kaspar") {
+    if (snapshot.living_npc.kaspar.carrying_wood > 0) return `${name} несёт найденную древесину`;
+    if (snapshot.living_npc.kaspar.goal) return `${name} занят своим делом`;
+    return `${name} проверяет окрестности`;
+  }
+  if (actorId === "npc_oren") return `${name} держит таверну`;
+  if (actorId === "npc_wayfarer_1") return `${name} отдыхает после дороги`;
+  return `${name} занят своими делами`;
+}
+
+function bindWorldPulse(state: ClientState, dialogue: DialoguePanel, streamMode: boolean): void {
   const root = document.getElementById("world-pulse");
   const tick = document.getElementById("world-pulse-tick");
   const nearby = document.getElementById("world-pulse-nearby");
@@ -99,7 +190,7 @@ function bindWorldPulse(state: ClientState, dialogue: DialoguePanel): void {
     tick.textContent = `Шаг ${snapshot.world_pulse.tick}`;
     const names = snapshot.world.visible_actors
       .filter((actor) => actor.actor_type === "npc")
-      .map((actor) => actorName(actor.actor_id, actor.name));
+      .map((actor) => actorDisplayName(actor.actor_id, actor.name));
     nearby.textContent = names.length > 0 ? `Рядом: ${names.join(", ")}` : "Рядом: никого";
 
     events.replaceChildren();
@@ -111,14 +202,14 @@ function bindWorldPulse(state: ClientState, dialogue: DialoguePanel): void {
     } else {
       for (const event of recent) {
         const item = document.createElement("li");
-        item.textContent = eventText(event);
+        item.textContent = streamMode ? streamEventLabel(event) : eventText(event);
         events.append(item);
       }
     }
 
     livingActions.replaceChildren();
     for (const npcId of snapshot.living_npc.nearby_npc_ids) {
-      livingActions.append(actionButton(`Поговорить: ${actorName(npcId, npcId)}`, () => {
+      livingActions.append(actionButton(`Поговорить: ${actorDisplayName(npcId, npcId)}`, () => {
         void dialogue.openNpc(npcId);
       }));
     }
@@ -190,13 +281,6 @@ function actionButton(label: string, onClick: () => void): HTMLButtonElement {
   return button;
 }
 
-function actorName(actorId: string, fallback: string): string {
-  if (actorId === "npc_mira") return "Мира";
-  if (actorId === "npc_kaspar") return "Каспар";
-  if (actorId === "npc_oren") return "Орен";
-  return fallback;
-}
-
 function locationName(locationId: string, fallback: string): string {
   if (locationId === "workshop_yard") return "мастерская";
   if (locationId === "village_square") return "площадь";
@@ -210,8 +294,8 @@ function eventText(event: WorldPulseEvent): string {
   if (event.event_type === "NPC_COLLECTED_RESOURCE") return "Каспар подобрал древесину";
   if (event.event_type === "NPC_DELIVERED_RESOURCE") return "Каспар принёс древесину Мире";
   if (event.event_type === "NPC_WORKED") return "Мира завершила рабочий цикл";
-  if (event.event_type === "NPC_MOVED") return `${actorName(event.actor_id, event.actor_id)} отправился дальше по своим делам`;
-  return `${actorName(event.actor_id, event.actor_id)}: ${event.summary}`;
+  if (event.event_type === "NPC_MOVED") return `${actorDisplayName(event.actor_id, event.actor_id)} отправился дальше по своим делам`;
+  return `${actorDisplayName(event.actor_id, event.actor_id)}: ${event.summary}`;
 }
 
 bootstrap().catch((error) => {
