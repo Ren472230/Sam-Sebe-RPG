@@ -5,7 +5,7 @@ import os
 from dataclasses import dataclass
 from typing import Protocol
 
-from .db import GameDatabase
+from .db import DEFAULT_WORLD_ID, GameDatabase
 from .domain import QuestState
 from .npc_profiles import get_npc_profile
 from .quest import QUEST_TYPE, QuestService
@@ -15,6 +15,10 @@ _ALLOWED_PROPOSALS = {OFFER_PROPOSAL}
 REMEMBER_MIRA_WOOD_COMMITMENT = "remember_commitment:bring_useful_wood_to_mira"
 _ALLOWED_SOCIAL_ACTIONS = {REMEMBER_MIRA_WOOD_COMMITMENT}
 MIRA_COMMITMENT_FACT = "The player promised Mira to bring useful wood while her workshop was blocked."
+
+
+def player_mira_commitment_fact_key(player_id: str) -> str:
+    return f"player_promised_mira_useful_wood:{player_id}"
 
 
 @dataclass(frozen=True, slots=True)
@@ -179,6 +183,30 @@ class DialogueService:
                         "ON CONFLICT(npc_actor_id, subject_actor_id, fact) DO UPDATE SET "
                         "reinforcement_count = reinforcement_count + 1",
                         (context.player_id, MIRA_COMMITMENT_FACT, now),
+                    )
+                    tick_row = conn.execute(
+                        "SELECT tick FROM world_runtime WHERE world_id = ?",
+                        (DEFAULT_WORLD_ID,),
+                    ).fetchone()
+                    if tick_row is None:
+                        raise RuntimeError(f"missing world runtime for {DEFAULT_WORLD_ID}")
+                    conn.execute(
+                        "INSERT INTO npc_knowledge "
+                        "(world_id, knower_actor_id, subject_actor_id, fact_key, fact_text, "
+                        "source_kind, source_actor_id, source_world_event_id, source_knowledge_id, "
+                        "confidence, shareable, learned_tick, created_at) "
+                        "VALUES (?, 'npc_mira', ?, ?, ?, 'player_dialogue', ?, NULL, NULL, "
+                        "100, 1, ?, ?) "
+                        "ON CONFLICT(knower_actor_id, fact_key) DO NOTHING",
+                        (
+                            DEFAULT_WORLD_ID,
+                            context.player_id,
+                            player_mira_commitment_fact_key(context.player_id),
+                            MIRA_COMMITMENT_FACT,
+                            context.player_id,
+                            int(tick_row[0]),
+                            now,
+                        ),
                     )
             player_id = context.player_id
             conn.execute(
