@@ -9,6 +9,10 @@ from .db import DEFAULT_WORLD_ID
 DELIVERY_FACT_TEXT = (
     "Kaspar personally delivered useful wood to Mira when her workshop was blocked."
 )
+MIRA_REPORT_FACT_TEXT = (
+    "Mira said the player promised to bring useful wood while her workshop was blocked."
+)
+_COMMITMENT_PREFIX = "player_promised_mira_useful_wood:"
 
 
 class SocialWorldService:
@@ -98,6 +102,7 @@ class SocialWorldService:
             "familiarity = familiarity + 5, trust = trust + 5, updated_at = excluded.updated_at",
             (now,),
         )
+        propagated = self._propagate_mira_commitments(conn, tick=tick, now=now)
         conn.execute(
             "INSERT INTO social_processed_events (world_event_id, processed_at) VALUES (?, ?)",
             (event_id, now),
@@ -108,7 +113,52 @@ class SocialWorldService:
             "knower_actor_id": "npc_mira",
             "subject_actor_id": "npc_kaspar",
             "fact_key": fact_key,
+            "propagated_fact_keys": propagated,
         }
+
+    @staticmethod
+    def _propagate_mira_commitments(
+        conn: sqlite3.Connection,
+        *,
+        tick: int,
+        now: str,
+    ) -> list[str]:
+        rows = conn.execute(
+            "SELECT id, subject_actor_id, fact_key FROM npc_knowledge "
+            "WHERE knower_actor_id = 'npc_mira' "
+            "AND source_kind = 'player_dialogue' "
+            "AND shareable = 1 "
+            "AND fact_key LIKE ? "
+            "ORDER BY id",
+            (f"{_COMMITMENT_PREFIX}%",),
+        ).fetchall()
+        propagated: list[str] = []
+        for row in rows:
+            subject_actor_id = row["subject_actor_id"]
+            fact_key = str(row["fact_key"])
+            if subject_actor_id is None or not fact_key.startswith(_COMMITMENT_PREFIX):
+                continue
+            cursor = conn.execute(
+                "INSERT INTO npc_knowledge "
+                "(world_id, knower_actor_id, subject_actor_id, fact_key, fact_text, "
+                "source_kind, source_actor_id, source_world_event_id, source_knowledge_id, "
+                "confidence, shareable, learned_tick, created_at) "
+                "VALUES (?, 'npc_kaspar', ?, ?, ?, 'npc_report', 'npc_mira', NULL, ?, "
+                "90, 0, ?, ?) "
+                "ON CONFLICT(knower_actor_id, fact_key) DO NOTHING",
+                (
+                    DEFAULT_WORLD_ID,
+                    str(subject_actor_id),
+                    fact_key,
+                    MIRA_REPORT_FACT_TEXT,
+                    int(row["id"]),
+                    tick,
+                    now,
+                ),
+            )
+            if cursor.rowcount == 1:
+                propagated.append(fact_key)
+        return propagated
 
 
 def _sqlite_utc_now(conn: sqlite3.Connection) -> str:
