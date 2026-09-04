@@ -3,7 +3,7 @@
 Date: 2026-09-04
 Status: design approved in chat; written spec pending user review
 Target branch: feat/stream-slice-v1
-Base: latest verified feat/social-world-v1 head
+Base: feat/social-world-v1 @ 73f56bfacf88c78d2e71189099d501960199a010
 
 ## 1. Product goal
 
@@ -59,7 +59,7 @@ Keep the current three persistent NPCs:
 
 Add exactly one temporary visitor:
 
-4. npc_wayfarer_1 - a named wayfarer with one concise personality, one outside-world fact, and a limited session presence.
+4. npc_wayfarer_1 / Talen - a tired, observant wayfarer with dry humor, one outside-world fact, and a limited session presence.
 
 The wayfarer is intentionally low-lore. The first stream slice must not invent major canonical nations, wars, religions, or political history that could conflict with later Zodiac/world canon.
 
@@ -114,13 +114,11 @@ The temporary wayfarer is the cheapest way to make the village feel connected to
 
 The wayfarer begins absent from visible locations.
 
-After a deterministic world threshold in a fresh stream session, the Living World creates a canonical arrival event and places the wayfarer in The Wayfarer's Hearth.
-
-The exact threshold should be late enough that the streamer has time to meet Mira/Kaspar first, but early enough that the visitor reliably appears during a normal one-hour session. The implementation plan should target a threshold around the first completed wood beat or a bounded tick threshold, whichever happens first.
+At world tick 10 in a fresh stream session, the Living World creates exactly one canonical WAYFARER_ARRIVED event and places Talen in The Wayfarer's Hearth. Tick 10 is intentionally just after the established autonomous wood-delivery beat around tick 9 in the deterministic stream start, so the first social proof can land before the outside-world beat.
 
 ### 5.2 News
 
-The wayfarer brings one grounded, low-lore external fact such as a damaged road, delayed caravan, unusual weather, or another mundane travel condition.
+Talen brings one fixed low-lore fact for v1: "Heavy rain washed out part of the eastern road, so the next merchant caravan will be delayed."
 
 Requirements:
 
@@ -130,9 +128,9 @@ Requirements:
 - other NPCs do not magically know it;
 - dialogue may render the fact naturally but cannot invent additional external facts as canonical state.
 
-### 5.3 Optional later contact
+### 5.3 Knowledge boundary
 
-If the simplest implementation can move the wayfarer to Village Square later without destabilizing schedules, a second grounded contact may let another NPC learn the news. This is optional for v1. The required proof is wayfarer -> Oren plus the existing Mira -> Kaspar transfer.
+For v1, Talen remains at The Wayfarer's Hearth after arrival. Oren learns the road/caravan fact from the arrival contact because he is co-located with Talen. Mira and Kaspar do not learn it automatically. A second wayfarer movement/rumor spread route is out of scope for this slice.
 
 ## 6. Dialogue experience
 
@@ -217,7 +215,7 @@ If a relation change is surfaced, phrase it in human language, for example:
 
 In stream presentation mode, legacy quest/coin/trust text that distracts from the Living World story should be hidden or visually de-emphasized. Existing non-stream behavior must remain compatible.
 
-The preferred mechanism is a frontend stream-mode flag/query parameter rather than forking the whole client.
+Use a frontend query flag `?stream=1` rather than forking the client. Non-stream behavior must remain unchanged.
 
 ## 8. Stream session launcher and reset
 
@@ -233,9 +231,7 @@ A fresh stream reset must not touch developer/test/player databases.
 
 ### 8.2 Deterministic start
 
-The stream launcher should use a fixed game starting clock/context suitable for existing schedules, independent of the real wall-clock start time. This avoids a 3 PM stream and a 10 PM stream producing fundamentally different opening positions.
-
-This is a stream-session concern, not a rewrite of the global time architecture.
+The stream launcher uses a fixed 17:00 game clock/context, matching the already proven Living NPC/Social World deterministic route, independent of the real wall-clock start time. WAIT advances world ticks but Stream Slice v1 does not rewrite the global clock architecture.
 
 ### 8.3 One-command operation
 
@@ -257,7 +253,7 @@ Expected additive concepts:
 - seeded temporary wayfarer NPC/profile;
 - wayfarer presence/session state, ideally via existing npc_runtime_state;
 - Oren hospitality state via existing npc_runtime_state;
-- a small number of new canonical world event types if required, for example WAYFARER_ARRIVED and WAYFARER_DEPARTED;
+- one new canonical world event type: WAYFARER_ARRIVED;
 - one shareable wayfarer news fact in npc_knowledge;
 - no new general quest engine;
 - no new global rumor bus;
@@ -353,21 +349,19 @@ Do not add for Stream Slice v1:
 
 ## 13. Implementation order
 
-Critical path after spec approval:
+Critical path after written spec approval:
 
-1. finish and verify Social World browser gate;
-2. create feat/stream-slice-v1 from verified Social World head;
-3. TDD wayfarer/Oren runtime and arrival idempotency;
-4. TDD wayfarer news knowledge/provenance;
-5. TDD Oren bread request and delivery using existing bread_loaf_1;
-6. expand stream-critical fallback dialogue;
-7. add bounded live-provider timeout/retry after current official API verification;
-8. add stream presentation mode;
-9. add isolated reset/start launcher;
-10. backend acceptance;
-11. Playwright Stream Slice route;
-12. full release/Windows/soak verification;
-13. only then prepare a human one-hour stream runbook.
+1. TDD Talen/Oren runtime and WAYFARER_ARRIVED idempotency at tick 10;
+2. TDD Talen -> Oren news knowledge/provenance and Mira/Kaspar ignorance;
+3. TDD Oren bread request and delivery using existing bread_loaf_1;
+4. expand stream-critical fallback dialogue;
+5. verify current official OpenAI Python timeout/retry API and add bounded provider failure handling;
+6. add `?stream=1` presentation mode without forking the client;
+7. add isolated stream DB reset/start launcher with fixed 17:00 start;
+8. backend Stream Slice acceptance;
+9. Playwright Stream Slice route;
+10. full release/Windows/soak verification;
+11. only then prepare a human one-hour stream runbook.
 
 ## 14. Definition of done
 
