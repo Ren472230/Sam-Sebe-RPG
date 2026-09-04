@@ -32,17 +32,26 @@ class LivingWorldAdvancer(Protocol):
         ...
 
 
+class SocialWorldProcessor(Protocol):
+    def process_world_events(
+        self, conn, events: list[dict[str, object]]
+    ) -> list[dict[str, object]]:
+        ...
+
+
 class GameService:
     def __init__(
         self,
         db: GameDatabase,
         clock: Clock,
         living_world: LivingWorldAdvancer | None = None,
+        social_world: SocialWorldProcessor | None = None,
     ) -> None:
         self.db = db
         self.clock = clock
         self.synchronizer = WorldSynchronizer()
         self.living_world = living_world
+        self.social_world = social_world
 
     def register_player(self, discord_user_id: str, name: str) -> str:
         conn = self.db.connect()
@@ -185,7 +194,9 @@ class GameService:
                         "LivingWorldService is not configured for WAIT actions"
                     )
                 assert wait_ticks is not None
-                self.living_world.advance(conn, wait_ticks)
+                world_events = self.living_world.advance(conn, wait_ticks)
+                if self.social_world is not None:
+                    self.social_world.process_world_events(conn, world_events)
                 self.synchronizer.catch_up(
                     conn,
                     DEFAULT_WORLD_ID,

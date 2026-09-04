@@ -7,7 +7,7 @@
 
 * { box-sizing: border-box; }
 body { margin: 0; min-width: 980px; min-height: 100vh; background: #151719; }
-button { font: inherit; }
+button, textarea { font: inherit; }
 
 #app {
   width: min(1040px, calc(100vw - 32px));
@@ -78,7 +78,8 @@ button { font: inherit; }
 
 #world-pulse-events li::marker { color: #e0a34c; }
 
-.world-pulse-actions {
+.world-pulse-actions,
+.living-npc-actions {
   align-self: center;
   display: flex;
   gap: 8px;
@@ -86,7 +87,15 @@ button { font: inherit; }
   justify-content: flex-end;
 }
 
-.world-pulse-actions button {
+.living-npc-actions {
+  grid-column: 1 / -1;
+  justify-content: flex-start;
+  padding-top: 7px;
+  border-top: 1px solid #3d4246;
+}
+
+.world-pulse-actions button,
+.living-npc-actions button {
   min-height: 34px;
   border: 1px solid #6d7478;
   background: #eee8dc;
@@ -97,13 +106,18 @@ button { font: inherit; }
   font-weight: 800;
 }
 
+.living-npc-actions button:first-child { border-left: 4px solid #65d5d9; }
+
 .world-pulse-actions button:hover,
-.world-pulse-actions button:focus-visible {
+.world-pulse-actions button:focus-visible,
+.living-npc-actions button:hover,
+.living-npc-actions button:focus-visible {
   outline: 3px solid #65d5d9;
   outline-offset: 2px;
 }
 
-.world-pulse-actions button:disabled {
+.world-pulse-actions button:disabled,
+.living-npc-actions button:disabled {
   cursor: progress;
   opacity: .55;
 }
@@ -139,15 +153,37 @@ button { font: inherit; }
   bottom: 58px;
   z-index: 10;
   padding: 20px 22px;
-  background: rgba(31, 34, 37, .96);
+  background: rgba(31, 34, 37, .98);
   border: 2px solid #eee8dc;
   border-left: 8px solid #e13b3f;
   box-shadow: 0 16px 48px rgba(0, 0, 0, .35);
 }
 
 #dialogue h2 { margin: 0 0 8px; color: #65d5d9; font-size: 20px; }
-#dialogue p { margin: 0 0 12px; max-width: 70ch; line-height: 1.55; }
-#dialogue small { display: block; margin-bottom: 12px; color: #b7b5af; }
+#dialogue p { margin: 0 0 8px; max-width: 70ch; line-height: 1.5; }
+#dialogue small { display: block; margin-top: 10px; color: #b7b5af; }
+.dialogue-transcript {
+  max-height: 230px;
+  overflow-y: auto;
+  margin-bottom: 10px;
+  padding-right: 8px;
+}
+.dialogue-line-player { color: #f2e7c9; }
+.dialogue-line-npc { color: #f4f2ec; }
+.dialogue-line-system { color: #e0a34c; }
+.dialogue-empty { color: #b7b5af; }
+.dialogue-input {
+  width: 100%;
+  resize: vertical;
+  min-height: 54px;
+  max-height: 130px;
+  margin: 4px 0 10px;
+  padding: 9px 11px;
+  border: 1px solid #8a8d8f;
+  background: #151719;
+  color: #f4f2ec;
+}
+.dialogue-input:focus { outline: 3px solid #65d5d9; outline-offset: 1px; }
 .dialogue-actions { display: flex; gap: 10px; flex-wrap: wrap; }
 .dialogue-actions button {
   border: 1px solid #8a8d8f;
@@ -158,6 +194,73 @@ button { font: inherit; }
 }
 .dialogue-actions button:hover,
 .dialogue-actions button:focus-visible { outline: 3px solid #65d5d9; outline-offset: 2px; }
+.dialogue-actions button:disabled { opacity: .55; cursor: progress; }
+
+#stream-status { display: none; }
+
+.stream-mode #hud {
+  min-height: 34px;
+  color: #bfc5c7;
+  font-size: 12px;
+  border-bottom-width: 1px;
+}
+
+.stream-mode #stream-status {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, .8fr);
+  gap: 8px 22px;
+  padding: 12px 16px;
+  background: #202427;
+  border: 1px solid #4a4f53;
+  border-bottom: 3px solid #e0a34c;
+}
+
+.stream-status-heading {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.stream-status-heading strong {
+  color: #65d5d9;
+  font-size: 18px;
+}
+
+.stream-status-phase {
+  color: #f0ece2;
+  font-size: 13px;
+}
+
+.stream-status-location {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: #d5d2ca;
+  font-size: 13px;
+}
+
+.stream-status-activities,
+.stream-status-events {
+  margin: 2px 0 0;
+  padding-left: 20px;
+  line-height: 1.45;
+}
+
+.stream-status-activities {
+  color: #f4f2ec;
+  font-size: 14px;
+}
+
+.stream-status-events {
+  color: #d5d2ca;
+  font-size: 13px;
+}
+
+.stream-status-activities li::marker,
+.stream-status-events li::marker { color: #e0a34c; }
+
+.stream-mode #world-pulse h2 { font-size: 13px; }
+.stream-mode #world-pulse-events { color: #d5d2ca; }
 
 @media (max-width: 1000px) {
   body { min-width: 720px; }
@@ -165,4 +268,7 @@ button { font: inherit; }
   #world-pulse { grid-template-columns: 1fr; }
   .world-pulse-actions { justify-content: flex-start; }
   #dialogue { left: 24px; right: 24px; }
+  .stream-mode #stream-status { grid-template-columns: 1fr; }
+  .stream-status-heading,
+  .stream-status-location { grid-column: 1; }
 }
