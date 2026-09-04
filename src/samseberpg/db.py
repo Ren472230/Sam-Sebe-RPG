@@ -158,6 +158,29 @@ CREATE TABLE IF NOT EXISTS world_events (
     data_json TEXT NOT NULL DEFAULT '{}',
     summary TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS npc_knowledge (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    world_id TEXT NOT NULL REFERENCES worlds(id) ON DELETE CASCADE,
+    knower_actor_id TEXT NOT NULL REFERENCES npcs(actor_id) ON DELETE CASCADE,
+    subject_actor_id TEXT REFERENCES actors(id) ON DELETE SET NULL,
+    fact_key TEXT NOT NULL,
+    fact_text TEXT NOT NULL,
+    source_kind TEXT NOT NULL CHECK (
+        source_kind IN ('direct_event', 'player_dialogue', 'npc_report')
+    ),
+    source_actor_id TEXT REFERENCES actors(id) ON DELETE SET NULL,
+    source_world_event_id INTEGER REFERENCES world_events(id) ON DELETE SET NULL,
+    source_knowledge_id INTEGER REFERENCES npc_knowledge(id) ON DELETE SET NULL,
+    confidence INTEGER NOT NULL DEFAULT 100 CHECK (confidence BETWEEN 0 AND 100),
+    shareable INTEGER NOT NULL DEFAULT 0 CHECK (shareable IN (0, 1)),
+    learned_tick INTEGER NOT NULL CHECK (learned_tick >= 0),
+    created_at TEXT NOT NULL,
+    UNIQUE (knower_actor_id, fact_key)
+);
+CREATE TABLE IF NOT EXISTS social_processed_events (
+    world_event_id INTEGER PRIMARY KEY REFERENCES world_events(id) ON DELETE CASCADE,
+    processed_at TEXT NOT NULL
+);
 CREATE INDEX IF NOT EXISTS idx_actors_location ON actors(location_id);
 CREATE INDEX IF NOT EXISTS idx_entities_location ON entities(location_id);
 CREATE INDEX IF NOT EXISTS idx_entities_owner ON entities(owner_actor_id);
@@ -165,6 +188,7 @@ CREATE INDEX IF NOT EXISTS idx_events_world_time ON action_events(world_id, occu
 CREATE INDEX IF NOT EXISTS idx_schedule_npc ON npc_schedule(npc_actor_id, priority DESC);
 CREATE INDEX IF NOT EXISTS idx_world_events_world_tick ON world_events(world_id, tick, id);
 CREATE INDEX IF NOT EXISTS idx_dialogue_turns_pair ON dialogue_turns(npc_actor_id, player_actor_id, id DESC);
+CREATE INDEX IF NOT EXISTS idx_npc_knowledge_knower ON npc_knowledge(knower_actor_id, learned_tick DESC, id DESC);
 """
 
 
