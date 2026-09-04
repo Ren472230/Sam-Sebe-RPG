@@ -13,7 +13,8 @@
     "test:e2e:canonical": "node scripts/reset-e2e.mjs && playwright test tests/vertical-slice.spec.ts",
     "test:e2e:exploratory": "node scripts/reset-e2e.mjs && playwright test tests/exploratory.spec.ts",
     "test:e2e:living-npc": "node scripts/reset-living-npc-e2e.mjs && playwright test -c playwright.living-npc.config.ts",
-    "test:e2e:social-world": "node scripts/reset-social-world-e2e.mjs && playwright test -c playwright.social-world.config.ts"
+    "test:e2e:social-world": "node scripts/reset-social-world-e2e.mjs && playwright test -c playwright.social-world.config.ts",
+    "test:e2e:stream-slice": "node scripts/reset-stream-slice-e2e.mjs && playwright test -c playwright.stream-slice.config.ts"
   },
   "dependencies": {
     "phaser": "3.90.0"
