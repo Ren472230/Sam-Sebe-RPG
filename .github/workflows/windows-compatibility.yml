@@ -1,0 +1,94 @@
+name: Windows Compatibility Gate
+
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: windows-compatibility-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  windows:
+    name: Windows Python 3.12 clean boot
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Clean install
+        run: python -m pip install -e ".[dev]"
+      - name: Timezone and fresh SQLite preflight
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force data | Out-Null
+          Remove-Item data/windows-preflight.sqlite3 -Force -ErrorAction SilentlyContinue
+          python -c "import tzdata; import samseberpg.server; from zoneinfo import ZoneInfo; from samseberpg.db import GameDatabase; assert ZoneInfo('UTC').key == 'UTC'; GameDatabase(r'data/windows-preflight.sqlite3').initialize(); print('Windows timezone preflight OK')"
+      - name: Backend boot and API state on Windows
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force data | Out-Null
+          Remove-Item data/windows-gate.sqlite3 -Force -ErrorAction SilentlyContinue
+          Remove-Item data/windows-server.out -Force -ErrorAction SilentlyContinue
+          Remove-Item data/windows-server.err -Force -ErrorAction SilentlyContinue
+          $env:SAM_SEBE_DB = "data/windows-gate.sqlite3"
+          $env:OPENAI_API_KEY = ""
+          $process = Start-Process python -ArgumentList "-m", "samseberpg.server" -PassThru -RedirectStandardOutput data/windows-server.out -RedirectStandardError data/windows-server.err
+          try {
+            $healthy = $false
+            for ($i = 0; $i -lt 30; $i++) {
+              try {
+                $health = Invoke-RestMethod -Uri "http://127.0.0.1:8000/api/health" -Method Get
+                if ($health.ok -eq $true) {
+                  $healthy = $true
+                  break
+                }
+              } catch {
+              }
+              Start-Sleep -Seconds 1
+            }
+            if (-not $healthy) {
+              if (Test-Path data/windows-server.err) { Get-Content data/windows-server.err }
+              throw "Backend health check failed on Windows"
+            }
+
+            $sessionBody = @{ external_id = "windows-gate"; name = "Windows Gate" } | ConvertTo-Json
+            $session = Invoke-RestMethod -Uri "http://127.0.0.1:8000/api/session" -Method Post -ContentType "application/json" -Body $sessionBody
+            if ([string]::IsNullOrWhiteSpace($session.player_id)) {
+              throw "Session did not return player_id"
+            }
+
+            $state = Invoke-RestMethod -Uri ("http://127.0.0.1:8000/api/state/" + $session.player_id) -Method Get
+            if ($state.player_id -ne $session.player_id) {
+              throw "State player_id mismatch"
+            }
+            if ($state.location.id -ne "workshop_yard") {
+              throw ("Unexpected initial location: " + $state.location.id)
+            }
+            if ($state.world_pulse.tick -lt 0) {
+              throw "Invalid world tick"
+            }
+            if (-not (Test-Path data/windows-gate.sqlite3)) {
+              throw "Windows SQLite database was not created"
+            }
+            Write-Host "Windows compatibility gate PASS"
+          } finally {
+            if ($null -ne $process -and -not $process.HasExited) {
+              Stop-Process -Id $process.Id -Force
+            }
+          }
+      - name: Upload Windows server logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-compatibility-logs
+          path: |
+            data/windows-server.out
+            data/windows-server.err
+          if-no-files-found: ignore
+          retention-days: 14

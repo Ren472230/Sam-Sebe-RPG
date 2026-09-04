@@ -20,7 +20,7 @@ async function bootstrap(): Promise<void> {
   const dialogue = new DialoguePanel(state);
   setRuntime({ api, state, dialogue });
   bindHud(state);
-  bindWorldPulse(state);
+  bindWorldPulse(state, dialogue);
 
   const initialScenes = state.snapshot?.world.location_id === "tavern_interior"
     ? [TavernScene, VillageScene]
@@ -51,20 +51,48 @@ function bindHud(state: ClientState): void {
   });
 }
 
-function bindWorldPulse(state: ClientState): void {
+function bindWorldPulse(state: ClientState, dialogue: DialoguePanel): void {
   const root = document.getElementById("world-pulse");
   const tick = document.getElementById("world-pulse-tick");
   const nearby = document.getElementById("world-pulse-nearby");
   const events = document.getElementById("world-pulse-events");
   if (!root || !tick || !nearby || !events) return;
 
-  const buttons = Array.from(root.querySelectorAll<HTMLButtonElement>("button[data-wait-ticks]"));
-  let waiting = false;
+  const waitButtons = Array.from(root.querySelectorAll<HTMLButtonElement>("button[data-wait-ticks]"));
+  const livingActions = document.createElement("div");
+  livingActions.className = "living-npc-actions";
+  livingActions.setAttribute("aria-label", "Действия живого мира");
+  root.append(livingActions);
+  let busy = false;
 
-  const setWaiting = (value: boolean): void => {
-    waiting = value;
-    for (const button of buttons) button.disabled = value;
+  const setBusy = (value: boolean): void => {
+    busy = value;
+    for (const button of waitButtons) button.disabled = value;
+    for (const button of livingActions.querySelectorAll<HTMLButtonElement>("button")) {
+      button.disabled = value;
+    }
     root.dataset.waiting = value ? "true" : "false";
+  };
+
+  const showError = (error: unknown): void => {
+    events.replaceChildren();
+    const item = document.createElement("li");
+    item.textContent = error instanceof Error ? error.message : "Действие мира не удалось";
+    events.append(item);
+  };
+
+  const runAction = async (input: Parameters<GameApi["action"]>[0]): Promise<void> => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const result = await state.api.action(input);
+      if (!result.success) throw new Error(result.summary);
+      await state.refresh();
+    } catch (error) {
+      showError(error);
+    } finally {
+      setBusy(false);
+    }
   };
 
   const render = (snapshot: GameSnapshot): void => {
@@ -80,48 +108,100 @@ function bindWorldPulse(state: ClientState): void {
       const item = document.createElement("li");
       item.textContent = "Мир пока тих.";
       events.append(item);
-      return;
+    } else {
+      for (const event of recent) {
+        const item = document.createElement("li");
+        item.textContent = eventText(event);
+        events.append(item);
+      }
     }
-    for (const event of recent) {
-      const item = document.createElement("li");
-      item.textContent = eventText(event);
-      events.append(item);
+
+    livingActions.replaceChildren();
+    for (const npcId of snapshot.living_npc.nearby_npc_ids) {
+      livingActions.append(actionButton(`Поговорить: ${actorName(npcId, npcId)}`, () => {
+        void dialogue.openNpc(npcId);
+      }));
+    }
+    for (const destination of snapshot.living_npc.adjacent_locations) {
+      livingActions.append(actionButton(`Идти: ${locationName(destination.id, destination.name)}`, () => {
+        void runAction({
+          player_id: state.playerId,
+          action_type: "MOVE",
+          destination_id: destination.id,
+          external_id: requestId(`living-move-${destination.id}`)
+        });
+      }));
+    }
+
+    const driftwood = snapshot.living_npc.driftwood;
+    if (
+      snapshot.world.location_id === "river_edge"
+      && driftwood.location_id === "river_edge"
+      && !driftwood.owner_actor_id
+    ) {
+      livingActions.append(actionButton("Подобрать корягу", () => {
+        void runAction({
+          player_id: state.playerId,
+          action_type: "TAKE",
+          target_id: "driftwood_1",
+          external_id: requestId("living-take-driftwood")
+        });
+      }));
+    }
+
+    if (
+      snapshot.world.location_id === snapshot.living_npc.mira.location_id
+      && driftwood.owner_actor_id === state.playerId
+      && snapshot.living_npc.mira.requested_wood
+    ) {
+      livingActions.append(actionButton("Отдать корягу Мире", () => {
+        void runAction({
+          player_id: state.playerId,
+          action_type: "GIVE",
+          target_id: "driftwood_1",
+          recipient_id: "npc_mira",
+          external_id: requestId("living-give-driftwood")
+        });
+      }));
     }
   };
 
   state.subscribe(render);
 
-  for (const button of buttons) {
-    button.addEventListener("click", async () => {
-      if (waiting) return;
+  for (const button of waitButtons) {
+    button.addEventListener("click", () => {
       const ticks = Number(button.dataset.waitTicks);
       if (!Number.isInteger(ticks) || ticks < 1) return;
-      setWaiting(true);
-      try {
-        const result = await state.api.action({
-          player_id: state.playerId,
-          action_type: "WAIT",
-          modifiers: { ticks },
-          external_id: requestId(`wait-${ticks}`)
-        });
-        if (!result.success) throw new Error(result.summary);
-        await state.refresh();
-      } catch (error) {
-        events.replaceChildren();
-        const item = document.createElement("li");
-        item.textContent = error instanceof Error ? error.message : "Не удалось продвинуть время мира";
-        events.append(item);
-      } finally {
-        setWaiting(false);
-      }
+      void runAction({
+        player_id: state.playerId,
+        action_type: "WAIT",
+        modifiers: { ticks },
+        external_id: requestId(`wait-${ticks}`)
+      });
     });
   }
+}
+
+function actionButton(label: string, onClick: () => void): HTMLButtonElement {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.textContent = label;
+  button.addEventListener("click", onClick);
+  return button;
 }
 
 function actorName(actorId: string, fallback: string): string {
   if (actorId === "npc_mira") return "Мира";
   if (actorId === "npc_kaspar") return "Каспар";
   if (actorId === "npc_oren") return "Орен";
+  return fallback;
+}
+
+function locationName(locationId: string, fallback: string): string {
+  if (locationId === "workshop_yard") return "мастерская";
+  if (locationId === "village_square") return "площадь";
+  if (locationId === "river_edge") return "река";
+  if (locationId === "tavern_interior") return "таверна";
   return fallback;
 }
 

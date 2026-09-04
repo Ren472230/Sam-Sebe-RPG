@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from dataclasses import asdict
 from typing import Any
 
@@ -10,6 +11,7 @@ from .db import DEFAULT_WORLD_ID
 from .dialogue import DialogueService
 from .domain import ActionType, CanonicalAction
 from .game import GameService
+from .playtest import PlaytestService
 from .quest import QuestService
 
 
@@ -36,6 +38,7 @@ class QuestRequest(BaseModel):
 
 class DialogueRequest(BaseModel):
     player_id: str
+    npc_id: str = "npc_oren"
     text: str | None = None
     user_text: str | None = None
 
@@ -45,8 +48,18 @@ class DialogueRequest(BaseModel):
         return self.user_text or ""
 
 
+class PlaytestEventRequest(BaseModel):
+    session_id: str
+    player_id: str | None = None
+    event_type: str
+    success: bool = True
+    summary: str = ""
+    evidence: dict[str, Any] | None = None
+
+
 def create_app(game: GameService, quest: QuestService, dialogue: DialogueService) -> FastAPI:
     app = FastAPI(title="Sam-Sebe-RPG Vertical Slice")
+    playtest = PlaytestService(game.db, game.clock)
 
     @app.get("/api/health")
     def health() -> dict[str, bool]:
@@ -84,6 +97,7 @@ def create_app(game: GameService, quest: QuestService, dialogue: DialogueService
             "world": world,
             "oren_trust": relation["trust"],
             "world_pulse": _world_pulse(game),
+            "living_npc": _living_npc_projection(game, player_id),
         }
 
     @app.post("/api/action")
@@ -119,7 +133,35 @@ def create_app(game: GameService, quest: QuestService, dialogue: DialogueService
     @app.post("/api/dialogue")
     def npc_dialogue(request: DialogueRequest):
         try:
-            return asdict(dialogue.talk(request.player_id, request.resolved_text()))
+            return asdict(
+                dialogue.talk(
+                    request.player_id,
+                    request.resolved_text(),
+                    request.npc_id,
+                )
+            )
+        except LookupError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    @app.post("/api/playtest/event")
+    def record_playtest_event(request: PlaytestEventRequest) -> dict[str, int]:
+        try:
+            event_id = playtest.record(
+                request.session_id,
+                request.event_type,
+                player_id=request.player_id,
+                success=request.success,
+                summary=request.summary,
+                evidence=request.evidence,
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        return {"event_id": event_id}
+
+    @app.get("/api/playtest/report/{session_id}")
+    def playtest_report(session_id: str, commit: str | None = None):
+        try:
+            return playtest.report(session_id, commit=commit)
         except LookupError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
 
@@ -173,3 +215,82 @@ def _world_pulse(game: GameService) -> dict[str, object]:
         for row in reversed(rows)
     ]
     return {"tick": tick, "latest_events": latest_events}
+
+
+def _living_npc_projection(game: GameService, player_id: str) -> dict[str, object]:
+    with game.db.connect() as conn:
+        player = conn.execute(
+            "SELECT location_id FROM actors WHERE id = ? AND actor_type = 'player'",
+            (player_id,),
+        ).fetchone()
+        if player is None:
+            raise LookupError(f"player not found: {player_id}")
+        player_location = str(player[0])
+        runtime = conn.execute(
+            "SELECT tick FROM world_runtime WHERE world_id = ?",
+            (DEFAULT_WORLD_ID,),
+        ).fetchone()
+        adjacent_rows = conn.execute(
+            "SELECT locations.id, locations.name FROM location_edges "
+            "JOIN locations ON locations.id = location_edges.to_location_id "
+            "WHERE location_edges.from_location_id = ? "
+            "ORDER BY locations.sort_order, locations.id",
+            (player_location,),
+        ).fetchall()
+        nearby_rows = conn.execute(
+            "SELECT id FROM actors "
+            "WHERE actor_type = 'npc' AND location_id = ? ORDER BY id",
+            (player_location,),
+        ).fetchall()
+
+        def npc_state(npc_id: str) -> tuple[str | None, dict[str, object]]:
+            actor = conn.execute(
+                "SELECT location_id FROM actors WHERE id = ?", (npc_id,)
+            ).fetchone()
+            state_row = conn.execute(
+                "SELECT state_json FROM npc_runtime_state WHERE npc_actor_id = ?",
+                (npc_id,),
+            ).fetchone()
+            location = (
+                None if actor is None or actor[0] is None else str(actor[0])
+            )
+            state = {} if state_row is None else json.loads(str(state_row[0]))
+            return location, state
+
+        mira_location, mira_state = npc_state("npc_mira")
+        kaspar_location, kaspar_state = npc_state("npc_kaspar")
+        driftwood = conn.execute(
+            "SELECT location_id, owner_actor_id FROM entities "
+            "WHERE id = 'driftwood_1'"
+        ).fetchone()
+
+    return {
+        "tick": 0 if runtime is None else int(runtime[0]),
+        "adjacent_locations": [
+            {"id": str(row[0]), "name": str(row[1])} for row in adjacent_rows
+        ],
+        "nearby_npc_ids": [str(row[0]) for row in nearby_rows],
+        "mira": {
+            "location_id": mira_location,
+            "wood_stock": int(mira_state.get("wood_stock", 0) or 0),
+            "work_cycles": int(mira_state.get("work_cycles", 0) or 0),
+            "requested_wood": bool(mira_state.get("requested_wood", False)),
+        },
+        "kaspar": {
+            "location_id": kaspar_location,
+            "goal": kaspar_state.get("goal"),
+            "carrying_wood": int(kaspar_state.get("carrying_wood", 0) or 0),
+        },
+        "driftwood": {
+            "location_id": (
+                None
+                if driftwood is None or driftwood[0] is None
+                else str(driftwood[0])
+            ),
+            "owner_actor_id": (
+                None
+                if driftwood is None or driftwood[1] is None
+                else str(driftwood[1])
+            ),
+        },
+    }

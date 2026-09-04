@@ -19,6 +19,7 @@ EXPECTED_TABLES = {
     "processed_interactions",
     "quests",
     "npc_memories",
+    "dialogue_turns",
 }
 
 
@@ -83,3 +84,21 @@ def test_bootstrap_contains_required_npcs_and_locations(tmp_path: Path) -> None:
             "npc_oren": ("Oren", "innkeeper"),
             "npc_kaspar": ("Kaspar", "forager"),
         }
+
+
+def test_dialogue_turns_schema_exists(tmp_path: Path) -> None:
+    db = GameDatabase(tmp_path / "world.sqlite3")
+    db.initialize()
+
+    with db.connect() as conn:
+        columns = {row[1] for row in conn.execute("PRAGMA table_info(dialogue_turns)")}
+
+    assert {
+        "npc_actor_id",
+        "player_actor_id",
+        "user_text",
+        "npc_text",
+        "proposal_json",
+        "used_fallback",
+        "created_at",
+    } <= columns
