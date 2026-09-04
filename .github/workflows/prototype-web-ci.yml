@@ -55,6 +55,9 @@ jobs:
       - name: Run Living NPC browser acceptance
         run: npm run test:e2e:living-npc
 
+      - name: Run Social World browser acceptance
+        run: npm run test:e2e:social-world
+
       - name: Upload browser evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -63,7 +66,9 @@ jobs:
           path: |
             web/test-results
             web/test-results-living-npc
+            web/test-results-social-world
             web/playwright-report
             web/playwright-report-living-npc
+            web/playwright-report-social-world
           if-no-files-found: warn
           retention-days: 7
