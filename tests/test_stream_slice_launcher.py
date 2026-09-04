@@ -7,6 +7,10 @@ import pytest
 
 from scripts.reset_stream_slice import reset_stream_slice, stream_db_files
 from scripts.run_stream_slice import STREAM_DB, STREAM_NOW, build_stream_slice_app
+from scripts.stream_preflight import run_preflight
+
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 
 def test_stream_launcher_uses_isolated_db_and_fixed_evening_clock() -> None:
@@ -62,3 +66,25 @@ def test_reset_deletes_only_stream_db_and_sidecars(tmp_path: Path) -> None:
     assert {path.resolve() for path in deleted} == {path.resolve() for path in targets}
     assert all(not path.exists() for path in targets)
     assert keep.read_text(encoding="utf-8") == "keep"
+
+
+def test_preflight_runs_isolated_world_through_tick_20_and_reopens(tmp_path: Path) -> None:
+    report = run_preflight(tmp_path / "preflight.sqlite3")
+
+    assert report["tick"] == 20
+    assert report["wayfarer_arrivals"] == 1
+    assert report["oren_bread_requests"] == 1
+    assert report["road_fact_knowers"] == ["npc_oren", "npc_wayfarer_1"]
+    assert report["integrity"] == "ok"
+    assert report["foreign_key_errors"] == 0
+    assert report["reopen_tick"] == 20
+
+
+def test_windows_launcher_has_explicit_reset_and_stream_url() -> None:
+    script = (PROJECT_ROOT / "RUN_STREAM_SLICE.ps1").read_text(encoding="utf-8")
+
+    assert "param(" in script
+    assert "$Reset" in script
+    assert "scripts/reset_stream_slice.py" in script.replace("\\", "/")
+    assert "scripts/run_stream_slice.py" in script.replace("\\", "/")
+    assert "http://127.0.0.1:5173/?stream=1" in script
