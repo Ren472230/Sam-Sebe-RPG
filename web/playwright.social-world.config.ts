@@ -22,7 +22,7 @@ export default defineConfig({
   ],
   webServer: [
     {
-      command: "python scripts/run_living_npc_e2e_server.py",
+      command: "python scripts/run_social_world_e2e_server.py",
       cwd: "..",
       url: "http://127.0.0.1:8000/api/health",
       timeout: 120_000,
