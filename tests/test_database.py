@@ -43,7 +43,7 @@ def test_initialize_bootstraps_one_shared_village_idempotently(tmp_path: Path) -
 
         assert conn.execute("SELECT COUNT(*) FROM worlds").fetchone()[0] == 1
         assert conn.execute("SELECT COUNT(*) FROM locations").fetchone()[0] == 4
-        assert conn.execute("SELECT COUNT(*) FROM npcs").fetchone()[0] == 3
+        assert conn.execute("SELECT COUNT(*) FROM npcs").fetchone()[0] == 4
         assert conn.execute("SELECT COUNT(*) FROM entities").fetchone()[0] >= 10
 
         stone = conn.execute(
@@ -83,6 +83,7 @@ def test_bootstrap_contains_required_npcs_and_locations(tmp_path: Path) -> None:
             "npc_mira": ("Mira", "craftswoman"),
             "npc_oren": ("Oren", "innkeeper"),
             "npc_kaspar": ("Kaspar", "forager"),
+            "npc_wayfarer_1": ("Talen", "wayfarer"),
         }
 
 

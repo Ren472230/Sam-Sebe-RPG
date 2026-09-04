@@ -6,17 +6,19 @@ on:
       - dev/prototype-art-svg
     paths:
       - "web/**"
+      - "scripts/run_stream_slice*.py"
       - ".github/workflows/prototype-web-ci.yml"
   pull_request:
     paths:
       - "web/**"
+      - "scripts/run_stream_slice*.py"
       - ".github/workflows/prototype-web-ci.yml"
   workflow_dispatch:
 
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     defaults:
       run:
         working-directory: web
@@ -58,6 +60,9 @@ jobs:
       - name: Run Social World browser acceptance
         run: npm run test:e2e:social-world
 
+      - name: Run Stream Slice browser acceptance
+        run: npm run test:e2e:stream-slice
+
       - name: Upload browser evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -67,8 +72,10 @@ jobs:
             web/test-results
             web/test-results-living-npc
             web/test-results-social-world
+            web/test-results-stream-slice
             web/playwright-report
             web/playwright-report-living-npc
             web/playwright-report-social-world
+            web/playwright-report-stream-slice
           if-no-files-found: warn
           retention-days: 7
