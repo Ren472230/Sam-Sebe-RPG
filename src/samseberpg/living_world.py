@@ -13,6 +13,7 @@ _ALLOWED_EVENT_TYPES = {
     "NPC_MOVED",
     "NPC_COLLECTED_RESOURCE",
     "NPC_DELIVERED_RESOURCE",
+    "WAYFARER_ARRIVED",
 }
 
 
@@ -43,6 +44,14 @@ class LivingWorldService:
             kaspar_event = self._advance_kaspar(conn, tick)
             if kaspar_event is not None:
                 events.append(kaspar_event)
+
+            wayfarer_event = self._advance_wayfarer(conn, tick)
+            if wayfarer_event is not None:
+                events.append(wayfarer_event)
+
+            hospitality_event = self._advance_oren_hospitality(conn, tick)
+            if hospitality_event is not None:
+                events.append(hospitality_event)
 
         return events
 
@@ -367,6 +376,76 @@ class LivingWorldService:
             location_id=mira_location,
             data={"resource_kind": "useful_wood", "amount": 1},
             summary="Kaspar delivered one unit of useful wood to Mira.",
+        )
+
+    def _advance_wayfarer(
+        self, conn: sqlite3.Connection, tick: int
+    ) -> dict[str, object] | None:
+        if tick < 10:
+            return None
+        override_active, state = self._load_runtime(conn, "npc_wayfarer_1")
+        if bool(state.get("arrived", False)):
+            return None
+
+        conn.execute(
+            "UPDATE actors SET location_id = 'tavern_interior' WHERE id = 'npc_wayfarer_1'"
+        )
+        conn.execute(
+            "UPDATE npcs SET current_activity = 'resting at the inn after the road' "
+            "WHERE actor_id = 'npc_wayfarer_1'"
+        )
+        state["arrived"] = True
+        self._save_runtime(
+            conn,
+            "npc_wayfarer_1",
+            override_active=override_active,
+            state=state,
+            tick=tick,
+        )
+        return self._record_event(
+            conn,
+            tick=tick,
+            actor_id="npc_wayfarer_1",
+            event_type="WAYFARER_ARRIVED",
+            target_id="npc_oren",
+            location_id="tavern_interior",
+            data={"route": "eastern_road"},
+            summary="Talen arrived at The Wayfarer's Hearth with news from the eastern road.",
+        )
+
+    def _advance_oren_hospitality(
+        self, conn: sqlite3.Connection, tick: int
+    ) -> dict[str, object] | None:
+        location_row = conn.execute(
+            "SELECT location_id FROM actors WHERE id = 'npc_wayfarer_1'"
+        ).fetchone()
+        if location_row is None or location_row["location_id"] != "tavern_interior":
+            return None
+
+        override_active, state = self._load_runtime(conn, "npc_oren")
+        if bool(state.get("bread_received", False)) or bool(
+            state.get("bread_requested", False)
+        ):
+            return None
+
+        state["bread_requested"] = True
+        state["bread_received"] = False
+        self._save_runtime(
+            conn,
+            "npc_oren",
+            override_active=override_active,
+            state=state,
+            tick=tick,
+        )
+        return self._record_event(
+            conn,
+            tick=tick,
+            actor_id="npc_oren",
+            event_type="NPC_REQUESTED_RESOURCE",
+            target_id="bread_loaf_1",
+            location_id="tavern_interior",
+            data={"resource_kind": "bread", "for_actor_id": "npc_wayfarer_1"},
+            summary="Oren is looking for bread for the newly arrived guest.",
         )
 
     @staticmethod
