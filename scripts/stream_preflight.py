@@ -11,7 +11,10 @@ from samseberpg.game import GameService
 from samseberpg.living_world import LivingWorldService
 from samseberpg.social_world import SocialWorldService
 
-from scripts.run_stream_slice import STREAM_NOW
+if __package__:
+    from scripts.run_stream_slice import STREAM_NOW
+else:
+    from run_stream_slice import STREAM_NOW
 
 
 ROAD_FACT_KEY = "wayfarer_eastern_road_delay:v1"
