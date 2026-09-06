@@ -387,7 +387,11 @@ class OpenAIResponsesProvider:
         if client is None:
             from openai import OpenAI
 
-            client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+            client = OpenAI(
+                api_key=os.environ.get("OPENAI_API_KEY"),
+                timeout=8.0,
+                max_retries=1,
+            )
         self.client = client
         self.model = model or os.environ.get("OPENAI_MODEL", "gpt-5")
 
@@ -491,11 +495,43 @@ def _fallback(context: DialogueContext) -> DialogueDecision:
             used_fallback=True,
             npc_id=context.npc_id,
         )
+    if context.npc_id == "npc_wayfarer_1":
+        if _asks_about_wayfarer_news(context.user_text) and _has_wayfarer_road_fact(context):
+            return DialogueDecision(
+                text="Тален отвечает: «Сильные дожди размыли часть восточной дороги. Следующий торговый караван задержится.»",
+                used_fallback=True,
+                npc_id=context.npc_id,
+            )
+        return DialogueDecision(
+            text="Тален коротко кивает: «С дороги я ещё не отошёл. Спроси о пути — расскажу, что знаю точно.»",
+            used_fallback=True,
+            npc_id=context.npc_id,
+        )
+    if context.npc_id == "npc_oren":
+        if _asks_about_wayfarer_news(context.user_text) and _has_talen_road_report(context):
+            return DialogueDecision(
+                text="Орен отвечает: «Тален сказал, что сильные дожди размыли часть восточной дороги. Следующий торговый караван задержится.»",
+                used_fallback=True,
+                npc_id=context.npc_id,
+            )
+        if _asks_about_hospitality(context.user_text):
+            if bool(context.runtime_state.get("bread_received")):
+                return DialogueDecision(
+                    text="Орен кивает: «Спасибо. Хлеб как раз пригодился гостю после дороги.»",
+                    used_fallback=True,
+                    npc_id=context.npc_id,
+                )
+            if bool(context.runtime_state.get("bread_requested")):
+                return DialogueDecision(
+                    text="Орен кивает в сторону гостя: «Если хочешь помочь — принеси хлеб с площади для Талена.»",
+                    used_fallback=True,
+                    npc_id=context.npc_id,
+                )
 
     state = context.quest
     if state is None:
         return DialogueDecision(
-            text="Орен молча кивает.",
+            text=f"{context.display_name} молча кивает.",
             used_fallback=True,
             npc_id=context.npc_id,
         )
@@ -540,6 +576,39 @@ def _has_mira_commitment_report(context: DialogueContext) -> bool:
         and "mira said the player promised to bring useful wood" in fact.lower()
         for fact in context.known_facts
     )
+
+
+def _has_wayfarer_road_fact(context: DialogueContext) -> bool:
+    return any(
+        "source=npc_wayfarer_1" in fact
+        and "kind=direct_event" in fact
+        and "heavy rain washed out part of the eastern road" in fact.lower()
+        and "merchant caravan will be delayed" in fact.lower()
+        for fact in context.known_facts
+    )
+
+
+def _has_talen_road_report(context: DialogueContext) -> bool:
+    return any(
+        "source=npc_wayfarer_1" in fact
+        and "kind=npc_report" in fact
+        and "heavy rain washed out part of the eastern road" in fact.lower()
+        and "merchant caravan will be delayed" in fact.lower()
+        for fact in context.known_facts
+    )
+
+
+def _asks_about_wayfarer_news(user_text: str) -> bool:
+    text = user_text.lower()
+    return any(
+        token in text
+        for token in ("тален", "путник", "дорог", "караван", "новост", "рассказ")
+    )
+
+
+def _asks_about_hospitality(user_text: str) -> bool:
+    text = user_text.lower()
+    return any(token in text for token in ("хлеб", "гост", "помощ"))
 
 
 def _asks_about_social_knowledge(user_text: str) -> bool:

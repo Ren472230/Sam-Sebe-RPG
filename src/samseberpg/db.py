@@ -316,6 +316,16 @@ class GameDatabase:
                 "INSERT OR IGNORE INTO npcs (actor_id, role, current_activity) VALUES (?, ?, ?)",
                 (actor_id, role, activity),
             )
+        conn.execute(
+            "INSERT OR IGNORE INTO actors "
+            "(id, world_id, actor_type, name, location_id, created_at) "
+            "VALUES ('npc_wayfarer_1', ?, 'npc', 'Talen', NULL, ?)",
+            (DEFAULT_WORLD_ID, created_at),
+        )
+        conn.execute(
+            "INSERT OR IGNORE INTO npcs (actor_id, role, current_activity) "
+            "VALUES ('npc_wayfarer_1', 'wayfarer', 'travelling toward the village')"
+        )
         conn.executemany(
             "INSERT OR IGNORE INTO npc_schedule (npc_actor_id, start_minute_local, end_minute_local, location_id, activity, priority) VALUES (?, ?, ?, ?, ?, ?)",
             _SCHEDULE,
@@ -331,6 +341,8 @@ class GameDatabase:
         runtime_defaults = (
             ("npc_mira", {"wood_stock": 2, "work_cycles": 0, "requested_wood": False}),
             ("npc_kaspar", {"carrying_wood": 0, "goal": None}),
+            ("npc_oren", {"bread_requested": False, "bread_received": False}),
+            ("npc_wayfarer_1", {"arrived": False}),
         )
         conn.executemany(
             "INSERT OR IGNORE INTO npc_runtime_state "

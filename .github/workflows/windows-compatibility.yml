@@ -14,15 +14,35 @@ jobs:
   windows:
     name: Windows Python 3.12 clean boot
     runs-on: windows-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
           cache: pip
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
       - name: Clean install
         run: python -m pip install -e ".[dev]"
+      - name: Full Python suite
+        env:
+          OPENAI_API_KEY: ""
+        run: python -m pytest -q tests
+      - name: Stream Slice preflight
+        env:
+          OPENAI_API_KEY: ""
+        run: python scripts/stream_preflight.py
+      - name: Install web dependencies
+        working-directory: web
+        run: npm install --no-audit --no-fund
+      - name: Web contract tests
+        working-directory: web
+        run: npm run test:contract
+      - name: Production build
+        working-directory: web
+        run: npm run build
       - name: Timezone and fresh SQLite preflight
         shell: pwsh
         run: |
