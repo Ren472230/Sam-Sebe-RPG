@@ -172,6 +172,7 @@ function npcName(npcId: string): string {
   if (npcId === "npc_mira") return "Мира";
   if (npcId === "npc_kaspar") return "Каспар";
   if (npcId === "npc_oren") return "Орен";
+  if (npcId === "npc_wayfarer_1") return "Тален";
   return npcId;
 }
 
