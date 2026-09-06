@@ -104,6 +104,7 @@ test("Stream Slice shows one causal evening, hospitality loop and persistence wi
 
     await clickLivingAction(page, "Идти: таверна", "The Wayfarer's Hearth");
     await page.getByRole("button", { name: "Поговорить: Тален", exact: true }).click();
+    await expect(page.locator("#dialogue h2")).toHaveText("Тален");
     await sendDialogue(page, "Что случилось в дороге?", /восточн.*караван/i);
     await page.screenshot({ path: "test-results-stream-slice/stream-03-wayfarer.png", fullPage: true });
     await closeDialogue(page);
