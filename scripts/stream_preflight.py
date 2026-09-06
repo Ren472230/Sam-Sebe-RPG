@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import tempfile
+from contextlib import closing
 from pathlib import Path
 
 from samseberpg.clock import FakeClock
@@ -46,7 +47,7 @@ def run_preflight(db_path: str | Path) -> dict[str, object]:
     if not result.success:
         raise RuntimeError(f"preflight WAIT failed: {result.code}: {result.summary}")
 
-    with db.connect() as conn:
+    with closing(db.connect()) as conn:
         tick = int(
             conn.execute(
                 "SELECT tick FROM world_runtime WHERE world_id = 'village_1'"
@@ -78,7 +79,7 @@ def run_preflight(db_path: str | Path) -> dict[str, object]:
 
     reopened = GameDatabase(path)
     reopened.initialize()
-    with reopened.connect() as conn:
+    with closing(reopened.connect()) as conn:
         reopen_tick = int(
             conn.execute(
                 "SELECT tick FROM world_runtime WHERE world_id = 'village_1'"
