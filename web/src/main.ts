@@ -255,6 +255,36 @@ function bindWorldPulse(state: ClientState, dialogue: DialoguePanel, streamMode:
         });
       }));
     }
+
+    const breadVisible = snapshot.world.visible_entities.some(
+      (entity) => entity.entity_id === "bread_loaf_1"
+    );
+    if (snapshot.world.location_id === "village_square" && breadVisible) {
+      livingActions.append(actionButton("Подобрать хлеб", () => {
+        void runAction({
+          player_id: state.playerId,
+          action_type: "TAKE",
+          target_id: "bread_loaf_1",
+          external_id: requestId("living-take-bread")
+        });
+      }));
+    }
+
+    const breadOwned = snapshot.world.inventory.some(
+      (entity) => entity.entity_id === "bread_loaf_1"
+    );
+    const orenNearby = snapshot.living_npc.nearby_npc_ids.includes("npc_oren");
+    if (snapshot.world.location_id === "tavern_interior" && breadOwned && orenNearby) {
+      livingActions.append(actionButton("Отдать хлеб Орену", () => {
+        void runAction({
+          player_id: state.playerId,
+          action_type: "GIVE",
+          target_id: "bread_loaf_1",
+          recipient_id: "npc_oren",
+          external_id: requestId("living-give-bread")
+        });
+      }));
+    }
   };
 
   state.subscribe(render);
