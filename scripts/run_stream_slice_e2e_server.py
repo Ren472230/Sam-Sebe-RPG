@@ -5,7 +5,10 @@ from pathlib import Path
 
 import uvicorn
 
-from scripts.run_stream_slice import build_stream_slice_app
+if __package__:
+    from scripts.run_stream_slice import build_stream_slice_app
+else:
+    from run_stream_slice import build_stream_slice_app
 
 
 E2E_DB = Path("data/e2e-stream-slice.sqlite3")
