@@ -263,7 +263,7 @@ button, textarea { font: inherit; }
 .stream-mode #world-pulse-events { color: #d5d2ca; }
 
 @media (max-width: 1000px) {
-  body { min-width: 720px; }
+  body { min-width: 0; }
   #app { width: calc(100vw - 16px); margin: 8px; }
   #world-pulse { grid-template-columns: 1fr; }
   .world-pulse-actions { justify-content: flex-start; }
