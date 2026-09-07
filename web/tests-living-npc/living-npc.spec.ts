@@ -48,7 +48,7 @@ test("Living NPC browser route remembers a commitment and lets the player beat K
 
   try {
     await page.goto("/");
-    await expect(page.locator("#hud")).toContainText("Workshop Yard");
+    await expect(page.locator("#hud")).toContainText("Мастерская");
     await expect(page.getByRole("button", { name: "Поговорить: Мира", exact: true })).toBeVisible();
     const playerId = await currentPlayerId(page);
 
@@ -69,8 +69,8 @@ test("Living NPC browser route remembers a commitment and lets the player beat K
     expect(snapshot.living_npc.driftwood.location_id).toBe("river_edge");
     expect(snapshot.living_npc.driftwood.owner_actor_id).toBeNull();
 
-    await clickLivingAction(page, "Идти: площадь", "Village Square");
-    await clickLivingAction(page, "Идти: река", "River Edge");
+    await clickLivingAction(page, "Идти: площадь", "Площадь");
+    await clickLivingAction(page, "Идти: река", "Берег реки");
     await expect(page.getByRole("button", { name: "Поговорить: Каспар", exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: "Подобрать корягу", exact: true })).toBeVisible();
 
@@ -84,8 +84,8 @@ test("Living NPC browser route remembers a commitment and lets the player beat K
     await clickLivingAction(page, "Подобрать корягу");
     await expect.poll(async () => (await state(page, playerId)).living_npc.driftwood.owner_actor_id).toBe(playerId);
 
-    await clickLivingAction(page, "Идти: площадь", "Village Square");
-    await clickLivingAction(page, "Идти: мастерская", "Workshop Yard");
+    await clickLivingAction(page, "Идти: площадь", "Площадь");
+    await clickLivingAction(page, "Идти: мастерская", "Мастерская");
     await expect(page.getByRole("button", { name: "Отдать корягу Мире", exact: true })).toBeVisible();
     await clickLivingAction(page, "Отдать корягу Мире");
 
@@ -103,7 +103,7 @@ test("Living NPC browser route remembers a commitment and lets the player beat K
     await page.getByRole("button", { name: "Закрыть", exact: true }).click();
 
     await page.reload();
-    await expect(page.locator("#hud")).toContainText("Workshop Yard");
+    await expect(page.locator("#hud")).toContainText("Мастерская");
     const samePlayerId = await currentPlayerId(page);
     expect(samePlayerId).toBe(playerId);
     const reloaded = await state(page, playerId);
