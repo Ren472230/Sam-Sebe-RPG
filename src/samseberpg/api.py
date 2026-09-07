@@ -133,13 +133,22 @@ def create_app(game: GameService, quest: QuestService, dialogue: DialogueService
     @app.post("/api/dialogue")
     def npc_dialogue(request: DialogueRequest):
         try:
-            return asdict(
+            payload = asdict(
                 dialogue.talk(
                     request.player_id,
                     request.resolved_text(),
                     request.npc_id,
                 )
             )
+            if payload["conversation_act"] is None:
+                payload.pop("conversation_act")
+            if not payload["memory_candidates"]:
+                payload.pop("memory_candidates")
+            if payload["open_thread"] is None:
+                payload.pop("open_thread")
+            if payload["resolve_thread"] is None:
+                payload.pop("resolve_thread")
+            return payload
         except LookupError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
 
