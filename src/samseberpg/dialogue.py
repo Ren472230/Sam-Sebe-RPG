@@ -15,6 +15,7 @@ from .db import DEFAULT_WORLD_ID, GameDatabase
 from .domain import QuestState
 from .living_conversation import (
     ConversationMemory,
+    ConversationMemoryCandidate,
     ConversationThreadState,
     LivingConversationStore,
 )
@@ -25,6 +26,28 @@ OFFER_PROPOSAL = f"offer_quest:{QUEST_TYPE}"
 _ALLOWED_PROPOSALS = {OFFER_PROPOSAL}
 REMEMBER_MIRA_WOOD_COMMITMENT = "remember_commitment:bring_useful_wood_to_mira"
 _ALLOWED_SOCIAL_ACTIONS = {REMEMBER_MIRA_WOOD_COMMITMENT}
+_ALLOWED_CONVERSATION_ACTS = {
+    "answer",
+    "ask",
+    "challenge",
+    "refuse",
+    "tease",
+    "observe",
+    "recall",
+    "redirect",
+}
+_ALLOWED_CONVERSATION_MEMORY_TYPES = {
+    "player_claim",
+    "preference",
+    "commitment",
+    "significant_interaction",
+}
+_MEMORY_IMPORTANCE = {
+    "player_claim": 60,
+    "preference": 50,
+    "commitment": 80,
+    "significant_interaction": 70,
+}
 MIRA_COMMITMENT_FACT = "The player promised Mira to bring useful wood while her workshop was blocked."
 
 
@@ -39,6 +62,10 @@ class DialogueDecision:
     used_fallback: bool = False
     social_action: str | None = None
     npc_id: str = "npc_oren"
+    conversation_act: str | None = None
+    memory_candidates: tuple[ConversationMemoryCandidate, ...] = ()
+    open_thread: str | None = None
+    resolve_thread: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -161,6 +188,7 @@ class DialogueContext:
                 "knowledge_rule: You know only the supplied NPC knowledge and pair-scoped memories. Missing facts are unknown to you.",
                 "subjectivity_rule: Treat subjective_stance as your opinion, not as an objective world fact.",
                 "initiative_rule: initiative_cue is permission to lead naturally, not an instruction to invent new facts.",
+                "memory_rule: A proposed conversation memory records what the player said or what this conversation established; never convert a claim into objective world truth.",
                 f"player_says: {self.user_text}",
             ]
         )
@@ -202,7 +230,19 @@ class DialogueService:
                 text = raw.text.strip()
                 proposal = raw.proposal
                 social_action = getattr(raw, "social_action", None)
+                conversation_act = getattr(raw, "conversation_act", None)
+                memory_candidates = tuple(getattr(raw, "memory_candidates", ()) or ())
+                open_thread = _normalized_optional_text(getattr(raw, "open_thread", None))
+                resolve_thread = _normalized_optional_text(getattr(raw, "resolve_thread", None))
+                invalid_metadata = not _valid_conversation_metadata(
+                    conversation_act=conversation_act,
+                    memory_candidates=memory_candidates,
+                    open_thread=open_thread,
+                    resolve_thread=resolve_thread,
+                )
                 if not text:
+                    decision = _fallback(context)
+                elif invalid_metadata:
                     decision = _fallback(context)
                 elif proposal is not None and (
                     proposal not in _ALLOWED_PROPOSALS
@@ -224,6 +264,10 @@ class DialogueService:
                         used_fallback=False,
                         social_action=social_action,
                         npc_id=npc_id,
+                        conversation_act=conversation_act,
+                        memory_candidates=memory_candidates,
+                        open_thread=open_thread,
+                        resolve_thread=resolve_thread,
                     )
             except Exception:
                 decision = _fallback(context)
@@ -236,6 +280,14 @@ class DialogueService:
         try:
             conn.execute("BEGIN IMMEDIATE")
             resolved = decision
+            tick_row = conn.execute(
+                "SELECT tick FROM world_runtime WHERE world_id = ?",
+                (DEFAULT_WORLD_ID,),
+            ).fetchone()
+            if tick_row is None:
+                raise RuntimeError(f"missing world runtime for {DEFAULT_WORLD_ID}")
+            current_tick = int(tick_row[0])
+
             if decision.social_action == REMEMBER_MIRA_WOOD_COMMITMENT:
                 row = conn.execute(
                     "SELECT state_json FROM npc_runtime_state WHERE npc_actor_id = 'npc_mira'"
@@ -253,12 +305,6 @@ class DialogueService:
                         "reinforcement_count = reinforcement_count + 1",
                         (context.player_id, MIRA_COMMITMENT_FACT, now),
                     )
-                    tick_row = conn.execute(
-                        "SELECT tick FROM world_runtime WHERE world_id = ?",
-                        (DEFAULT_WORLD_ID,),
-                    ).fetchone()
-                    if tick_row is None:
-                        raise RuntimeError(f"missing world runtime for {DEFAULT_WORLD_ID}")
                     conn.execute(
                         "INSERT INTO npc_knowledge "
                         "(world_id, knower_actor_id, subject_actor_id, fact_key, fact_text, "
@@ -273,11 +319,58 @@ class DialogueService:
                             player_mira_commitment_fact_key(context.player_id),
                             MIRA_COMMITMENT_FACT,
                             context.player_id,
-                            int(tick_row[0]),
+                            current_tick,
                             now,
                         ),
                     )
+
             player_id = context.player_id
+            for candidate in resolved.memory_candidates:
+                self.conversation_store.add_memory(
+                    conn,
+                    world_id=DEFAULT_WORLD_ID,
+                    npc_actor_id=context.npc_id,
+                    player_actor_id=player_id,
+                    memory_type=candidate.memory_type,
+                    content=candidate.content,
+                    source_kind="player_said",
+                    importance=_MEMORY_IMPORTANCE[candidate.memory_type],
+                    created_tick=current_tick,
+                )
+
+            pending_question = (
+                resolved.text if resolved.conversation_act == "ask" else None
+            )
+            last_topic = (
+                resolved.open_thread
+                or resolved.resolve_thread
+                or context.thread_state.last_topic
+            )
+            self.conversation_store.note_turn(
+                conn,
+                npc_actor_id=context.npc_id,
+                player_actor_id=player_id,
+                last_topic=last_topic,
+                tick=current_tick,
+                pending_question=pending_question,
+            )
+            if resolved.resolve_thread is not None:
+                self.conversation_store.resolve_thread(
+                    conn,
+                    npc_actor_id=context.npc_id,
+                    player_actor_id=player_id,
+                    thread=resolved.resolve_thread,
+                    tick=current_tick,
+                )
+            if resolved.open_thread is not None:
+                self.conversation_store.open_thread(
+                    conn,
+                    npc_actor_id=context.npc_id,
+                    player_actor_id=player_id,
+                    thread=resolved.open_thread,
+                    tick=current_tick,
+                )
+
             conn.execute(
                 "INSERT INTO dialogue_turns "
                 "(world_id, npc_actor_id, player_actor_id, user_text, npc_text, proposal_json, used_fallback, created_at) "
@@ -288,7 +381,21 @@ class DialogueService:
                     context.user_text,
                     resolved.text,
                     json.dumps(
-                        {"proposal": resolved.proposal, "social_action": resolved.social_action},
+                        {
+                            "proposal": resolved.proposal,
+                            "social_action": resolved.social_action,
+                            "conversation_act": resolved.conversation_act,
+                            "memory_candidates": [
+                                {
+                                    "memory_type": candidate.memory_type,
+                                    "content": candidate.content,
+                                }
+                                for candidate in resolved.memory_candidates
+                            ],
+                            "open_thread": resolved.open_thread,
+                            "resolve_thread": resolved.resolve_thread,
+                        },
+                        ensure_ascii=False,
                         separators=(",", ":"),
                         sort_keys=True,
                     ),
@@ -304,6 +411,10 @@ class DialogueService:
                 used_fallback=resolved.used_fallback,
                 social_action=resolved.social_action,
                 npc_id=context.npc_id,
+                conversation_act=resolved.conversation_act,
+                memory_candidates=resolved.memory_candidates,
+                open_thread=resolved.open_thread,
+                resolve_thread=resolved.resolve_thread,
             )
         except Exception:
             if conn.in_transaction:
@@ -517,6 +628,10 @@ class OpenAIResponsesProvider:
                 "silence, a counter-question, dry humor or a topic change better fits the supplied character and situation. "
                 "Use current_mood, subjective_stance, relationship_behavior and initiative_cue to decide how to speak, but "
                 "never turn those labels into explicit system language in the reply. "
+                "For conversation_act choose the social shape of the reply. Propose at most two durable memory_candidates only "
+                "for useful player claims, preferences, commitments or significant interactions. A player claim remains a claim, "
+                "never objective world truth. Use open_thread only for a genuinely unfinished topic or question and resolve_thread "
+                "only when an existing thread was actually answered or closed. "
                 "The proposal field may only offer the existing bring_5_firewood quest when you are Oren and the supplied "
                 "state permits it; otherwise use none."
             ),
@@ -538,15 +653,45 @@ class OpenAIResponsesProvider:
                                 "type": "string",
                                 "enum": [REMEMBER_MIRA_WOOD_COMMITMENT, "none"],
                             },
+                            "conversation_act": {
+                                "type": "string",
+                                "enum": sorted(_ALLOWED_CONVERSATION_ACTS) + ["none"],
+                            },
+                            "memory_candidates": {
+                                "type": "array",
+                                "maxItems": 2,
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "memory_type": {
+                                            "type": "string",
+                                            "enum": sorted(_ALLOWED_CONVERSATION_MEMORY_TYPES),
+                                        },
+                                        "content": {"type": "string", "maxLength": 240},
+                                    },
+                                    "required": ["memory_type", "content"],
+                                    "additionalProperties": False,
+                                },
+                            },
+                            "open_thread": {"type": "string", "maxLength": 180},
+                            "resolve_thread": {"type": "string", "maxLength": 180},
                         },
-                        "required": ["text", "proposal", "social_action"],
+                        "required": [
+                            "text",
+                            "proposal",
+                            "social_action",
+                            "conversation_act",
+                            "memory_candidates",
+                            "open_thread",
+                            "resolve_thread",
+                        ],
                         "additionalProperties": False,
                     },
                 }
             },
         )
         payload = json.loads(response.output_text)
-        proposal = payload["proposal"]
+        proposal = payload.get("proposal", "none")
         if proposal == "none":
             proposal = None
         elif proposal not in _ALLOWED_PROPOSALS:
@@ -556,11 +701,37 @@ class OpenAIResponsesProvider:
             social_action = None
         elif social_action not in _ALLOWED_SOCIAL_ACTIONS:
             raise ValueError(f"invalid dialogue social action: {social_action}")
+        conversation_act = payload.get("conversation_act", "none")
+        if conversation_act == "none":
+            conversation_act = None
+        elif conversation_act not in _ALLOWED_CONVERSATION_ACTS:
+            raise ValueError(f"invalid conversation act: {conversation_act}")
+        memory_candidates = tuple(
+            ConversationMemoryCandidate(
+                memory_type=str(item.get("memory_type", "")),
+                content=str(item.get("content", "")),
+            )
+            for item in payload.get("memory_candidates", [])
+            if isinstance(item, dict)
+        )
+        open_thread = _normalized_optional_text(payload.get("open_thread"))
+        resolve_thread = _normalized_optional_text(payload.get("resolve_thread"))
+        if not _valid_conversation_metadata(
+            conversation_act=conversation_act,
+            memory_candidates=memory_candidates,
+            open_thread=open_thread,
+            resolve_thread=resolve_thread,
+        ):
+            raise ValueError("invalid living conversation metadata")
         return DialogueDecision(
             text=str(payload["text"]),
             proposal=proposal,
             social_action=social_action,
             npc_id=npc_id,
+            conversation_act=conversation_act,
+            memory_candidates=memory_candidates,
+            open_thread=open_thread,
+            resolve_thread=resolve_thread,
         )
 
 
@@ -672,6 +843,39 @@ def _fallback(context: DialogueContext) -> DialogueDecision:
         used_fallback=True,
         npc_id=context.npc_id,
     )
+
+
+def _valid_conversation_metadata(
+    *,
+    conversation_act: object,
+    memory_candidates: tuple[object, ...],
+    open_thread: str | None,
+    resolve_thread: str | None,
+) -> bool:
+    if conversation_act is not None and conversation_act not in _ALLOWED_CONVERSATION_ACTS:
+        return False
+    if len(memory_candidates) > 2:
+        return False
+    for candidate in memory_candidates:
+        if not isinstance(candidate, ConversationMemoryCandidate):
+            return False
+        if candidate.memory_type not in _ALLOWED_CONVERSATION_MEMORY_TYPES:
+            return False
+        if not candidate.content.strip() or len(candidate.content.strip()) > 240:
+            return False
+    for thread in (open_thread, resolve_thread):
+        if thread is not None and (not thread.strip() or len(thread) > 180):
+            return False
+    return True
+
+
+def _normalized_optional_text(value: object) -> str | None:
+    if value is None:
+        return None
+    text = str(value).strip()
+    if not text or text == "none":
+        return None
+    return text
 
 
 def _format_known_fact(row) -> str:
