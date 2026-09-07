@@ -56,12 +56,14 @@ function bindHud(state: ClientState, streamMode: boolean): void {
       hud.textContent = `${snapshot.world.location_name}  ·  шаг ${snapshot.world_pulse.tick}`;
       return;
     }
-    const label = snapshot.quest.status === "available"
-      ? "нет активной задачи"
+
+    const objective = snapshot.quest.status === "available"
+      ? "Цель: найди таверну и поговори с Ореном"
       : snapshot.quest.status === "active"
-        ? `дрова ${snapshot.quest.owned_firewood}/${snapshot.quest.required_firewood}`
-        : "дрова доставлены ✓";
-    hud.textContent = `${snapshot.world.location_name}  ·  ${label}  ·  монеты ${snapshot.coins}  ·  доверие Орена ${snapshot.oren_trust}`;
+        ? `Цель: собери дрова ${snapshot.quest.owned_firewood}/${snapshot.quest.required_firewood} и вернись к Орену`
+        : "Цель: дрова доставлены ✓ · исследуй деревню";
+    const trust = snapshot.oren_trust > 0 ? `  ·  доверие Орена ${snapshot.oren_trust}` : "";
+    hud.textContent = `${hudLocationName(snapshot.world.location_id, snapshot.world.location_name)}  ·  ${objective}  ·  монеты ${snapshot.coins}${trust}`;
   });
 }
 
@@ -309,6 +311,14 @@ function actionButton(label: string, onClick: () => void): HTMLButtonElement {
   button.textContent = label;
   button.addEventListener("click", onClick);
   return button;
+}
+
+function hudLocationName(locationId: string, fallback: string): string {
+  if (locationId === "workshop_yard") return "Мастерская";
+  if (locationId === "village_square") return "Площадь";
+  if (locationId === "river_edge") return "Берег реки";
+  if (locationId === "tavern_interior") return "Таверна";
+  return fallback;
 }
 
 function locationName(locationId: string, fallback: string): string {
