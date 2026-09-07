@@ -141,6 +141,26 @@ class NpcConversationStateResolver:
         )
 
 
+def relationship_behavior(relation: dict[str, int]) -> str:
+    familiarity = int(relation.get("familiarity", 0))
+    trust = int(relation.get("trust", 0))
+    affinity = int(relation.get("affinity", 0))
+    fear = int(relation.get("fear", 0))
+    conflict = int(relation.get("conflict", 0))
+
+    if conflict >= 50 or (conflict >= 35 and trust <= -10):
+        return "hostile"
+    if conflict >= 25 or fear >= 25 or trust <= -15 or affinity <= -20:
+        return "distrustful"
+    if trust >= 30 and affinity >= 25 and familiarity >= 20:
+        return "warm"
+    if familiarity >= 15 and trust >= 10 and affinity >= 5:
+        return "comfortable"
+    if familiarity > 0 or trust > 0 or affinity > 0:
+        return "neutral"
+    return "guarded"
+
+
 def _has_road_delay(known_facts: tuple[str, ...]) -> bool:
     for fact in known_facts:
         lowered = fact.lower()
