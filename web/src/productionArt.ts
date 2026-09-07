@@ -107,10 +107,7 @@ export function renderVillageProductionBackground(scene: Phaser.Scene): boolean 
     return true;
   }
 
-  if (renderVillagePrototypeBackground(scene)) {
-    if (runtimeMissing.length > 0) appendRuntimeMissing(runtimeMissing);
-    return true;
-  }
+  if (renderVillagePrototypeBackground(scene)) return true;
 
   if (loaded.length === 0) {
     markSceneFallback("village", runtimeMissing);
@@ -148,10 +145,7 @@ export function renderTavernProductionBackground(scene: Phaser.Scene): boolean {
   }
 
   const runtimeMissing = currentReadiness.tavern.ready ? ["texture:tavern.background"] : [];
-  if (renderTavernPrototypeBackground(scene)) {
-    if (runtimeMissing.length > 0) appendRuntimeMissing(runtimeMissing);
-    return true;
-  }
+  if (renderTavernPrototypeBackground(scene)) return true;
 
   markSceneFallback("tavern", runtimeMissing);
   return false;
