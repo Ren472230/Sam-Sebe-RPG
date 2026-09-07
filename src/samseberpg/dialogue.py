@@ -5,8 +5,19 @@ import os
 from dataclasses import dataclass
 from typing import Protocol
 
+from .conversation_initiative import ConversationInitiative, resolve_initiative
+from .conversation_state import (
+    NpcConversationStateResolver,
+    NpcInnerState,
+    relationship_behavior,
+)
 from .db import DEFAULT_WORLD_ID, GameDatabase
 from .domain import QuestState
+from .living_conversation import (
+    ConversationMemory,
+    ConversationThreadState,
+    LivingConversationStore,
+)
 from .npc_profiles import get_npc_profile
 from .quest import QUEST_TYPE, QuestService
 
@@ -58,6 +69,11 @@ class DialogueContext:
     characteristic_phrases: tuple[str, ...]
     forbidden_phrases: tuple[str, ...]
     default_reply_length: str
+    inner_state: NpcInnerState
+    relationship_behavior: str
+    conversation_memories: tuple[ConversationMemory, ...]
+    thread_state: ConversationThreadState
+    initiative: ConversationInitiative | None
     activity: str
     location_id: str
     trust: int
@@ -82,6 +98,13 @@ class DialogueContext:
         events = " | ".join(self.own_events) or "none"
         nearby_actors = ", ".join(self.nearby_actors) or "none"
         nearby_entities = ", ".join(self.nearby_entities) or "none"
+        conversation_memories = " | ".join(
+            f"{item.memory_type}/{item.source_kind}: {item.content}"
+            for item in self.conversation_memories
+        ) or "none"
+        open_threads = " | ".join(self.thread_state.open_threads) or "none"
+        initiative_kind = "none" if self.initiative is None else self.initiative.kind
+        initiative_cue = "none" if self.initiative is None else self.initiative.cue
         lines = [
             f"npc_id: {self.npc_id}",
             f"npc_name: {self.display_name}",
@@ -102,6 +125,19 @@ class DialogueContext:
             f"characteristic_phrases: {' | '.join(self.characteristic_phrases)}",
             f"forbidden_phrases: {' | '.join(self.forbidden_phrases)}",
             f"default_reply_length: {self.default_reply_length}",
+            f"current_mood: {self.inner_state.mood}",
+            f"secondary_mood: {self.inner_state.secondary_mood}",
+            f"current_concern: {self.inner_state.current_concern}",
+            f"current_desire: {self.inner_state.current_desire}",
+            f"conversation_availability: {self.inner_state.availability}",
+            f"subjective_stance: {self.inner_state.stance}",
+            f"relationship_behavior: {self.relationship_behavior}",
+            f"conversation_memories: {conversation_memories}",
+            f"open_threads: {open_threads}",
+            f"pending_question: {self.thread_state.pending_question or 'none'}",
+            f"turn_count_with_player: {self.thread_state.turn_count}",
+            f"initiative_kind: {initiative_kind}",
+            f"initiative_cue: {initiative_cue}",
             f"activity: {self.activity}",
             f"location: {self.location_id}",
             f"runtime_state: {json.dumps(self.runtime_state, ensure_ascii=False, sort_keys=True)}",
@@ -122,7 +158,9 @@ class DialogueContext:
             )
         lines.extend(
             [
-                "knowledge_rule: You know only the supplied facts. Missing facts are unknown to you.",
+                "knowledge_rule: You know only the supplied NPC knowledge and pair-scoped memories. Missing facts are unknown to you.",
+                "subjectivity_rule: Treat subjective_stance as your opinion, not as an objective world fact.",
+                "initiative_rule: initiative_cue is permission to lead naturally, not an instruction to invent new facts.",
                 f"player_says: {self.user_text}",
             ]
         )
@@ -144,6 +182,10 @@ class DialogueService:
         self.db = db
         self.quest = quest
         self.provider = provider
+        self.conversation_store = LivingConversationStore()
+        self.conversation_state_resolver = NpcConversationStateResolver()
+        with self.db.connect() as conn:
+            self.conversation_store.ensure_schema(conn)
 
     def talk(
         self,
@@ -354,6 +396,21 @@ class DialogueService:
                 {} if runtime_row is None else json.loads(str(runtime_row[0]))
             )
 
+            conversation_memories = self.conversation_store.list_memories(
+                conn, npc_id, player_id
+            )
+            thread_state = self.conversation_store.get_thread_state(
+                conn, npc_id, player_id
+            )
+            inner_state = self.conversation_state_resolver.resolve(
+                npc_id=npc_id,
+                runtime_state=runtime_state,
+                activity=str(npc[1]),
+                relation=relation,
+                known_facts=known_facts,
+            )
+            relationship_mode = relationship_behavior(relation)
+
             nearby_actors = tuple(
                 str(row[0])
                 for row in conn.execute(
@@ -376,6 +433,14 @@ class DialogueService:
             ).fetchall()
             own_events = tuple(
                 f"{row[0]}: {row[1]}" for row in reversed(event_rows)
+            )
+            initiative = resolve_initiative(
+                npc_id=npc_id,
+                thread_state=thread_state,
+                inner_state=inner_state,
+                runtime_state=runtime_state,
+                known_facts=known_facts,
+                own_events=own_events,
             )
         finally:
             conn.close()
@@ -402,6 +467,11 @@ class DialogueService:
             characteristic_phrases=profile.characteristic_phrases,
             forbidden_phrases=profile.forbidden_phrases,
             default_reply_length=profile.default_reply_length,
+            inner_state=inner_state,
+            relationship_behavior=relationship_mode,
+            conversation_memories=conversation_memories,
+            thread_state=thread_state,
+            initiative=initiative,
             activity=str(npc[1]),
             location_id=npc_location,
             trust=relation["trust"],
@@ -445,6 +515,8 @@ class OpenAIResponsesProvider:
                 "Do not always agree. Do not end every reply with a question. Do not use bullet lists in ordinary speech. "
                 "Do not restate the player's question, explain your own personality, or force a helpful answer when refusal, "
                 "silence, a counter-question, dry humor or a topic change better fits the supplied character and situation. "
+                "Use current_mood, subjective_stance, relationship_behavior and initiative_cue to decide how to speak, but "
+                "never turn those labels into explicit system language in the reply. "
                 "The proposal field may only offer the existing bring_5_firewood quest when you are Oren and the supplied "
                 "state permits it; otherwise use none."
             ),
