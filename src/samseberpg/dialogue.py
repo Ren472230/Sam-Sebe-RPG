@@ -46,6 +46,18 @@ class DialogueContext:
     speech_style: str
     motivations: tuple[str, ...]
     knowledge_boundaries: tuple[str, ...]
+    values: tuple[str, ...]
+    temperament: str
+    humor_style: str
+    likes: tuple[str, ...]
+    dislikes: tuple[str, ...]
+    conversation_preferences: tuple[str, ...]
+    avoided_topics: tuple[str, ...]
+    warmth_signals: tuple[str, ...]
+    conflict_behavior: str
+    characteristic_phrases: tuple[str, ...]
+    forbidden_phrases: tuple[str, ...]
+    default_reply_length: str
     activity: str
     location_id: str
     trust: int
@@ -78,6 +90,18 @@ class DialogueContext:
             f"speech_style: {self.speech_style}",
             f"motivations: {' | '.join(self.motivations)}",
             f"knowledge_boundaries: {' | '.join(self.knowledge_boundaries)}",
+            f"values: {' | '.join(self.values)}",
+            f"temperament: {self.temperament}",
+            f"humor_style: {self.humor_style}",
+            f"likes: {' | '.join(self.likes)}",
+            f"dislikes: {' | '.join(self.dislikes)}",
+            f"conversation_preferences: {' | '.join(self.conversation_preferences)}",
+            f"avoided_topics: {' | '.join(self.avoided_topics)}",
+            f"warmth_signals: {' | '.join(self.warmth_signals)}",
+            f"conflict_behavior: {self.conflict_behavior}",
+            f"characteristic_phrases: {' | '.join(self.characteristic_phrases)}",
+            f"forbidden_phrases: {' | '.join(self.forbidden_phrases)}",
+            f"default_reply_length: {self.default_reply_length}",
             f"activity: {self.activity}",
             f"location: {self.location_id}",
             f"runtime_state: {json.dumps(self.runtime_state, ensure_ascii=False, sort_keys=True)}",
@@ -366,6 +390,18 @@ class DialogueService:
             speech_style=profile.speech_style,
             motivations=profile.motivations,
             knowledge_boundaries=profile.knowledge_boundaries,
+            values=profile.values,
+            temperament=profile.temperament,
+            humor_style=profile.humor_style,
+            likes=profile.likes,
+            dislikes=profile.dislikes,
+            conversation_preferences=profile.conversation_preferences,
+            avoided_topics=profile.avoided_topics,
+            warmth_signals=profile.warmth_signals,
+            conflict_behavior=profile.conflict_behavior,
+            characteristic_phrases=profile.characteristic_phrases,
+            forbidden_phrases=profile.forbidden_phrases,
+            default_reply_length=profile.default_reply_length,
             activity=str(npc[1]),
             location_id=npc_location,
             trust=relation["trust"],
@@ -402,10 +438,15 @@ class OpenAIResponsesProvider:
             model=self.model,
             instructions=(
                 f"You are {display_name}, a grounded NPC in a small remote fantasy village. "
-                "Speak naturally and briefly in Russian, following the supplied personality and speech style. "
+                "Speak naturally and briefly in Russian, following the supplied personality, voice bible and current state. "
                 "Use only the supplied world state and knowledge. Never invent inventory, rewards, completed actions, "
-                "locations, private conversations or world facts. The proposal field may only offer the existing "
-                "bring_5_firewood quest when you are Oren and the supplied state permits it; otherwise use none."
+                "locations, private conversations or world facts. Stay a person in the world, not a helpful assistant. "
+                "Never say generic assistant phrases such as 'интересный вопрос' or 'чем я могу помочь'. "
+                "Do not always agree. Do not end every reply with a question. Do not use bullet lists in ordinary speech. "
+                "Do not restate the player's question, explain your own personality, or force a helpful answer when refusal, "
+                "silence, a counter-question, dry humor or a topic change better fits the supplied character and situation. "
+                "The proposal field may only offer the existing bring_5_firewood quest when you are Oren and the supplied "
+                "state permits it; otherwise use none."
             ),
             input=context.to_prompt(),
             text={
