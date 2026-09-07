@@ -87,8 +87,6 @@ export function preloadTavernProductionArt(scene: Phaser.Scene): void {
 }
 
 export function renderVillageProductionBackground(scene: Phaser.Scene): boolean {
-  if (renderVillagePrototypeBackground(scene)) return true;
-
   const declared = villageLayerNames().filter((layer) => Boolean(currentManifest.village.layers[layer]));
   const loaded = declared.filter((layer) => scene.textures.exists(VILLAGE_KEYS[layer]));
   const runtimeMissing = declared
@@ -97,6 +95,22 @@ export function renderVillageProductionBackground(scene: Phaser.Scene): boolean 
   const required = requiredVillageLayers();
   const fullReady = currentReadiness.village.ready
     && required.every((layer) => scene.textures.exists(VILLAGE_KEYS[layer]));
+
+  if (fullReady) {
+    for (const layer of loaded) {
+      if (layer === "foreground") continue;
+      addVillageCanvasLayer(scene, layer);
+    }
+    if (runtimeMissing.length > 0) appendRuntimeMissing(runtimeMissing);
+    document.body.dataset.artMode = "production";
+    document.body.dataset.villageArt = "production";
+    return true;
+  }
+
+  if (renderVillagePrototypeBackground(scene)) {
+    if (runtimeMissing.length > 0) appendRuntimeMissing(runtimeMissing);
+    return true;
+  }
 
   if (loaded.length === 0) {
     markSceneFallback("village", runtimeMissing);
@@ -109,9 +123,9 @@ export function renderVillageProductionBackground(scene: Phaser.Scene): boolean 
   }
 
   if (runtimeMissing.length > 0) appendRuntimeMissing(runtimeMissing);
-  document.body.dataset.artMode = fullReady ? "production" : "partial-production";
-  document.body.dataset.villageArt = fullReady ? "production" : "partial-production";
-  return fullReady;
+  document.body.dataset.artMode = "partial-production";
+  document.body.dataset.villageArt = "partial-production";
+  return false;
 }
 
 export function renderVillageProductionForeground(scene: Phaser.Scene): void {
@@ -126,17 +140,21 @@ export function renderVillageProductionForeground(scene: Phaser.Scene): void {
 }
 
 export function renderTavernProductionBackground(scene: Phaser.Scene): boolean {
-  if (renderTavernPrototypeBackground(scene)) return true;
-
-  if (!currentReadiness.tavern.ready || !scene.textures.exists(KEYS.tavernBackground)) {
-    markSceneFallback("tavern", currentReadiness.tavern.ready ? ["texture:tavern.background"] : []);
-    return false;
+  if (currentReadiness.tavern.ready && scene.textures.exists(KEYS.tavernBackground)) {
+    addFullCanvasLayer(scene, KEYS.tavernBackground, -20);
+    document.body.dataset.artMode = "production";
+    document.body.dataset.tavernArt = "production";
+    return true;
   }
 
-  addFullCanvasLayer(scene, KEYS.tavernBackground, -20);
-  document.body.dataset.artMode = "production";
-  document.body.dataset.tavernArt = "production";
-  return true;
+  const runtimeMissing = currentReadiness.tavern.ready ? ["texture:tavern.background"] : [];
+  if (renderTavernPrototypeBackground(scene)) {
+    if (runtimeMissing.length > 0) appendRuntimeMissing(runtimeMissing);
+    return true;
+  }
+
+  markSceneFallback("tavern", runtimeMissing);
+  return false;
 }
 
 export function renderTavernProductionForeground(scene: Phaser.Scene): void {
