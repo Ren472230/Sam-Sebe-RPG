@@ -164,3 +164,29 @@ test("malformed manifest becomes a safe empty fallback instead of throwing", () 
   assert.equal(readiness.village.partial, false);
   assert.equal(readiness.village.present, 0);
 });
+
+test("runtime sprite policy prefers production, then prototype, then scene greybox", () => {
+  const source = readFileSync(new URL("../src/productionArt.ts", import.meta.url), "utf8");
+  const cases = [
+    ["createProductionPlayer", "createPrototypePlayer", "playerArt"],
+    ["createProductionOren", "createPrototypeOren", "orenArt"],
+    ["createProductionFirewood", "createPrototypeFirewood", "firewoodArt"]
+  ] as const;
+
+  for (const [functionName, prototypeFactory, datasetKey] of cases) {
+    const start = source.indexOf(`export function ${functionName}`);
+    const next = source.indexOf("\nexport function", start + 1);
+    const body = source.slice(start, next === -1 ? source.length : next);
+    const productionMarker = body.indexOf(`document.body.dataset.${datasetKey} = \"production\"`);
+    const prototypeMarker = body.indexOf(`const prototype = ${prototypeFactory}`);
+
+    assert.ok(start >= 0, `${functionName} must exist`);
+    assert.ok(productionMarker >= 0, `${functionName} must keep a production path`);
+    assert.ok(prototypeMarker > productionMarker, `${functionName} must try prototype only after production`);
+    assert.equal(
+      body.includes('document.body.dataset.artMode === "prototype"'),
+      false,
+      `${functionName} fallback must be independent from the scene-wide art mode`
+    );
+  }
+});
