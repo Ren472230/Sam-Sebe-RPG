@@ -158,51 +158,45 @@ export function renderTavernProductionForeground(scene: Phaser.Scene): void {
 }
 
 export function createProductionPlayer(scene: Phaser.Scene, x: number, y: number): Phaser.GameObjects.Image | null {
-  if (document.body.dataset.artMode === "prototype") {
-    const prototype = createPrototypePlayer(scene, x, y);
-    if (prototype) return prototype;
+  if (currentReadiness.player && scene.textures.exists(KEYS.player)) {
+    document.body.dataset.playerArt = "production";
+    return scene.add.image(x, y, KEYS.player)
+      .setOrigin(0.5, 0.93)
+      .setDisplaySize(48, 72)
+      .setDepth(20);
   }
-  if (!currentReadiness.player || !scene.textures.exists(KEYS.player)) {
-    if (currentReadiness.player) document.body.dataset.playerArt = "fallback-load-error";
-    return null;
-  }
-  document.body.dataset.playerArt = "production";
-  return scene.add.image(x, y, KEYS.player)
-    .setOrigin(0.5, 0.93)
-    .setDisplaySize(48, 72)
-    .setDepth(20);
+  if (currentReadiness.player) document.body.dataset.playerArt = "fallback-load-error";
+  const prototype = createPrototypePlayer(scene, x, y);
+  if (prototype) return prototype;
+  return null;
 }
 
 export function createProductionOren(scene: Phaser.Scene, x: number, y: number): Phaser.GameObjects.Image | null {
-  if (document.body.dataset.artMode === "prototype") {
-    const prototype = createPrototypeOren(scene, x, y);
-    if (prototype) return prototype;
+  if (currentReadiness.oren && scene.textures.exists(KEYS.oren)) {
+    document.body.dataset.orenArt = "production";
+    return scene.add.image(x, y, KEYS.oren)
+      .setOrigin(0.5, 0.93)
+      .setDisplaySize(64, 88)
+      .setDepth(18);
   }
-  if (!currentReadiness.oren || !scene.textures.exists(KEYS.oren)) {
-    if (currentReadiness.oren) document.body.dataset.orenArt = "fallback-load-error";
-    return null;
-  }
-  document.body.dataset.orenArt = "production";
-  return scene.add.image(x, y, KEYS.oren)
-    .setOrigin(0.5, 0.93)
-    .setDisplaySize(64, 88)
-    .setDepth(18);
+  if (currentReadiness.oren) document.body.dataset.orenArt = "fallback-load-error";
+  const prototype = createPrototypeOren(scene, x, y);
+  if (prototype) return prototype;
+  return null;
 }
 
 export function createProductionFirewood(scene: Phaser.Scene, x: number, y: number): Phaser.GameObjects.Image | null {
-  if (document.body.dataset.artMode === "prototype") {
-    const prototype = createPrototypeFirewood(scene, x, y);
-    if (prototype) return prototype;
+  if (currentReadiness.firewood && scene.textures.exists(KEYS.firewood)) {
+    document.body.dataset.firewoodArt = "production";
+    return scene.add.image(x, y, KEYS.firewood)
+      .setOrigin(0.5, 0.5)
+      .setDisplaySize(44, 29)
+      .setDepth(12);
   }
-  if (!currentReadiness.firewood || !scene.textures.exists(KEYS.firewood)) {
-    if (currentReadiness.firewood) document.body.dataset.firewoodArt = "fallback-load-error";
-    return null;
-  }
-  document.body.dataset.firewoodArt = "production";
-  return scene.add.image(x, y, KEYS.firewood)
-    .setOrigin(0.5, 0.5)
-    .setDisplaySize(44, 29)
-    .setDepth(12);
+  if (currentReadiness.firewood) document.body.dataset.firewoodArt = "fallback-load-error";
+  const prototype = createPrototypeFirewood(scene, x, y);
+  if (prototype) return prototype;
+  return null;
 }
 
 function publishManifestDiagnostics(): void {
