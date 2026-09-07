@@ -213,7 +213,7 @@ test("canonical route finishes the firewood quest, advances the Living World, pe
     await expect(body).toHaveAttribute("data-village-art", "prototype");
     await expect(body).toHaveAttribute("data-player-art", "prototype");
     await expect(body).toHaveAttribute("data-firewood-art", "prototype");
-    await expect(page.locator("#hud")).toContainText("Workshop Yard");
+    await expect(page.locator("#hud")).toContainText("Мастерская");
     await page.screenshot({ path: "test-results/01-village.png", fullPage: true });
 
     await enterTavernFromVillage(page);
