@@ -65,7 +65,7 @@ test("Social World spreads Mira's report to Kaspar only after their real deliver
 
   try {
     await page.goto("/");
-    await expect(page.locator("#hud")).toContainText("Workshop Yard");
+    await expect(page.locator("#hud")).toContainText("Мастерская");
     const playerId = await currentPlayerId(page);
 
     await page.getByRole("button", { name: "Подождать 5 шагов", exact: true }).click();
@@ -77,8 +77,8 @@ test("Social World spreads Mira's report to Kaspar only after their real deliver
     await expect(page.locator("#dialogue small")).toContainText("социальная память");
     await page.getByRole("button", { name: "Закрыть", exact: true }).click();
 
-    await clickLivingAction(page, "Идти: площадь", "Village Square");
-    await clickLivingAction(page, "Идти: река", "River Edge");
+    await clickLivingAction(page, "Идти: площадь", "Площадь");
+    await clickLivingAction(page, "Идти: река", "Берег реки");
     await expect(page.getByRole("button", { name: "Поговорить: Каспар", exact: true })).toBeVisible();
 
     await page.getByRole("button", { name: "Поговорить: Каспар", exact: true }).click();
@@ -97,14 +97,14 @@ test("Social World spreads Mira's report to Kaspar only after their real deliver
     expect(delivered.living_npc.mira.requested_wood).toBe(false);
     expect(delivered.living_npc.kaspar.goal).toBeNull();
 
-    await clickLivingAction(page, "Идти: площадь", "Village Square");
+    await clickLivingAction(page, "Идти: площадь", "Площадь");
     await expect(page.getByRole("button", { name: "Поговорить: Каспар", exact: true })).toBeVisible();
     await talkToKaspar(page, /Мира говорила.*обещал.*древесин/i);
     await page.screenshot({ path: "test-results-social-world/social-02-post-contact.png", fullPage: true });
     await page.getByRole("button", { name: "Закрыть", exact: true }).click();
 
     await page.reload();
-    await expect(page.locator("#hud")).toContainText("Village Square");
+    await expect(page.locator("#hud")).toContainText("Площадь");
     expect(await currentPlayerId(page)).toBe(playerId);
     await expect(page.getByRole("button", { name: "Поговорить: Каспар", exact: true })).toBeVisible();
     await talkToKaspar(page, /Мира говорила.*обещал.*древесин/i);
