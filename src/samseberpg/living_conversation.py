@@ -15,6 +15,12 @@ _ALLOWED_SOURCE_KINDS = {"player_said", "validated_event"}
 
 
 @dataclass(frozen=True, slots=True)
+class ConversationMemoryCandidate:
+    memory_type: str
+    content: str
+
+
+@dataclass(frozen=True, slots=True)
 class ConversationMemory:
     id: int
     memory_type: str
