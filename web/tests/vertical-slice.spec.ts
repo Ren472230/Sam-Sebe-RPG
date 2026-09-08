@@ -234,7 +234,7 @@ test("canonical route finishes the firewood quest, advances the Living World, pe
     await enterTavernFromVillage(page);
     await approachOren(page);
     await page.getByRole("button", { name: "Передать дрова" }).click();
-    await expect(page.locator("#dialogue")).toContainText("Oren still needs 1 more firewood.");
+    await expect(page.locator("#dialogue")).toContainText("Орену всё ещё нужны дрова. Осталось принести: 1.");
     await page.screenshot({ path: "test-results/05-correct-early-rejection.png", fullPage: true });
 
     await leaveTavern(page);
