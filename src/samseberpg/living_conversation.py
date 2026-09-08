@@ -42,7 +42,7 @@ class ConversationThreadState:
 
 class LivingConversationStore:
     def ensure_schema(self, conn: sqlite3.Connection) -> None:
-        conn.executescript(
+        conn.execute(
             """
             CREATE TABLE IF NOT EXISTS conversation_memories (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -60,11 +60,17 @@ class LivingConversationStore:
                 FOREIGN KEY (world_id) REFERENCES worlds(id),
                 FOREIGN KEY (npc_actor_id) REFERENCES actors(id),
                 FOREIGN KEY (player_actor_id) REFERENCES actors(id)
-            );
-
+            )
+            """
+        )
+        conn.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_conversation_memories_pair
-                ON conversation_memories(npc_actor_id, player_actor_id, importance DESC, id DESC);
-
+                ON conversation_memories(npc_actor_id, player_actor_id, importance DESC, id DESC)
+            """
+        )
+        conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS npc_player_conversation_state (
                 npc_actor_id TEXT NOT NULL,
                 player_actor_id TEXT NOT NULL,
@@ -77,7 +83,7 @@ class LivingConversationStore:
                 PRIMARY KEY (npc_actor_id, player_actor_id),
                 FOREIGN KEY (npc_actor_id) REFERENCES actors(id),
                 FOREIGN KEY (player_actor_id) REFERENCES actors(id)
-            );
+            )
             """
         )
 
