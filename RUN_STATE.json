@@ -1,14 +1,14 @@
 {
   "run_id": "2026-09-08-world-ready-autonomous",
   "working_branch": "autotest/world-ready-2026-09-08",
-  "run_cycle": 2,
+  "run_cycle": 3,
   "historical_pr_cycle_marker": 6,
-  "current_champion": "9e8d27405fa3c4aa3a24ac86c4d1930cdb38a31f",
+  "current_champion": "8ff8d00f73d5be8d20b0dc1d80dea3a17cc7389a",
   "current_challenger": null,
-  "phase": "cycle_2_define_stream_location_localization_red",
-  "last_accepted_cycle": "mobile-playability-first-viewport",
+  "phase": "cycle_3_define_mobile_control_hint_red",
+  "last_accepted_cycle": "stream-location-localization",
   "blockers": [
     "Local container cannot clone github.com because DNS/network access is blocked; connected GitHub plus repository CI and browser artifacts are used as the execution and evidence path."
   ],
-  "next_main_constraint": "Stream Slice exposes canonical English location names in an otherwise Russian presentation layer."
+  "next_main_constraint": "On a touch viewport the visible interaction hint still instructs the player to use keyboard controls instead of the on-screen controls."
 }
