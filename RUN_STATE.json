@@ -1,15 +1,38 @@
 {
   "run_id": "2026-09-08-world-ready-autonomous",
   "working_branch": "autotest/world-ready-2026-09-08",
-  "run_cycle": 5,
+  "run_cycle": 9,
   "historical_pr_cycle_marker": 6,
-  "current_champion": "252c27a5d839e4e04687279d9efb5279e6207548",
+  "current_champion": "8ad75843708512459eb19292441a3fa5850badce",
   "current_challenger": null,
-  "phase": "cycle_5_define_stream_dialogue_chrome_red",
-  "last_accepted_cycle": "desktop-living-world-event-localization",
-  "presentation_context": "Nichey will play and stream from a desktop computer, so desktop playability and audience readability are the primary experience target; mobile remains a fallback target.",
+  "phase": "cycle_9_audit_visual_readiness",
+  "last_accepted_cycle": "post-quest-living-world-guidance",
+  "presentation_context": "Desktop playability and audience readability are the primary experience target; mobile remains a supported fallback target.",
   "blockers": [
-    "Local container cannot clone github.com because DNS/network access is blocked; connected GitHub plus repository CI and browser artifacts are used as the execution and evidence path."
+    "Local container cannot clone github.com because DNS/network access is blocked; connected GitHub plus repository CI and browser checks are used as the execution and evidence path.",
+    "Successful browser runs currently retain no downloadable artifacts after artifact-retention reductions; workflow/check evidence remains available and failure artifacts are kept where configured."
   ],
-  "next_main_constraint": "Dialogue overlays visible during the desktop stream still expose the prototype-facing label 'локальная реплика', which adds technical chrome without helping the player or audience."
+  "recovered_history": [
+    {
+      "cycle": 5,
+      "feature_commit": "7b44d169bcd806da8563e1957da2dfc88a29941b",
+      "summary": "Removed prototype-only dialogue provenance chrome while preserving Living NPC and Social World behavior through follow-up regression tests."
+    },
+    {
+      "cycle": 6,
+      "feature_commit": "184a8f7f88185f51121c18d793df95dc1e8270bc",
+      "summary": "Kept distinct meaningful Living World events visible by de-duplicating public labels before applying the visible event cap."
+    },
+    {
+      "cycle": 7,
+      "feature_commit": "cf37f1f720c80c661bd3d3ec1131af5a87d44b9c",
+      "summary": "Presented quest outcomes as player-facing quest status instead of generic system chrome."
+    },
+    {
+      "cycle": 8,
+      "feature_commit": "8ad75843708512459eb19292441a3fa5850badce",
+      "summary": "Guided the player toward waiting after quest completion so the Living World demonstration is discoverable without test-only sequence knowledge."
+    }
+  ],
+  "next_main_constraint": "The canonical browser route still identifies the active visual set as prototype art. Audit production-art completeness and fallback wiring before choosing the next visual implementation."
 }

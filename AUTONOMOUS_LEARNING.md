@@ -62,3 +62,55 @@
 - Confirmed lesson: player-facing and audience-facing summaries of canonical world events should share one safe UI projection; raw server summaries should remain internal evidence, not public presentation text.
 - Fresh stream observation: dialogue overlays still display the prototype-facing label `локальная реплика` below the player controls, visible directly to the audience.
 - Next main question: can the dialogue overlay remove prototype-only chrome while preserving NPC name, transcript, free-text input, action buttons, and deterministic dialogue behavior?
+
+## Run cycle 5 - remove dialogue provenance chrome
+
+- Champion before cycle: `252c27a5d839e4e04687279d9efb5279e6207548`.
+- Observation: player-facing dialogue exposed implementation provenance such as `локальная реплика`, which read as prototype/debug chrome during a desktop stream.
+- Confirmed cause: the dialogue projection rendered reply and memory provenance directly inside the public overlay.
+- Hypothesis: hide provenance chrome from the player-facing overlay while preserving transcript content, memory behavior, deterministic NPC behavior, and Social World causality.
+- RED evidence: `526d378f4bdecd058ef962031cdefee9da42cbb4` required the desktop stream dialogue to omit provenance chrome.
+- Implementation: `7b44d169bcd806da8563e1957da2dfc88a29941b` removed the visible provenance labels.
+- Regression hardening: `f418c8b75fe2512ee743fc13988face5791dc88f`, `9e96b15cd01d364b4b83580fbad4a2995fca40da`, and `dc47333b76375b71734c0133f290f3790bd53ad6` explicitly preserved Living NPC and Social World memory behavior behind the cleaner dialogue surface.
+- Result: the current integrated champion keeps dialogue player-facing while the Living NPC and Social World gates still succeed.
+- Decision: ACCEPT.
+- Confirmed lesson: provenance is valuable as internal evidence, but implementation provenance should stay outside the player-facing conversation surface unless the game fiction explicitly needs it.
+
+## Run cycle 6 - keep meaningful world pulse events visible
+
+- Champion before cycle: the post-cycle-5 branch line after dialogue regression hardening.
+- Observation: repeated public event labels could consume the four visible World Pulse slots and push distinct meaningful events out of view.
+- Confirmed cause: the visible cap was applied before semantic label de-duplication.
+- Hypothesis: de-duplicate public event labels first, then keep the four newest distinct labels.
+- Implementation: `184a8f7f88185f51121c18d793df95dc1e8270bc` changed both normal and stream World Pulse rendering to de-duplicate labels before slicing the public list.
+- Result: distinct events such as Talen's arrival and Oren's bread request remain visible alongside repeated world activity.
+- Verification: the change is present in the fully green integrated champion `8ad75843708512459eb19292441a3fa5850badce`, including Playable Candidate and Stream Slice gates.
+- Decision: ACCEPT.
+- Confirmed lesson: de-duplicate presentation events before applying a small visibility cap; otherwise repeated labels can erase more informative world changes.
+
+## Run cycle 7 - present quest results as game status
+
+- Champion before cycle: `184a8f7f88185f51121c18d793df95dc1e8270bc`.
+- Observation: the expected early firewood rejection appeared inside dialogue as `Система: ...`, exposing engine framing during an otherwise diegetic conversation.
+- Confirmed cause: quest feedback reused the generic system transcript kind.
+- Hypothesis: give quest feedback its own player-facing transcript presentation while keeping the deterministic quest result unchanged.
+- RED evidence: `7fdb7ff582e29ad06b036c8f7fb0d89c14e5c09f` required quest-facing dialogue status and rejected the generic `Система:` prefix.
+- Implementation: `cf37f1f720c80c661bd3d3ec1131af5a87d44b9c` introduced player-facing `Задание:` status for quest feedback.
+- Result: expected quest failure remains clear while the conversation surface no longer presents it as a generic system message.
+- Verification: the branch reached a fully green six-workflow state at `cf37f1f720c80c661bd3d3ec1131af5a87d44b9c` before the next cycle started.
+- Decision: ACCEPT.
+- Confirmed lesson: deterministic gameplay feedback can stay explicit without exposing generic engine chrome.
+
+## Run cycle 8 - make the Living World discoverable after the quest
+
+- Champion before cycle: `cf37f1f720c80c661bd3d3ec1131af5a87d44b9c`.
+- Observation: after completing Oren's firewood quest the HUD said only `исследуй деревню`, while the canonical automated route knew to press WAIT and only then exposed the strong Living World moment with Talen and Oren.
+- Confirmed cause: the test had sequence knowledge that the player-facing objective did not communicate.
+- Hypothesis: keep free exploration available and add an explicit optional wait cue to the completed-quest objective so a new player can discover autonomous world change without test-only knowledge.
+- RED evidence: `72a6975e119b031cde311e90341403d4d64e72a6` added the canonical browser requirement `подожди, чтобы увидеть, что изменится`; the real browser route failed at that assertion while backend/build checks remained healthy.
+- Implementation: `8ad75843708512459eb19292441a3fa5850badce` changed only the completed-quest HUD objective to `исследуй деревню или подожди, чтобы увидеть, что изменится`.
+- Result: the same canonical route now exposes the intended next option without changing WAIT mechanics, events, persistence, rewards, or causality.
+- Verification: all six repository workflows succeeded on `8ad75843708512459eb19292441a3fa5850badce`: Visual Forge Gate `34264967748`, Stream Slice Gate `34264967697`, Prototype Web CI `34264967473`, Playable Candidate Gate `34264967818`, Windows Compatibility Gate `34264967501`, and Living World Integration Gate `34264967552`.
+- Decision: ACCEPT.
+- Confirmed lesson: automated routes can hide tutorial knowledge. When the test knows the next action but the player-facing state does not, clarity should be evaluated at that handoff.
+- Next main question: the canonical browser route still reports prototype art. What exact production-art gap prevents the locked visual canon from becoming the active runtime set?
