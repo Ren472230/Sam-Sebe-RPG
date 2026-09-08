@@ -53,7 +53,7 @@ function bindHud(state: ClientState, streamMode: boolean): void {
   state.subscribe((snapshot) => {
     document.body.dataset.scene = snapshot.world.location_id === "tavern_interior" ? "tavern" : "village";
     if (streamMode) {
-      hud.textContent = `${snapshot.world.location_name}  ·  шаг ${snapshot.world_pulse.tick}`;
+      hud.textContent = `${hudLocationName(snapshot.world.location_id, snapshot.world.location_name)}  ·  шаг ${snapshot.world_pulse.tick}`;
       return;
     }
 
@@ -95,7 +95,7 @@ function bindStreamStatus(state: ClientState): void {
 
   state.subscribe((snapshot) => {
     phase.textContent = `Шаг ${snapshot.world_pulse.tick} · ${streamPhaseLabel(snapshot.world_pulse.tick)}`;
-    location.textContent = `Место: ${snapshot.world.location_name}`;
+    location.textContent = `Место: ${hudLocationName(snapshot.world.location_id, snapshot.world.location_name)}`;
 
     activities.replaceChildren();
     const nearbyNpcs = snapshot.world.visible_actors.filter((actor) => actor.actor_type === "npc");
