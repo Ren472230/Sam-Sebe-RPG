@@ -1,15 +1,15 @@
 {
   "run_id": "2026-09-08-world-ready-autonomous",
   "working_branch": "autotest/world-ready-2026-09-08",
-  "run_cycle": 4,
+  "run_cycle": 5,
   "historical_pr_cycle_marker": 6,
-  "current_champion": "c619d9bb84a0dd96e2978275d077d8002ef4336f",
+  "current_champion": "252c27a5d839e4e04687279d9efb5279e6207548",
   "current_challenger": null,
-  "phase": "cycle_4_define_desktop_world_event_localization_red",
-  "last_accepted_cycle": "responsive-control-hints",
-  "presentation_context": "Nichey will play and stream from a desktop computer, so desktop playability and audience readability are now the primary experience target; mobile remains a fallback target.",
+  "phase": "cycle_5_define_stream_dialogue_chrome_red",
+  "last_accepted_cycle": "desktop-living-world-event-localization",
+  "presentation_context": "Nichey will play and stream from a desktop computer, so desktop playability and audience readability are the primary experience target; mobile remains a fallback target.",
   "blockers": [
     "Local container cannot clone github.com because DNS/network access is blocked; connected GitHub plus repository CI and browser artifacts are used as the execution and evidence path."
   ],
-  "next_main_constraint": "Normal desktop mode can expose raw English Living World event text inside the otherwise Russian HUD, which is visible to both the player and stream audience."
+  "next_main_constraint": "Dialogue overlays visible during the desktop stream still expose the prototype-facing label 'локальная реплика', which adds technical chrome without helping the player or audience."
 }
