@@ -33,6 +33,7 @@ async function clickLivingAction(page: Page, label: string, expectedLocation?: s
   await page.getByRole("button", { name: label, exact: true }).click();
   if (expectedLocation) {
     await expect(page.locator("#hud")).toContainText(expectedLocation, { timeout: 10_000 });
+    await expect(page.locator("#stream-status")).toContainText(`Место: ${expectedLocation}`, { timeout: 10_000 });
   }
 }
 
@@ -68,6 +69,7 @@ test("Stream Slice shows one causal evening, hospitality loop and persistence wi
     await expect(page.locator("body")).toHaveClass(/stream-mode/);
     await expect(page.locator("#stream-status")).toBeVisible();
     await expect(page.locator("#stream-status")).toContainText(/Сейчас в деревне/i);
+    await expect(page.locator("#stream-status")).toContainText("Место: Мастерская");
     await expect(page.locator("#stream-status")).not.toContainText(/npc_|source_knowledge_id|trust/i);
     await page.screenshot({ path: "test-results-stream-slice/stream-01-opening.png", fullPage: true });
 
@@ -80,8 +82,8 @@ test("Stream Slice shows one causal evening, hospitality loop and persistence wi
     await sendDialogue(page, "Я принесу тебе древесину.", /Договорились/i);
     await closeDialogue(page);
 
-    await clickLivingAction(page, "Идти: площадь", "Village Square");
-    await clickLivingAction(page, "Идти: река", "River Edge");
+    await clickLivingAction(page, "Идти: площадь", "Площадь");
+    await clickLivingAction(page, "Идти: река", "Берег реки");
     await page.getByRole("button", { name: "Поговорить: Каспар", exact: true }).click();
     await sendDialogue(page, "Что ты обо мне слышал?");
     await expect(page.locator("#dialogue")).not.toContainText("Мира говорила");
@@ -91,7 +93,7 @@ test("Stream Slice shows one causal evening, hospitality loop and persistence wi
       await waitOneTick(page, playerId);
     }
     expect((await state(page, playerId)).living_npc.tick).toBe(9);
-    await clickLivingAction(page, "Идти: площадь", "Village Square");
+    await clickLivingAction(page, "Идти: площадь", "Площадь");
     await page.getByRole("button", { name: "Поговорить: Каспар", exact: true }).click();
     await sendDialogue(page, "Что ты обо мне слышал?", /Мира говорила.*обещал.*древесин/i);
     await page.screenshot({ path: "test-results-stream-slice/stream-02-kaspar-after-contact.png", fullPage: true });
@@ -102,7 +104,7 @@ test("Stream Slice shows one causal evening, hospitality loop and persistence wi
     await expect(page.locator("#stream-status")).toContainText(/Тален.*таверн|гост/i);
     await expect(page.locator("#stream-status")).toContainText(/Орен.*хлеб/i);
 
-    await clickLivingAction(page, "Идти: таверна", "The Wayfarer's Hearth");
+    await clickLivingAction(page, "Идти: таверна", "Таверна");
     await page.getByRole("button", { name: "Поговорить: Тален", exact: true }).click();
     await expect(page.locator("#dialogue h2")).toHaveText("Тален");
     await sendDialogue(page, "Что случилось в дороге?", /восточн.*караван/i);
@@ -115,9 +117,9 @@ test("Stream Slice shows one causal evening, hospitality loop and persistence wi
     await page.screenshot({ path: "test-results-stream-slice/stream-04-oren-bread.png", fullPage: true });
     await closeDialogue(page);
 
-    await clickLivingAction(page, "Идти: площадь", "Village Square");
+    await clickLivingAction(page, "Идти: площадь", "Площадь");
     await page.getByRole("button", { name: "Подобрать хлеб", exact: true }).click();
-    await clickLivingAction(page, "Идти: таверна", "The Wayfarer's Hearth");
+    await clickLivingAction(page, "Идти: таверна", "Таверна");
     await page.getByRole("button", { name: "Отдать хлеб Орену", exact: true }).click();
 
     await page.getByRole("button", { name: "Поговорить: Орен", exact: true }).click();
