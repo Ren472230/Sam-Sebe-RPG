@@ -1,0 +1,69 @@
+name: Actions Storage Audit
+
+on:
+  push:
+    branches:
+      - ops/actions-storage-cleanup-2026-09-08
+    paths:
+      - ".github/workflows/actions-storage-audit.yml"
+
+permissions:
+  actions: read
+  contents: read
+  packages: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Inventory artifacts and packages
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const artifacts = await github.paginate(
+              github.rest.actions.listArtifactsForRepo,
+              { owner, repo, per_page: 100 }
+            );
+            artifacts.sort((a, b) => b.size_in_bytes - a.size_in_bytes);
+            const total = artifacts.reduce((sum, a) => sum + a.size_in_bytes, 0);
+            console.log(`ARTIFACT_TOTAL_COUNT=${artifacts.length}`);
+            console.log(`ARTIFACT_TOTAL_BYTES=${total}`);
+            for (const a of artifacts) {
+              console.log([
+                "ARTIFACT",
+                a.id,
+                a.name,
+                a.size_in_bytes,
+                a.created_at,
+                a.expires_at,
+                a.expired,
+                a.workflow_run?.id ?? ""
+              ].join("\t"));
+            }
+
+            const packageTypes = ["container", "npm", "maven", "rubygems", "nuget"];
+            for (const package_type of packageTypes) {
+              try {
+                const packages = await github.paginate(
+                  "GET /users/{username}/packages",
+                  { username: owner, package_type, per_page: 100 }
+                );
+                console.log(`PACKAGE_TYPE=${package_type}\tCOUNT=${packages.length}`);
+                for (const p of packages) {
+                  console.log([
+                    "PACKAGE",
+                    package_type,
+                    p.name,
+                    p.visibility,
+                    p.version_count,
+                    p.created_at,
+                    p.updated_at
+                  ].join("\t"));
+                }
+              } catch (error) {
+                console.log(`PACKAGE_TYPE=${package_type}\tERROR=${error.status || "unknown"}`);
+              }
+            }
