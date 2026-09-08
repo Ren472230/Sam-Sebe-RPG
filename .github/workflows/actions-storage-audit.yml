@@ -27,19 +27,58 @@ jobs:
               github.rest.actions.listArtifactsForRepo,
               { owner, repo, per_page: 100 }
             );
-            artifacts.sort((a, b) => b.size_in_bytes - a.size_in_bytes);
-            const total = artifacts.reduce((sum, a) => sum + a.size_in_bytes, 0);
+            const sumBytes = items => items.reduce((sum, a) => sum + a.size_in_bytes, 0);
+            const active = artifacts.filter(a => !a.expired);
+            const expired = artifacts.filter(a => a.expired);
+
             console.log(`ARTIFACT_TOTAL_COUNT=${artifacts.length}`);
-            console.log(`ARTIFACT_TOTAL_BYTES=${total}`);
-            for (const a of artifacts) {
+            console.log(`ARTIFACT_TOTAL_BYTES=${sumBytes(artifacts)}`);
+            console.log(`ACTIVE_COUNT=${active.length}`);
+            console.log(`ACTIVE_BYTES=${sumBytes(active)}`);
+            console.log(`EXPIRED_COUNT=${expired.length}`);
+            console.log(`EXPIRED_BYTES=${sumBytes(expired)}`);
+
+            const grouped = new Map();
+            for (const a of active) {
+              const current = grouped.get(a.name) || {
+                count: 0,
+                bytes: 0,
+                oldest: a.created_at,
+                newest: a.created_at,
+                earliestExpiry: a.expires_at,
+                latestExpiry: a.expires_at
+              };
+              current.count += 1;
+              current.bytes += a.size_in_bytes;
+              if (a.created_at < current.oldest) current.oldest = a.created_at;
+              if (a.created_at > current.newest) current.newest = a.created_at;
+              if (a.expires_at < current.earliestExpiry) current.earliestExpiry = a.expires_at;
+              if (a.expires_at > current.latestExpiry) current.latestExpiry = a.expires_at;
+              grouped.set(a.name, current);
+            }
+
+            for (const [name, g] of [...grouped.entries()].sort((a, b) => b[1].bytes - a[1].bytes)) {
               console.log([
-                "ARTIFACT",
+                "ACTIVE_GROUP",
+                name,
+                g.count,
+                g.bytes,
+                g.oldest,
+                g.newest,
+                g.earliestExpiry,
+                g.latestExpiry
+              ].join("\t"));
+            }
+
+            const largest = [...active].sort((a, b) => b.size_in_bytes - a.size_in_bytes).slice(0, 30);
+            for (const a of largest) {
+              console.log([
+                "ACTIVE_TOP",
                 a.id,
                 a.name,
                 a.size_in_bytes,
                 a.created_at,
                 a.expires_at,
-                a.expired,
                 a.workflow_run?.id ?? ""
               ].join("\t"));
             }
