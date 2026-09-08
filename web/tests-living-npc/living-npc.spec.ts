@@ -59,7 +59,13 @@ test("Living NPC browser route remembers a commitment and lets the player beat K
     await page.getByRole("button", { name: "Поговорить: Мира", exact: true }).click();
     await expect(page.locator("#dialogue h2")).toHaveText("Мира");
     await sendDialogue(page, "Что случилось?", /Работа встала/i);
+    const commitmentResponse = page.waitForResponse((response) =>
+      response.url().endsWith("/api/dialogue") && response.request().method() === "POST"
+    );
     await sendDialogue(page, "Я принесу тебе древесину.", /Договорились/i);
+    const commitmentDecision = await (await commitmentResponse).json() as { social_action?: string | null };
+    expect(commitmentDecision.social_action).toBeTruthy();
+    await expect(page.locator("#dialogue")).not.toContainText(/локальная реплика|AI-реплика|социальная память/i);
     await page.screenshot({ path: "test-results/living-npc-01-mira-commitment.png", fullPage: true });
     await page.getByRole("button", { name: "Закрыть", exact: true }).click();
 
