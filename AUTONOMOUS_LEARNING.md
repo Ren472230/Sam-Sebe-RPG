@@ -16,3 +16,34 @@
 - Incorrect assumption: total document height must be no greater than viewport height. The remaining 8px outer page overflow had no effect on control reachability.
 - Do not repeat without new evidence: changing production layout only to remove harmless outer scroll after the actual control-reachability invariant is satisfied.
 - Next main question: can Stream Slice keep canonical location IDs internally while presenting the same Russian location names already used by normal mode?
+
+## Run cycle 2 - Stream Slice location localization
+
+- Champion before cycle: `9e8d27405fa3c4aa3a24ac86c4d1930cdb38a31f`.
+- Observation: Stream Slice showed English location names such as `Workshop Yard` and `The Wayfarer's Hearth` inside an otherwise Russian presentation.
+- Confirmed cause: Stream mode rendered `snapshot.world.location_name` directly while normal mode already used `hudLocationName(locationId, fallback)`.
+- Hypothesis: reuse the existing location presentation helper in Stream Slice without changing canonical location IDs or backend state.
+- RED evidence: `8412882e2b296f84db19446c659725cc0c91be52` failed the Stream Slice browser acceptance because `Место: Workshop Yard` appeared where `Место: Мастерская` was required.
+- Implementation: `8ff8d00f73d5be8d20b0dc1d80dea3a17cc7389a` routed Stream HUD and Stream status through the existing location-name helper.
+- Result: Stream screenshots show `Мастерская`, `Площадь`, `Берег реки`, and `Таверна` while canonical internal IDs remain unchanged.
+- Verification: all five mandatory gates succeeded on `8ff8d00f73d5be8d20b0dc1d80dea3a17cc7389a`.
+- Decision: ACCEPT.
+- Confirmed lesson: presentation localization should be applied at the UI projection boundary, not by mutating canonical world data.
+- Next main question: does the visible control hint match the actual input method on a touch viewport?
+
+## Run cycle 3 - responsive control hints
+
+- Champion before cycle: `8ff8d00f73d5be8d20b0dc1d80dea3a17cc7389a`.
+- Observation: mobile controls were fully reachable, but the visible hint still instructed the player to use `WASD` and `E`; the same mismatch existed for contextual actions in Village and Tavern.
+- Confirmed cause: VillageScene and TavernScene hard-coded keyboard-facing hint text regardless of viewport/input presentation.
+- Hypothesis: use one responsive hint formatter so touch-sized viewports say `Экранные кнопки` / `Действие`, while desktop keeps the existing keyboard language.
+- RED evidence: the browser suite on `97dff78c73a0b10099fc48f60f391ea20b5e9be5` produced exactly three expected failures: base mobile hint, firewood action hint, and Oren action hint. Five unrelated browser scenarios passed and browser diagnostics were clean.
+- Implementation: `87a9b2c04351c0b7401c19aae479563c384d0275` added a shared responsive hint formatter and connected it to Village and Tavern without changing input mechanics.
+- Test correction: the first GREEN attempt exposed a brittle test helper that demanded an exact player X coordinate even though the screenshot already showed the correct `Действие – подобрать дрова` text. `c619d9bb84a0dd96e2978275d077d8002ef4336f` changed the test route to stop on the actual product condition instead of an exact coordinate.
+- Result: mobile screenshots show on-screen-control language; desktop screenshots retain `WASD` / `E`; contextual hints in both scenes follow the same rule.
+- Verification: all five mandatory gates succeeded on `c619d9bb84a0dd96e2978275d077d8002ef4336f`; Playable Candidate run `34239456018`, Stream Slice run `34239456030`.
+- Decision: ACCEPT.
+- Confirmed lesson: interaction tests should wait for the player-visible state that matters, not an incidental world coordinate that can vary with frame timing.
+- Presentation update from product owner: Nichey will play and stream from a desktop computer. Desktop player clarity and stream audience readability are now the primary presentation target; mobile remains supported but is no longer the next optimization target.
+- Fresh desktop observation: normal mode can expose raw English Living World event text, e.g. `Talen arrived at The Wayfarer's Hearth with news from the eastern road.`, inside an otherwise Russian HUD.
+- Next main question: can normal desktop mode localize audience-facing Living World event summaries while preserving canonical event payloads and Stream Slice causality?
