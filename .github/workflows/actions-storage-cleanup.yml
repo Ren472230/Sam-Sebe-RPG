@@ -1,0 +1,53 @@
+name: Actions Storage Cleanup
+
+on:
+  push:
+    branches:
+      - ops/actions-storage-cleanup-2026-09-08
+    paths:
+      - ".github/workflows/actions-storage-cleanup.yml"
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Delete stale browser evidence and keep newest copy
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const {owner, repo} = context.repo;
+            const safeNames = new Set([
+              "prototype-browser-evidence",
+              "playable-candidate-browser-evidence",
+              "stream-slice-evidence"
+            ]);
+            const artifacts = await github.paginate(
+              github.rest.actions.listArtifactsForRepo,
+              {owner, repo, per_page: 100}
+            );
+            const groups = new Map();
+            for (const a of artifacts) {
+              if (a.expired || !safeNames.has(a.name)) continue;
+              if (!groups.has(a.name)) groups.set(a.name, []);
+              groups.get(a.name).push(a);
+            }
+
+            let deletedCount = 0;
+            let deletedBytes = 0;
+            for (const [name, items] of groups.entries()) {
+              items.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+              const keep = items.shift();
+              console.log(`KEEP\t${name}\t${keep.id}\t${keep.size_in_bytes}\t${keep.created_at}`);
+              for (const a of items) {
+                await github.rest.actions.deleteArtifact({owner, repo, artifact_id: a.id});
+                deletedCount += 1;
+                deletedBytes += a.size_in_bytes;
+              }
+            }
+            console.log(`DELETED_COUNT=${deletedCount}`);
+            console.log(`DELETED_BYTES=${deletedBytes}`);
