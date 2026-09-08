@@ -17,7 +17,8 @@ The current candidate combines a deterministic authoritative world with **Living
 - free-text NPC dialogue with deterministic offline fallback;
 - pair-scoped conversational memory, relationship-aware behavior and grounded NPC initiative from Living Conversation;
 - stream presentation mode for a reproducible public demo;
-- responsive game shell, including a tested 390 px viewport.
+- responsive game shell, including a tested 390 px viewport;
+- one-click Markdown export of the current human playtest report.
 
 ### Visual status
 
@@ -41,7 +42,21 @@ npm install
 cd ..
 ```
 
-For a clean reproducible demo:
+### Human playtest
+
+After dependencies are installed, double-click:
+
+`PLAY_SAM_SEBE_RPG.bat`
+
+The launcher resets only the isolated Stream Slice database, runs the existing preflight, waits for the local web server, and opens the normal player-facing game at:
+
+`http://127.0.0.1:5173/`
+
+Play naturally. At the end, press **Скачать отчёт теста** in the game and share the downloaded `.md` file for analysis.
+
+### Reproducible public demo
+
+For a clean reproducible audience-oriented demo:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\RUN_STREAM_SLICE.ps1 -Reset
@@ -126,6 +141,7 @@ Current autonomous validation evidence is tracked in draft PR #47. `main` remain
 - `src/samseberpg/` – authoritative game, world, dialogue, memory and social systems;
 - `web/` – Phaser browser client and browser acceptance tests;
 - `scripts/` – launchers, preflight, reset and smoke checks;
+- `PLAY_SAM_SEBE_RPG.bat` – one-click clean human playtest launcher for Windows;
 - `RUN_STREAM_SLICE.ps1` – Windows demo launcher;
 - `docs/release/STREAM_SLICE_V1.md` – detailed demo runbook;
 - `docs/superpowers/` – approved design and implementation plans;
