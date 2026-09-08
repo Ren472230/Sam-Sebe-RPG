@@ -61,7 +61,7 @@ function bindHud(state: ClientState, streamMode: boolean): void {
       ? "Цель: найди таверну и поговори с Ореном"
       : snapshot.quest.status === "active"
         ? `Цель: собери дрова ${snapshot.quest.owned_firewood}/${snapshot.quest.required_firewood} и вернись к Орену`
-        : "Цель: дрова доставлены ✓ · исследуй деревню";
+        : "Цель: дрова доставлены ✓ · исследуй деревню или подожди, чтобы увидеть, что изменится";
     const trust = snapshot.oren_trust > 0 ? `  ·  доверие Орена ${snapshot.oren_trust}` : "";
     hud.textContent = `${hudLocationName(snapshot.world.location_id, snapshot.world.location_name)}  ·  ${objective}  ·  монеты ${snapshot.coins}${trust}`;
   });
