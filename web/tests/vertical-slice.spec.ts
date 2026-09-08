@@ -250,6 +250,7 @@ test("canonical route finishes the firewood quest, advances the Living World, pe
     await expect(page.locator("#hud")).toContainText("доверие Орена 10");
     await expect(page.locator("#dialogue")).toContainText("помню, что ты выручил меня");
     await page.screenshot({ path: "test-results/06-completed.png", fullPage: true });
+    await expect(page.locator("#hud")).toContainText("подожди, чтобы увидеть, что изменится");
 
     await page.reload();
     await expect(body).toHaveAttribute("data-scene", "tavern");
