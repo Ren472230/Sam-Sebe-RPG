@@ -46,6 +46,10 @@ test("390px viewport keeps touch controls reachable without a keyboard", async (
     await expect(right).toBeVisible();
     await expect(interact).toBeVisible();
 
+    const hint = page.locator("#interaction-hint");
+    await expect(hint).toContainText("Экранные кнопки – движение · Действие – взаимодействие");
+    await expect(hint).not.toContainText(/WASD|E —/);
+
     const controls = await page.evaluate(() => {
       const element = document.getElementById("touch-controls");
       if (!element) return null;
