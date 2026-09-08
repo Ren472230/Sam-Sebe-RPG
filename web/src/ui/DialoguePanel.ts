@@ -1,7 +1,7 @@
 import type { QuestResult } from "../api";
 import type { ClientState } from "../state";
 
-type TranscriptLine = { speaker: "player" | "npc" | "system"; text: string };
+type TranscriptLine = { speaker: "player" | "npc" | "quest" | "system"; text: string };
 
 export class DialoguePanel {
   private readonly root: HTMLElement;
@@ -69,12 +69,15 @@ export class DialoguePanel {
     } else {
       for (const line of this.transcript) {
         const item = document.createElement("p");
-        item.className = `dialogue-line dialogue-line-${line.speaker}`;
+        const visualSpeaker = line.speaker === "quest" ? "system" : line.speaker;
+        item.className = `dialogue-line dialogue-line-${visualSpeaker}`;
         const prefix = line.speaker === "player"
           ? "Ты"
           : line.speaker === "npc"
             ? npcName(this.npcId)
-            : "Система";
+            : line.speaker === "quest"
+              ? "Задание"
+              : "Система";
         item.textContent = `${prefix}: ${line.text}`;
         transcript.append(item);
       }
@@ -145,7 +148,7 @@ export class DialoguePanel {
   }
 
   private showResult(result: QuestResult): void {
-    this.transcript.push({ speaker: "system", text: result.summary });
+    this.transcript.push({ speaker: "quest", text: result.summary });
     this.render();
   }
 
