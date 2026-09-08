@@ -209,8 +209,8 @@ test("canonical route finishes the firewood quest, advances the Living World, pe
     const sessionId = await body.getAttribute("data-playtest-session");
     expect(sessionId).toBeTruthy();
 
-    await expect(body).toHaveAttribute("data-art-mode", "prototype");
-    await expect(body).toHaveAttribute("data-village-art", "prototype");
+    await expect(body).toHaveAttribute("data-art-mode", "partial-production");
+    await expect(body).toHaveAttribute("data-village-art", "partial-production");
     await expect(body).toHaveAttribute("data-player-art", "prototype");
     await expect(body).toHaveAttribute("data-firewood-art", "prototype");
     await expect(page.locator("#hud")).toContainText("Мастерская");
