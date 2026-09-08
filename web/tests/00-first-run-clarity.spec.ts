@@ -70,6 +70,39 @@ test("normal mode gives the player a localized immediate goal and a presentation
 });
 
 
+test("normal mode lets a human playtester download the current session report without developer tools", async ({ page }, testInfo) => {
+  const diagnostics = installBrowserDiagnostics(page);
+  try {
+    await page.route("**/api/playtest/report/**", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          session: "playtest-test-session",
+          result: "FAIL",
+          verdict: "NOT SAFE FOR HUMAN EXPERIENCE TEST",
+          markdown: "# Отчёт игрового теста\n\nПроверка выгрузки текущей сессии.\n"
+        })
+      });
+    });
+
+    await page.goto("/");
+    await expect(page.locator("body")).toHaveAttribute("data-playtest-session", /^playtest-/);
+    const button = page.getByRole("button", { name: "Скачать отчёт теста", exact: true });
+    await expect(button).toBeVisible();
+
+    const downloadPromise = page.waitForEvent("download");
+    await button.click();
+    const download = await downloadPromise;
+    expect(download.suggestedFilename()).toMatch(/^sam-sebe-rpg-playtest-.*\.md$/);
+    await expect(page.locator("#playtest-export-status")).toContainText("Отчёт скачан");
+    diagnostics.assertClean();
+  } finally {
+    await diagnostics.attach(testInfo);
+  }
+});
+
+
 test("390px viewport keeps touch controls reachable without a keyboard", async ({ page }, testInfo) => {
   const diagnostics = installBrowserDiagnostics(page);
   try {
