@@ -146,6 +146,40 @@ button, textarea { font: inherit; }
   font-weight: 700;
 }
 
+#playtest-tools {
+  display: flex;
+  align-items: center;
+  gap: 10px 14px;
+  padding: 9px 12px;
+  background: #1d2023;
+  border: 1px solid #4a4f53;
+  border-top: 0;
+  color: #c9c7c1;
+  font-size: 12px;
+}
+
+#playtest-export {
+  flex: 0 0 auto;
+  min-height: 34px;
+  padding: 6px 11px;
+  border: 1px solid #6d7478;
+  border-left: 4px solid #e0a34c;
+  background: #eee8dc;
+  color: #202326;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+#playtest-export:hover,
+#playtest-export:focus-visible {
+  outline: 3px solid #65d5d9;
+  outline-offset: 2px;
+}
+
+#playtest-export:disabled { cursor: progress; opacity: .55; }
+#playtest-export-status { min-width: 0; }
+
 #touch-controls { display: none; }
 
 #dialogue {
@@ -199,6 +233,7 @@ button, textarea { font: inherit; }
 .dialogue-actions button:disabled { opacity: .55; cursor: progress; }
 
 #stream-status { display: none; }
+.stream-mode #playtest-tools { display: none; }
 
 .stream-mode #hud {
   min-height: 34px;
@@ -277,6 +312,13 @@ button, textarea { font: inherit; }
 
 @media (max-width: 700px) {
   #game { min-height: 0; }
+
+  #playtest-tools {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  #playtest-export { width: 100%; min-height: 42px; }
 
   #touch-controls {
     display: grid;

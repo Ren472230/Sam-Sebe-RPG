@@ -16,6 +16,11 @@ type PendingEvent = {
   evidence?: Record<string, unknown>;
 };
 
+type PlaytestReport = {
+  markdown: string;
+  result?: string;
+};
+
 let playerId: string | null = null;
 let ready = false;
 const pending: PendingEvent[] = [];
@@ -54,6 +59,7 @@ observer.observe(document.body, {
 });
 observeScene();
 observeDialogue();
+bindReportExport();
 
 void initialize();
 
@@ -165,6 +171,56 @@ async function safePost(event: PendingEvent): Promise<void> {
   } catch {
     // Telemetry must never become a new gameplay failure mode.
   }
+}
+
+function bindReportExport(): void {
+  const button = document.getElementById("playtest-export");
+  const status = document.getElementById("playtest-export-status");
+  if (!(button instanceof HTMLButtonElement) || !(status instanceof HTMLElement)) return;
+
+  button.addEventListener("click", () => {
+    void exportCurrentReport(button, status);
+  });
+}
+
+async function exportCurrentReport(button: HTMLButtonElement, status: HTMLElement): Promise<void> {
+  button.disabled = true;
+  status.textContent = "Формирую отчёт…";
+  try {
+    const response = await fetch(`/api/playtest/report/${encodeURIComponent(sessionId)}`);
+    if (!response.ok) throw new Error(`report request failed: ${response.status}`);
+    const payload: unknown = await response.json();
+    if (!isPlaytestReport(payload)) throw new Error("playtest report is malformed");
+
+    const blob = new Blob([payload.markdown], { type: "text/markdown;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `sam-sebe-rpg-playtest-${safeFilenamePart(sessionId)}.md`;
+    document.body.append(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 0);
+
+    status.textContent = payload.result
+      ? `Отчёт скачан · результат: ${payload.result}`
+      : "Отчёт скачан";
+  } catch {
+    status.textContent = "Не удалось скачать отчёт. Попробуйте ещё раз после начала игры.";
+  } finally {
+    button.disabled = false;
+  }
+}
+
+function isPlaytestReport(value: unknown): value is PlaytestReport {
+  if (typeof value !== "object" || value === null) return false;
+  const report = value as Record<string, unknown>;
+  return typeof report.markdown === "string" && report.markdown.length > 0
+    && (report.result === undefined || typeof report.result === "string");
+}
+
+function safeFilenamePart(value: string): string {
+  return value.replace(/[^a-zA-Z0-9._-]+/g, "-");
 }
 
 function observeScene(): void {
