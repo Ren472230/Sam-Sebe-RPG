@@ -106,3 +106,5 @@ jobs:
                 console.log(`PACKAGE_TYPE=${package_type}\tERROR=${error.status || "unknown"}`);
               }
             }
+
+            console.log("AUDIT_PHASE=POST_CLEANUP");
