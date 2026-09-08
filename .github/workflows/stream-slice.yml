@@ -30,10 +30,10 @@ jobs:
       - name: Install backend
         run: python -m pip install -e ".[dev]"
 
-      - name: Stream Slice Python tests
+      - name: Stream Slice + Living Conversation Python tests
         env:
           OPENAI_API_KEY: ""
-        run: python -m pytest -q tests/test_stream_slice*.py
+        run: python -m pytest -q tests/test_stream_slice*.py tests/test_living_conversation_acceptance.py
 
       - name: Stream Slice preflight
         env:
