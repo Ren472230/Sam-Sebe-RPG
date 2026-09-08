@@ -31,12 +31,15 @@ test("390px viewport stays inside the screen and is playable without a keyboard"
 
     const layout = await page.evaluate(() => ({
       viewportWidth: window.innerWidth,
+      viewportHeight: window.innerHeight,
       documentWidth: document.documentElement.scrollWidth,
+      documentHeight: document.documentElement.scrollHeight,
       bodyWidth: document.body.scrollWidth
     }));
 
     expect(layout.documentWidth).toBeLessThanOrEqual(layout.viewportWidth);
     expect(layout.bodyWidth).toBeLessThanOrEqual(layout.viewportWidth);
+    expect(layout.documentHeight).toBeLessThanOrEqual(layout.viewportHeight);
     await expect(page.locator("#game canvas")).toBeVisible();
     await expect(page.getByRole("button", { name: "Подождать 1 шаг", exact: true })).toBeVisible();
 
@@ -44,6 +47,16 @@ test("390px viewport stays inside the screen and is playable without a keyboard"
     const interact = page.getByRole("button", { name: "Взаимодействовать", exact: true });
     await expect(right).toBeVisible();
     await expect(interact).toBeVisible();
+
+    const controls = await page.evaluate(() => {
+      const element = document.getElementById("touch-controls");
+      if (!element) return null;
+      const rect = element.getBoundingClientRect();
+      return { top: rect.top, bottom: rect.bottom };
+    });
+    expect(controls).not.toBeNull();
+    expect(controls!.top).toBeGreaterThanOrEqual(0);
+    expect(controls!.bottom).toBeLessThanOrEqual(layout.viewportHeight);
 
     const before = Number(await page.locator("body").getAttribute("data-player-x"));
     await right.dispatchEvent("pointerdown", { pointerId: 1, pointerType: "touch", isPrimary: true });
