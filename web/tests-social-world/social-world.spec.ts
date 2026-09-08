@@ -73,8 +73,13 @@ test("Social World spreads Mira's report to Kaspar only after their real deliver
     await expect(page.locator("#world-pulse-events")).toContainText("Мира просит древесину");
 
     await page.getByRole("button", { name: "Поговорить: Мира", exact: true }).click();
+    const commitmentResponse = page.waitForResponse((response) =>
+      response.url().endsWith("/api/dialogue") && response.request().method() === "POST"
+    );
     await sendDialogue(page, "Я принесу тебе древесину.", /Договорились/i);
-    await expect(page.locator("#dialogue small")).toContainText("социальная память");
+    const commitmentDecision = await (await commitmentResponse).json() as { social_action?: string | null };
+    expect(commitmentDecision.social_action).toBeTruthy();
+    await expect(page.locator("#dialogue")).not.toContainText(/локальная реплика|AI-реплика|социальная память/i);
     await page.getByRole("button", { name: "Закрыть", exact: true }).click();
 
     await clickLivingAction(page, "Идти: площадь", "Площадь");
