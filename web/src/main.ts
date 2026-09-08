@@ -112,7 +112,17 @@ function bindStreamStatus(state: ClientState): void {
     }
 
     recent.replaceChildren();
-    const publicEvents = snapshot.world_pulse.latest_events.slice(-4).reverse();
+    const seenLabels = new Set<string>();
+    const publicEvents = snapshot.world_pulse.latest_events
+      .slice()
+      .reverse()
+      .filter((event) => {
+        const label = streamEventLabel(event);
+        if (seenLabels.has(label)) return false;
+        seenLabels.add(label);
+        return true;
+      })
+      .slice(0, 4);
     if (publicEvents.length === 0) {
       const item = document.createElement("li");
       item.textContent = "Мир пока тих.";
@@ -196,7 +206,17 @@ function bindWorldPulse(state: ClientState, dialogue: DialoguePanel, streamMode:
     nearby.textContent = names.length > 0 ? `Рядом: ${names.join(", ")}` : "Рядом: никого";
 
     events.replaceChildren();
-    const recent = snapshot.world_pulse.latest_events.slice(-3).reverse();
+    const seenLabels = new Set<string>();
+    const recent = snapshot.world_pulse.latest_events
+      .slice()
+      .reverse()
+      .filter((event) => {
+        const label = streamMode ? streamEventLabel(event) : eventText(event);
+        if (seenLabels.has(label)) return false;
+        seenLabels.add(label);
+        return true;
+      })
+      .slice(0, 4);
     if (recent.length === 0) {
       const item = document.createElement("li");
       item.textContent = "Мир пока тих.";
