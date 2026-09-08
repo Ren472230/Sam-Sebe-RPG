@@ -13,6 +13,19 @@ async function moveUntilHint(page: Page, keys: string[], text: string): Promise<
   }
 }
 
+async function movePlayerXTo(page: Page, target: number, tolerance = 12): Promise<void> {
+  for (let attempt = 0; attempt < 40; attempt += 1) {
+    const current = Number(await page.locator("body").getAttribute("data-player-x"));
+    if (Number.isFinite(current) && Math.abs(current - target) <= tolerance) return;
+    const key = current < target ? "d" : "a";
+    await page.keyboard.down(key);
+    await page.waitForTimeout(100);
+    await page.keyboard.up(key);
+    await page.waitForTimeout(40);
+  }
+  throw new Error(`player did not reach x=${target}`);
+}
+
 async function putLocalPlayerInTavern(page: Page): Promise<void> {
   const session = await page.request.post("/api/session", {
     data: { external_id: "local-player", name: "Ren" }
@@ -113,7 +126,8 @@ test("390px village uses the touch action label near firewood", async ({ page },
     await page.goto("/");
     const hint = page.locator("#interaction-hint");
 
-    await moveUntilHint(page, ["a"], "подобрать дрова");
+    await movePlayerXTo(page, 188);
+    await expect(hint).toContainText("подобрать дрова", { timeout: 5_000 });
     await expect(hint).toContainText("Действие – подобрать дрова");
     await expect(hint).not.toContainText(/E —/);
     diagnostics.assertClean();
