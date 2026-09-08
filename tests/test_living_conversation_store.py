@@ -175,3 +175,21 @@ def test_duplicate_memory_is_reinforced_not_duplicated(tmp_path: Path) -> None:
 
     assert len(memories) == 1
     assert memories[0].reinforcement_count == 1
+
+
+def test_store_operations_preserve_caller_transaction(tmp_path: Path) -> None:
+    db, store = _setup(tmp_path)
+    with db.connect() as conn:
+        store.ensure_schema(conn)
+        conn.execute("BEGIN IMMEDIATE")
+
+        store.note_turn(
+            conn,
+            npc_actor_id="npc_mira",
+            player_actor_id="player_lc",
+            last_topic="transaction-boundary",
+            tick=7,
+        )
+
+        assert conn.in_transaction is True
+        conn.execute("ROLLBACK")
