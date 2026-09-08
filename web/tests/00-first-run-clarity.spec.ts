@@ -4,13 +4,17 @@ import { installBrowserDiagnostics } from "./helpers/browser-diagnostics";
 
 async function moveUntilHint(page: Page, keys: string[], text: string): Promise<void> {
   const hint = page.locator("#interaction-hint");
-  for (const key of keys) await page.keyboard.down(key);
-  try {
-    await expect(hint).toContainText(text, { timeout: 10_000 });
-  } finally {
-    for (const key of keys) await page.keyboard.up(key);
-    await page.waitForTimeout(80);
+  for (let attempt = 0; attempt < 40; attempt += 1) {
+    if ((await hint.textContent())?.includes(text)) return;
+    for (const key of keys) {
+      await page.keyboard.down(key);
+      await page.waitForTimeout(70);
+      await page.keyboard.up(key);
+      await page.waitForTimeout(50);
+      if ((await hint.textContent())?.includes(text)) return;
+    }
   }
+  await expect(hint).toContainText(text, { timeout: 1_000 });
 }
 
 async function moveByStepsUntilHint(page: Page, key: string, text: string): Promise<void> {
