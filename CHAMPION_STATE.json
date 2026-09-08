@@ -1,0 +1,50 @@
+{
+  "verified_runtime_champion_sha": "9e8d27405fa3c4aa3a24ac86c4d1930cdb38a31f",
+  "run_cycle": 1,
+  "decision": "ACCEPT",
+  "mandatory_gates": {
+    "playable_candidate_gate": "success",
+    "prototype_web_ci": "success",
+    "living_world_integration_gate": "success",
+    "stream_slice_gate": "success",
+    "windows_compatibility_gate": "success"
+  },
+  "p0": [],
+  "new_p1": [],
+  "verified_routes": [
+    "integrated browser route",
+    "Living NPC browser acceptance",
+    "Social World browser acceptance",
+    "Stream Slice browser acceptance",
+    "390x844 touch movement and interaction controls"
+  ],
+  "measured_metrics": {
+    "initial_javascript_bundle_bytes": 1141730,
+    "initial_javascript_bundle_budget_bytes": 1200000,
+    "mobile_document_height_before_fix_px": 967,
+    "mobile_document_height_after_fix_px": 852,
+    "mobile_viewport": "390x844"
+  },
+  "experience_scores": {
+    "first_minutes_clarity": "unknown",
+    "control_usability": "unknown",
+    "player_agency": "unknown",
+    "living_world_feel": "unknown",
+    "character_liveliness": "unknown",
+    "causality": "unknown",
+    "pacing": "unknown",
+    "visual_cohesion": "unknown",
+    "technical_reliability": "unknown",
+    "desire_to_continue": "unknown",
+    "ready_to_show": "unknown"
+  },
+  "known_limitations": [
+    "Stream Slice presentation exposes canonical English location names.",
+    "The mobile interaction hint still references keyboard controls even though touch controls are present."
+  ],
+  "evidence": {
+    "playable_candidate_workflow_run_id": 34184877651,
+    "playable_candidate_artifact_id": 10040213588,
+    "mobile_screenshot": "test-results/first-run-mobile-390.png"
+  }
+}
