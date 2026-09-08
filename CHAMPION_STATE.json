@@ -1,6 +1,6 @@
 {
-  "verified_runtime_champion_sha": "c619d9bb84a0dd96e2978275d077d8002ef4336f",
-  "run_cycle": 3,
+  "verified_runtime_champion_sha": "252c27a5d839e4e04687279d9efb5279e6207548",
+  "run_cycle": 4,
   "decision": "ACCEPT",
   "mandatory_gates": {
     "playable_candidate_gate": "success",
@@ -19,10 +19,11 @@
     "390x844 touch movement and interaction controls",
     "localized Stream Slice location presentation",
     "responsive interaction hints in Village and Tavern",
-    "desktop keyboard hints remain intact while touch viewports use on-screen action labels"
+    "desktop keyboard hints remain intact while touch viewports use on-screen action labels",
+    "normal desktop Living World event summaries use the same audience-safe Russian projection as Stream Slice"
   ],
   "measured_metrics": {
-    "javascript_bundle_bytes": 1141995,
+    "javascript_bundle_bytes": 1141485,
     "javascript_bundle_budget_bytes": 1200000,
     "mobile_document_height_before_layout_fix_px": 967,
     "mobile_document_height_after_layout_fix_px": 852,
@@ -41,19 +42,18 @@
     "desire_to_continue": "unknown",
     "ready_to_show": "unknown"
   },
-  "presentation_context": "Primary showcase target is desktop play streamed by Nichey; audience-readable desktop UI now takes priority over further mobile polish.",
+  "presentation_context": "Primary showcase target is desktop play streamed by Nichey; audience-readable desktop UI takes priority over further mobile polish.",
   "known_limitations": [
-    "Normal desktop mode can show raw English Living World event text inside the Russian HUD.",
-    "Dialogue panels still include the prototype-facing label 'локальная реплика', which may be visually unnecessary for a public stream."
+    "Dialogue panels still include the prototype-facing label 'локальная реплика', which is visible during a public desktop stream."
   ],
   "evidence": {
-    "playable_candidate_workflow_run_id": 34239456018,
-    "playable_candidate_artifact_id": 10061459448,
-    "stream_slice_workflow_run_id": 34239456030,
-    "stream_slice_artifact_id": 10061356215,
+    "playable_candidate_workflow_run_id": 34242348031,
+    "playable_candidate_artifact_id": 10062695470,
+    "stream_slice_workflow_run_id": 34242348012,
+    "stream_slice_artifact_id": 10062556299,
     "desktop_first_run_screenshot": "test-results/first-run-clarity.png",
     "mobile_screenshot": "test-results/first-run-mobile-390.png",
     "desktop_living_world_screenshot": "test-results/08-living-world.png",
-    "stream_opening_screenshot": "test-results-stream-slice/stream-01-opening.png"
+    "stream_dialogue_screenshot": "test-results-stream-slice/stream-03-wayfarer.png"
   }
 }
