@@ -260,7 +260,12 @@ test("canonical route finishes the firewood quest, advances the Living World, pe
     const tickBefore = await readWorldTick(page);
     await waitThroughUi(page, 1, tickBefore + 1);
     await waitThroughUi(page, 5, tickBefore + 6);
-    await expect(page.locator("#world-pulse-events li").first()).not.toHaveText("Мир пока тих.");
+    const publicEvents = page.locator("#world-pulse-events li");
+    await expect(publicEvents.first()).not.toHaveText("Мир пока тих.");
+    const publicEventText = (await publicEvents.allTextContents()).join(" ");
+    expect(publicEventText).toContain("Тален прибыл в таверну с новостями с дороги");
+    expect(publicEventText).toContain("Орен ищет хлеб для гостя");
+    expect(publicEventText).not.toMatch(/Talen arrived|The Wayfarer's Hearth|with news from the eastern road/i);
     await page.screenshot({ path: "test-results/08-living-world.png", fullPage: true });
 
     const report = await fetchPassingReport(page, sessionId!);
