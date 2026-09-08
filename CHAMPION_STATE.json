@@ -1,6 +1,6 @@
 {
-  "verified_runtime_champion_sha": "9e8d27405fa3c4aa3a24ac86c4d1930cdb38a31f",
-  "run_cycle": 1,
+  "verified_runtime_champion_sha": "8ff8d00f73d5be8d20b0dc1d80dea3a17cc7389a",
+  "run_cycle": 2,
   "decision": "ACCEPT",
   "mandatory_gates": {
     "playable_candidate_gate": "success",
@@ -16,7 +16,8 @@
     "Living NPC browser acceptance",
     "Social World browser acceptance",
     "Stream Slice browser acceptance",
-    "390x844 touch movement and interaction controls"
+    "390x844 touch movement and interaction controls",
+    "localized Stream Slice location presentation"
   ],
   "measured_metrics": {
     "initial_javascript_bundle_bytes": 1141730,
@@ -39,12 +40,14 @@
     "ready_to_show": "unknown"
   },
   "known_limitations": [
-    "Stream Slice presentation exposes canonical English location names.",
     "The mobile interaction hint still references keyboard controls even though touch controls are present."
   ],
   "evidence": {
-    "playable_candidate_workflow_run_id": 34184877651,
-    "playable_candidate_artifact_id": 10040213588,
-    "mobile_screenshot": "test-results/first-run-mobile-390.png"
+    "playable_candidate_workflow_run_id": 34185369554,
+    "playable_candidate_artifact_id": 10040399301,
+    "stream_slice_workflow_run_id": 34185369546,
+    "stream_slice_artifact_id": 10040335807,
+    "mobile_screenshot": "test-results/first-run-mobile-390.png",
+    "stream_opening_screenshot": "test-results-stream-slice/stream-01-opening.png"
   }
 }
