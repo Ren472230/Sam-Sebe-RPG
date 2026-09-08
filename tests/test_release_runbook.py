@@ -19,3 +19,19 @@ def test_stream_slice_runbook_records_current_world_ready_release_evidence() -> 
     assert "34170647629" in runbook
     assert "34170647627" in runbook
     assert "34170647628" in runbook
+
+
+def test_human_playtest_has_one_click_normal_mode_launcher() -> None:
+    root = Path(__file__).resolve().parents[1]
+    launcher_path = root / "PLAY_SAM_SEBE_RPG.bat"
+
+    assert launcher_path.exists()
+    launcher = launcher_path.read_text(encoding="utf-8")
+    assert "RUN_STREAM_SLICE.ps1" in launcher
+    assert "-Reset" in launcher
+    assert "http://127.0.0.1:5173/" in launcher
+    assert "?stream=1" not in launcher
+    assert "Invoke-WebRequest" in launcher
+
+    readme = (root / "README.md").read_text(encoding="utf-8")
+    assert "PLAY_SAM_SEBE_RPG.bat" in readme
