@@ -1,6 +1,7 @@
 import Phaser from "phaser";
 
 import { requestId } from "../api";
+import { actionControlHint, movementControlHint } from "../controlHints";
 import {
   createProductionFirewood,
   createProductionPlayer,
@@ -143,16 +144,16 @@ export class VillageScene extends Phaser.Scene {
   private updateHint(): void {
     const wood = this.nearestFirewood();
     if (wood) {
-      this.offerInteraction({ kind: "firewood", item: wood }, "E — подобрать дрова");
+      this.offerInteraction({ kind: "firewood", item: wood }, actionControlHint("подобрать дрова"));
       return;
     }
     if (distance(this.player.x, this.player.y, this.tavern.x, this.tavern.y) < 85) {
-      this.offerInteraction({ kind: "tavern" }, "E — войти в таверну");
+      this.offerInteraction({ kind: "tavern" }, actionControlHint("войти в таверну"));
       return;
     }
     if (this.interaction && this.time.now <= this.interactionExpiresAt) return;
     this.clearInteraction();
-    this.hint.textContent = "WASD — движение · E — взаимодействие";
+    this.hint.textContent = movementControlHint();
   }
 
   private offerInteraction(interaction: VillageInteraction, text: string): void {
