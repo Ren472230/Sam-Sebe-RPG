@@ -330,12 +330,7 @@ function locationName(locationId: string, fallback: string): string {
 }
 
 function eventText(event: WorldPulseEvent): string {
-  if (event.event_type === "NPC_REQUESTED_RESOURCE") return "Мира просит древесину";
-  if (event.event_type === "NPC_COLLECTED_RESOURCE") return "Каспар подобрал древесину";
-  if (event.event_type === "NPC_DELIVERED_RESOURCE") return "Каспар принёс древесину Мире";
-  if (event.event_type === "NPC_WORKED") return "Мира завершила рабочий цикл";
-  if (event.event_type === "NPC_MOVED") return `${actorDisplayName(event.actor_id, event.actor_id)} отправился дальше по своим делам`;
-  return `${actorDisplayName(event.actor_id, event.actor_id)}: ${event.summary}`;
+  return streamEventLabel(event);
 }
 
 bootstrap().catch((error) => {
