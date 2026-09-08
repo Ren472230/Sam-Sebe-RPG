@@ -1,34 +1,34 @@
 {
-  "champion_sha": "8ad75843708512459eb19292441a3fa5850badce",
-  "run_cycle": 8,
+  "champion_sha": "f2a5db77bf89b1bd4f9709fd71b95e4a493fab80",
+  "run_cycle": 11,
   "decision": "ACCEPT",
-  "accepted_feature": "post-quest-living-world-guidance",
+  "accepted_feature": "human-playtest-ready-launch-and-report-export",
   "technical_status": "green",
   "p0": [],
   "p1": [],
   "mandatory_gates": {
     "visual_forge_gate": {
-      "run_id": 34264967748,
+      "run_id": 34270040325,
       "status": "success"
     },
     "stream_slice_gate": {
-      "run_id": 34264967697,
+      "run_id": 34270040399,
       "status": "success"
     },
     "prototype_web_ci": {
-      "run_id": 34264967473,
+      "run_id": 34270040417,
       "status": "success"
     },
     "playable_candidate_gate": {
-      "run_id": 34264967818,
+      "run_id": 34270040317,
       "status": "success"
     },
     "windows_compatibility_gate": {
-      "run_id": 34264967501,
+      "run_id": 34270040359,
       "status": "success"
     },
     "living_world_integration_gate": {
-      "run_id": 34264967552,
+      "run_id": 34270040335,
       "status": "success"
     }
   },
@@ -38,8 +38,18 @@
     "social_world": "success",
     "stream_slice": "success",
     "post_quest_guidance": "HUD contains 'подожди, чтобы увидеть, что изменится' after firewood quest completion",
-    "red_commit": "72a6975e119b031cde311e90341403d4d64e72a6",
-    "green_commit": "8ad75843708512459eb19292441a3fa5850badce"
+    "report_export": "normal mode downloads the current session Markdown report and confirms completion in the UI",
+    "report_export_red_commit": "097c892d3747ed94ad6798d848ad613951b35618",
+    "report_export_green_commit": "9e6a611c1d1b6ea876607078394da90cdec43255",
+    "launcher_red_commit": "30e8b536867cbc8a3145b5ab34444efb5dff1845",
+    "launcher_green_commit": "f2a5db77bf89b1bd4f9709fd71b95e4a493fab80"
+  },
+  "test_evidence": {
+    "python_suite": "201 passed",
+    "vertical_slice_smoke": "success",
+    "living_world_acceptance": "success",
+    "stream_slice_preflight": "success",
+    "windows_clean_boot": "success"
   },
   "performance": {
     "bundle_budget_bytes": 1200000,
@@ -60,9 +70,10 @@
     "ready_to_show": "unknown"
   },
   "known_limitations": [
-    "No fresh human blind-player score is available; automated browser evidence proves the route and explicit guidance, not subjective comprehension.",
-    "The canonical browser route still asserts prototype art mode, so production visual readiness remains unproven.",
-    "The exact current bundle byte count was not surfaced by the connected CI summary; the configured bundle budget gate passed."
+    "No fresh human blind-player score is available yet; automated browser evidence proves route execution and interface behavior, not subjective comprehension or enjoyment.",
+    "The canonical browser route still uses coherent prototype art because the checked-in production scene is incomplete.",
+    "Successful browser screenshot artifacts are currently not retained for download, although the browser acceptance routes themselves completed successfully.",
+    "The one-click BAT launcher is covered by a repository contract and the full Windows compatibility suite; CI does not reproduce a literal interactive desktop double-click."
   ],
-  "next_main_constraint": "Audit prototype-versus-production visual readiness and identify the smallest evidence-backed step toward the locked visual canon."
+  "next_main_constraint": "Perform the Human Experience Gate on a clean session, export the built-in Markdown playtest report, record subjective scores, and choose the next product change from that combined evidence."
 }

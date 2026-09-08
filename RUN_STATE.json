@@ -1,12 +1,12 @@
 {
   "run_id": "2026-09-08-world-ready-autonomous",
   "working_branch": "autotest/world-ready-2026-09-08",
-  "run_cycle": 9,
+  "run_cycle": 11,
   "historical_pr_cycle_marker": 6,
-  "current_champion": "8ad75843708512459eb19292441a3fa5850badce",
+  "current_champion": "f2a5db77bf89b1bd4f9709fd71b95e4a493fab80",
   "current_challenger": null,
-  "phase": "cycle_9_audit_visual_readiness",
-  "last_accepted_cycle": "post-quest-living-world-guidance",
+  "phase": "ready_for_human_experience_gate",
+  "last_accepted_cycle": "one-click-human-playtest-launcher",
   "presentation_context": "Desktop playability and audience readability are the primary experience target; mobile remains a supported fallback target.",
   "blockers": [
     "Local container cannot clone github.com because DNS/network access is blocked; connected GitHub plus repository CI and browser checks are used as the execution and evidence path.",
@@ -32,7 +32,22 @@
       "cycle": 8,
       "feature_commit": "8ad75843708512459eb19292441a3fa5850badce",
       "summary": "Guided the player toward waiting after quest completion so the Living World demonstration is discoverable without test-only sequence knowledge."
+    },
+    {
+      "cycle": 9,
+      "feature_commit": null,
+      "summary": "Rejected activation of incomplete partial-production Village layers after confirming the coherent prototype fallback is an intentional visual-integrity rule; test-only hypothesis was reverted by 2a4a570c3482aff744759aff6a04624ff31625ca."
+    },
+    {
+      "cycle": 10,
+      "feature_commit": "9e6a611c1d1b6ea876607078394da90cdec43255",
+      "summary": "Added one-click Markdown export of the current playtest session report from normal game mode using the existing canonical server report."
+    },
+    {
+      "cycle": 11,
+      "feature_commit": "f2a5db77bf89b1bd4f9709fd71b95e4a493fab80",
+      "summary": "Added a Windows double-click human-playtest launcher that resets the isolated demo database, waits for the local server, and opens normal player mode with report export available."
     }
   ],
-  "next_main_constraint": "The canonical browser route still identifies the active visual set as prototype art. Audit production-art completeness and fallback wiring before choosing the next visual implementation."
+  "next_main_constraint": "Run the first fresh Human Experience Gate using PLAY_SAM_SEBE_RPG.bat, collect the downloaded Markdown report plus subjective player feedback, then rank the next change from observed evidence. Production visual completeness remains a known follow-up constraint."
 }
