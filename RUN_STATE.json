@@ -1,14 +1,15 @@
 {
   "run_id": "2026-09-08-world-ready-autonomous",
   "working_branch": "autotest/world-ready-2026-09-08",
-  "run_cycle": 3,
+  "run_cycle": 4,
   "historical_pr_cycle_marker": 6,
-  "current_champion": "8ff8d00f73d5be8d20b0dc1d80dea3a17cc7389a",
+  "current_champion": "c619d9bb84a0dd96e2978275d077d8002ef4336f",
   "current_challenger": null,
-  "phase": "cycle_3_define_mobile_control_hint_red",
-  "last_accepted_cycle": "stream-location-localization",
+  "phase": "cycle_4_define_desktop_world_event_localization_red",
+  "last_accepted_cycle": "responsive-control-hints",
+  "presentation_context": "Nichey will play and stream from a desktop computer, so desktop playability and audience readability are now the primary experience target; mobile remains a fallback target.",
   "blockers": [
     "Local container cannot clone github.com because DNS/network access is blocked; connected GitHub plus repository CI and browser artifacts are used as the execution and evidence path."
   ],
-  "next_main_constraint": "On a touch viewport the visible interaction hint still instructs the player to use keyboard controls instead of the on-screen controls."
+  "next_main_constraint": "Normal desktop mode can expose raw English Living World event text inside the otherwise Russian HUD, which is visible to both the player and stream audience."
 }
