@@ -28,6 +28,10 @@ jobs:
         run: python -m pip install -e ".[dev]"
       - name: Full Python suite
         run: python -m pytest -q tests
+      - name: Living Conversation vitality acceptance
+        env:
+          OPENAI_API_KEY: ""
+        run: python -m pytest -q tests/test_living_conversation_acceptance.py
       - name: Vertical slice smoke
         env:
           OPENAI_API_KEY: ""
