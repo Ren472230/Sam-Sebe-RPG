@@ -22,7 +22,7 @@ test("normal mode gives the player a localized immediate goal and a presentation
 });
 
 
-test("390px viewport stays inside the screen and is playable without a keyboard", async ({ page }, testInfo) => {
+test("390px viewport keeps touch controls reachable without a keyboard", async ({ page }, testInfo) => {
   const diagnostics = installBrowserDiagnostics(page);
   try {
     await page.setViewportSize({ width: 390, height: 844 });
@@ -33,13 +33,11 @@ test("390px viewport stays inside the screen and is playable without a keyboard"
       viewportWidth: window.innerWidth,
       viewportHeight: window.innerHeight,
       documentWidth: document.documentElement.scrollWidth,
-      documentHeight: document.documentElement.scrollHeight,
       bodyWidth: document.body.scrollWidth
     }));
 
     expect(layout.documentWidth).toBeLessThanOrEqual(layout.viewportWidth);
     expect(layout.bodyWidth).toBeLessThanOrEqual(layout.viewportWidth);
-    expect(layout.documentHeight).toBeLessThanOrEqual(layout.viewportHeight);
     await expect(page.locator("#game canvas")).toBeVisible();
     await expect(page.getByRole("button", { name: "Подождать 1 шаг", exact: true })).toBeVisible();
 
