@@ -276,6 +276,8 @@ button, textarea { font: inherit; }
 }
 
 @media (max-width: 700px) {
+  #game { min-height: 0; }
+
   #touch-controls {
     display: grid;
     grid-template-columns: minmax(180px, 1fr) minmax(96px, .55fr);
