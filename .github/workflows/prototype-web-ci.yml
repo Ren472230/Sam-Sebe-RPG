@@ -64,7 +64,7 @@ jobs:
         run: npm run test:e2e:stream-slice
 
       - name: Upload browser evidence
-        if: always()
+        if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: prototype-browser-evidence
@@ -78,4 +78,4 @@ jobs:
             web/playwright-report-social-world
             web/playwright-report-stream-slice
           if-no-files-found: warn
-          retention-days: 7
+          retention-days: 1

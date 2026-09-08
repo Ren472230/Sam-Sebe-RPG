@@ -63,7 +63,7 @@ jobs:
         run: npm run test:e2e:stream-slice
 
       - name: Upload Stream Slice evidence
-        if: always()
+        if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: stream-slice-evidence
@@ -71,4 +71,4 @@ jobs:
             web/test-results-stream-slice
             web/playwright-report-stream-slice
           if-no-files-found: warn
-          retention-days: 14
+          retention-days: 1
