@@ -1,6 +1,38 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
 import { installBrowserDiagnostics } from "./helpers/browser-diagnostics";
+
+async function moveUntilHint(page: Page, keys: string[], text: string): Promise<void> {
+  const hint = page.locator("#interaction-hint");
+  for (const key of keys) await page.keyboard.down(key);
+  try {
+    await expect(hint).toContainText(text, { timeout: 10_000 });
+  } finally {
+    for (const key of keys) await page.keyboard.up(key);
+    await page.waitForTimeout(80);
+  }
+}
+
+async function putLocalPlayerInTavern(page: Page): Promise<void> {
+  const session = await page.request.post("/api/session", {
+    data: { external_id: "local-player", name: "Ren" }
+  });
+  expect(session.ok()).toBeTruthy();
+  const playerId = (await session.json() as { player_id: string }).player_id;
+
+  for (const destinationId of ["village_square", "tavern_interior"]) {
+    const action = await page.request.post("/api/action", {
+      data: {
+        player_id: playerId,
+        action_type: "MOVE",
+        destination_id: destinationId,
+        external_id: `mobile-hint-${destinationId}`
+      }
+    });
+    expect(action.ok()).toBeTruthy();
+    expect((await action.json() as { success: boolean }).success).toBeTruthy();
+  }
+}
 
 
 test("normal mode gives the player a localized immediate goal and a presentation-ready title", async ({ page }, testInfo) => {
@@ -67,6 +99,42 @@ test("390px viewport keeps touch controls reachable without a keyboard", async (
     await expect.poll(async () => Number(await page.locator("body").getAttribute("data-player-x"))).toBeGreaterThan(before);
 
     await page.screenshot({ path: "test-results/first-run-mobile-390.png", fullPage: true });
+    diagnostics.assertClean();
+  } finally {
+    await diagnostics.attach(testInfo);
+  }
+});
+
+
+test("390px village uses the touch action label near firewood", async ({ page }, testInfo) => {
+  const diagnostics = installBrowserDiagnostics(page);
+  try {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/");
+    const hint = page.locator("#interaction-hint");
+
+    await moveUntilHint(page, ["a"], "подобрать дрова");
+    await expect(hint).toContainText("Действие – подобрать дрова");
+    await expect(hint).not.toContainText(/E —/);
+    diagnostics.assertClean();
+  } finally {
+    await diagnostics.attach(testInfo);
+  }
+});
+
+
+test("390px tavern uses the touch action label near Oren", async ({ page }, testInfo) => {
+  const diagnostics = installBrowserDiagnostics(page);
+  try {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await putLocalPlayerInTavern(page);
+    await page.goto("/");
+    await expect(page.locator("body")).toHaveAttribute("data-scene", "tavern");
+    const hint = page.locator("#interaction-hint");
+
+    await moveUntilHint(page, ["w", "d"], "поговорить с Ореном");
+    await expect(hint).toContainText("Действие – поговорить с Ореном");
+    await expect(hint).not.toContainText(/E —/);
     diagnostics.assertClean();
   } finally {
     await diagnostics.attach(testInfo);
