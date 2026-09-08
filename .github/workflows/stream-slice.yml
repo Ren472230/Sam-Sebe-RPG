@@ -61,14 +61,3 @@ jobs:
         env:
           OPENAI_API_KEY: ""
         run: npm run test:e2e:stream-slice
-
-      - name: Upload Stream Slice evidence
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: stream-slice-evidence
-          path: |
-            web/test-results-stream-slice
-            web/playwright-report-stream-slice
-          if-no-files-found: warn
-          retention-days: 1
