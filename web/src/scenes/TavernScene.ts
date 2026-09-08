@@ -1,6 +1,7 @@
 import Phaser from "phaser";
 
 import { requestId } from "../api";
+import { actionControlHint, movementControlHint } from "../controlHints";
 import {
   createProductionOren,
   createProductionPlayer,
@@ -69,14 +70,14 @@ export class TavernScene extends Phaser.Scene {
     this.publishPlayerPosition();
 
     if (distance(this.player.x, this.player.y, this.oren.x, this.oren.y) < 85) {
-      this.offerInteraction("oren", "E — поговорить с Ореном");
+      this.offerInteraction("oren", actionControlHint("поговорить с Ореном"));
     } else if (distance(this.player.x, this.player.y, this.exit.x, this.exit.y) < 70) {
-      this.offerInteraction("exit", "E — выйти в деревню");
+      this.offerInteraction("exit", actionControlHint("выйти в деревню"));
     } else if (this.interaction && this.time.now <= this.interactionExpiresAt) {
       return;
     } else {
       this.clearInteraction();
-      this.hint.textContent = "WASD — движение · E — взаимодействие";
+      this.hint.textContent = movementControlHint();
     }
   }
 
