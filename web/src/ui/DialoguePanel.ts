@@ -1,4 +1,4 @@
-import type { DialogueDecision, QuestResult } from "../api";
+import type { QuestResult } from "../api";
 import type { ClientState } from "../state";
 
 type TranscriptLine = { speaker: "player" | "npc" | "system"; text: string };
@@ -39,25 +39,23 @@ export class DialoguePanel {
     this.sending = true;
     this.transcript.push({ speaker: "player", text: clean });
     this.render();
-    let resolvedDecision: DialogueDecision | undefined;
     try {
       const decision = await this.state.api.dialogue(
         this.state.playerId,
         this.npcId,
         clean
       );
-      resolvedDecision = decision;
       await this.state.refresh();
       this.transcript.push({ speaker: "npc", text: decision.text });
     } catch (error) {
       this.transcript.push({ speaker: "system", text: readableError(error) });
     } finally {
       this.sending = false;
-      this.render(resolvedDecision);
+      this.render();
     }
   }
 
-  private render(decision?: DialogueDecision): void {
+  private render(): void {
     const title = document.createElement("h2");
     title.textContent = npcName(this.npcId);
 
@@ -117,15 +115,7 @@ export class DialoguePanel {
     }
     controls.append(this.button("Закрыть", () => this.close()));
 
-    const elements: Node[] = [title, transcript, input, controls];
-    if (decision) {
-      const meta = document.createElement("small");
-      const source = decision.used_fallback ? "локальная реплика" : "AI-реплика";
-      const social = decision.social_action ? " · социальная память" : "";
-      meta.textContent = `${source}${social}`;
-      elements.push(meta);
-    }
-    this.root.replaceChildren(...elements);
+    this.root.replaceChildren(title, transcript, input, controls);
     this.root.hidden = false;
     if (!this.sending) input.focus();
   }
