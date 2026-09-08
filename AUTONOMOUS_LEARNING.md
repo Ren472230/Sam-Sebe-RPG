@@ -47,3 +47,18 @@
 - Presentation update from product owner: Nichey will play and stream from a desktop computer. Desktop player clarity and stream audience readability are now the primary presentation target; mobile remains supported but is no longer the next optimization target.
 - Fresh desktop observation: normal mode can expose raw English Living World event text, e.g. `Talen arrived at The Wayfarer's Hearth with news from the eastern road.`, inside an otherwise Russian HUD.
 - Next main question: can normal desktop mode localize audience-facing Living World event summaries while preserving canonical event payloads and Stream Slice causality?
+
+## Run cycle 4 - desktop Living World event localization
+
+- Champion before cycle: `c619d9bb84a0dd96e2978275d077d8002ef4336f`.
+- Observation: the final desktop Living World frame mixed Russian UI with raw English event text and incorrectly rendered Oren's bread request as another Mira wood request.
+- Confirmed cause: normal mode used a separate `eventText()` projection with incomplete event coverage, a generic `NPC_REQUESTED_RESOURCE` mapping to Mira, and a raw `event.summary` fallback; Stream Slice already had correct audience-safe labels.
+- Hypothesis: reuse the existing `streamEventLabel()` projection for normal desktop Living World summaries without changing canonical server events.
+- RED evidence: `325bfee0d2a33126a3a2e5338dec4dcd4a5cb81d` failed the deterministic desktop vertical slice with `Мира просит древесину Мира просит древесину Тален: Talen arrived at The Wayfarer's Hearth...`; seven unrelated browser scenarios passed and diagnostics were clean.
+- Implementation: `252c27a5d839e4e04687279d9efb5279e6207548` made normal `eventText()` delegate to the already-tested `streamEventLabel()` projection.
+- Result: final desktop screenshot shows `Мира просит древесину для мастерской`, `Орен ищет хлеб для гостя`, and `Тален прибыл в таверну с новостями с дороги`, with no raw English event summary.
+- Verification: all five mandatory gates succeeded on `252c27a5d839e4e04687279d9efb5279e6207548`; Playable Candidate run `34242348031`, Stream Slice run `34242348012`. Full browser route: 8/8 main scenarios, 1/1 Living NPC, 1/1 Social World, 1/1 Stream Slice. Bundle: 1,141,485 bytes against a 1,200,000-byte budget.
+- Decision: ACCEPT.
+- Confirmed lesson: player-facing and audience-facing summaries of canonical world events should share one safe UI projection; raw server summaries should remain internal evidence, not public presentation text.
+- Fresh stream observation: dialogue overlays still display the prototype-facing label `локальная реплика` below the player controls, visible directly to the audience.
+- Next main question: can the dialogue overlay remove prototype-only chrome while preserving NPC name, transcript, free-text input, action buttons, and deterministic dialogue behavior?
