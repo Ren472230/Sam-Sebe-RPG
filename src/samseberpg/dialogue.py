@@ -746,12 +746,24 @@ def _fallback(context: DialogueContext) -> DialogueDecision:
                     npc_id=context.npc_id,
                 )
             return DialogueDecision(
-                text="Мира отрывается от верстака: «Работа встала. Нужна пригодная древесина, а запас кончился.»",
+                text=_fallback_variant(
+                    context,
+                    (
+                        "Мира отрывается от верстака: «Работа встала. Нужна пригодная древесина, а запас кончился.»",
+                        "Мира проводит ладонью по пустой полке: «Работа встала. Без пригодной древесины дальше не двинусь.»",
+                    ),
+                ),
                 used_fallback=True,
                 npc_id=context.npc_id,
             )
         return DialogueDecision(
-            text="Мира не прекращает работу: «Пока всё идёт. Если что-то понадобится — скажу.»",
+            text=_fallback_variant(
+                context,
+                (
+                    "Мира не прекращает работу: «Пока всё идёт. Если что-то понадобится — скажу.»",
+                    "Мира проверяет заготовку и кивает: «Работа идёт. Пока справляюсь сама.»",
+                ),
+            ),
             used_fallback=True,
             npc_id=context.npc_id,
         )
@@ -764,18 +776,36 @@ def _fallback(context: DialogueContext) -> DialogueDecision:
             )
         if int(context.runtime_state.get("carrying_wood", 0) or 0) > 0:
             return DialogueDecision(
-                text="Каспар кивает на древесину: «Нашёл, что нужно. Теперь бы донести.»",
+                text=_fallback_variant(
+                    context,
+                    (
+                        "Каспар кивает на древесину: «Нашёл, что нужно. Теперь бы донести.»",
+                        "Каспар поправляет ношу: «Древесина есть. Осталось доставить и не рассуждать лишнего.»",
+                    ),
+                ),
                 used_fallback=True,
                 npc_id=context.npc_id,
             )
         if context.runtime_state.get("goal"):
             return DialogueDecision(
-                text="Каспар бросает взгляд в сторону тропы: «Есть одно дело. Само себя оно не сделает.»",
+                text=_fallback_variant(
+                    context,
+                    (
+                        "Каспар бросает взгляд в сторону тропы: «Есть одно дело. Само себя оно не сделает.»",
+                        "Каспар смотрит туда, куда собирался идти: «Сначала дело. Разговор подождёт.»",
+                    ),
+                ),
                 used_fallback=True,
                 npc_id=context.npc_id,
             )
         return DialogueDecision(
-            text="Каспар пожимает плечами: «Проверяю берег. Иногда река приносит вещи полезнее разговоров.»",
+            text=_fallback_variant(
+                context,
+                (
+                    "Каспар пожимает плечами: «Проверяю берег. Иногда река приносит вещи полезнее разговоров.»",
+                    "Каспар щурится на воду: «Смотрю, что река вынесла. Она обычно говорит короче людей.»",
+                ),
+            ),
             used_fallback=True,
             npc_id=context.npc_id,
         )
@@ -787,7 +817,13 @@ def _fallback(context: DialogueContext) -> DialogueDecision:
                 npc_id=context.npc_id,
             )
         return DialogueDecision(
-            text="Тален коротко кивает: «С дороги я ещё не отошёл. Спроси о пути — расскажу, что знаю точно.»",
+            text=_fallback_variant(
+                context,
+                (
+                    "Тален коротко кивает: «С дороги я ещё не отошёл. Спроси о пути — расскажу, что знаю точно.»",
+                    "Тален устало растирает ладони: «Дорога была тяжёлая. Про то, что видел сам, расскажу без сказок.»",
+                ),
+            ),
             used_fallback=True,
             npc_id=context.npc_id,
         )
@@ -815,7 +851,13 @@ def _fallback(context: DialogueContext) -> DialogueDecision:
     state = context.quest
     if state is None:
         return DialogueDecision(
-            text=f"{context.display_name} молча кивает.",
+            text=_fallback_variant(
+                context,
+                (
+                    f"{context.display_name} молча кивает.",
+                    f"{context.display_name} отвечает коротким взглядом и возвращается к своему делу.",
+                ),
+            ),
             used_fallback=True,
             npc_id=context.npc_id,
         )
@@ -843,6 +885,29 @@ def _fallback(context: DialogueContext) -> DialogueDecision:
         used_fallback=True,
         npc_id=context.npc_id,
     )
+
+
+def _fallback_variant(context: DialogueContext, options: tuple[str, ...]) -> str:
+    if not options:
+        raise ValueError("fallback variant pool must not be empty")
+    if len(options) == 1:
+        return options[0]
+
+    relation_bias = {
+        "hostile": 5,
+        "distrustful": 4,
+        "guarded": 3,
+        "neutral": 2,
+        "comfortable": 1,
+        "warm": 0,
+    }.get(context.relationship_behavior, 0)
+    start = (context.thread_state.turn_count + relation_bias) % len(options)
+    previous = context.recent_dialogue[-1].npc_text if context.recent_dialogue else None
+    for offset in range(len(options)):
+        candidate = options[(start + offset) % len(options)]
+        if candidate != previous:
+            return candidate
+    return options[start]
 
 
 def _valid_conversation_metadata(
