@@ -137,6 +137,13 @@ test("world pulse exposes canonical Living NPC controls", async () => {
   assert.match(source, /recipient_id:\s*"npc_mira"/);
 });
 
+test("talk actions are derived from actors actually visible to the player", async () => {
+  const source = await readFile(new URL("../src/main.ts", import.meta.url), "utf8");
+  assert.match(source, /const talkableNpcs = snapshot\.world\.visible_actors\.filter/);
+  assert.match(source, /for \(const actor of talkableNpcs\)/);
+  assert.doesNotMatch(source, /for \(const npcId of snapshot\.living_npc\.nearby_npc_ids\)/);
+});
+
 test("gameplay keyboard yields to text entry and uses one-shot interaction keys", async () => {
   for (const filename of ["VillageScene.ts", "TavernScene.ts"]) {
     const source = await readFile(new URL(`../src/scenes/${filename}`, import.meta.url), "utf8");
