@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { clientErrorText, postPlaytestEvent } from "../src/playtestClient.ts";
+import { clientErrorText, dialogueResultEvidence, postPlaytestEvent } from "../src/playtestClient.ts";
 
 
 test("postPlaytestEvent sends the narrow client event contract", async () => {
@@ -54,6 +54,17 @@ test("postPlaytestEvent rejects malformed server responses", async () => {
     }, transport),
     /malformed/
   );
+});
+
+
+test("dialogue result evidence exposes provider source without dialogue text", () => {
+  const evidence = dialogueResultEvidence("npc_mira", false);
+
+  assert.deepEqual(evidence, {
+    npc_id: "npc_mira",
+    used_fallback: false
+  });
+  assert.equal("text" in evidence, false);
 });
 
 
