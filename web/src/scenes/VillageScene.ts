@@ -1,6 +1,6 @@
 import Phaser from "phaser";
 
-import { requestId } from "../api";
+import { requestId, type VisibleActor } from "../api";
 import { actionControlHint, movementControlHint } from "../controlHints";
 import {
   createProductionFirewood,
@@ -15,6 +15,19 @@ type Hotspot = { id: string; x: number; y: number; view: any };
 type Rect = { x: number; y: number; w: number; h: number };
 type VillageInteraction = { kind: "firewood"; item: Hotspot } | { kind: "tavern" };
 
+const CANONICAL_LOCATION_ANCHORS: Record<string, { x: number; y: number }> = {
+  workshop_yard: { x: 330, y: 455 },
+  village_square: { x: 500, y: 455 },
+  river_edge: { x: 640, y: 455 }
+};
+
+const NPC_ANCHORS: Record<string, { x: number; y: number }> = {
+  npc_mira: { x: 250, y: 365 },
+  npc_kaspar: { x: 610, y: 410 },
+  npc_wayfarer_1: { x: 545, y: 400 },
+  npc_oren: { x: 790, y: 365 }
+};
+
 export class VillageScene extends Phaser.Scene {
   private player: any;
   private keys: any;
@@ -24,6 +37,10 @@ export class VillageScene extends Phaser.Scene {
   private interactionExpiresAt = 0;
   private readonly interactionGraceMs = 600;
   private readonly tavern = { x: 825, y: 250 };
+  private readonly renderedNpcs = new Map<string, Phaser.GameObjects.Container>();
+  private renderedNpcIds = new Set<string>();
+  private unsubscribeState: (() => void) | null = null;
+  private canonicalLocationId: string | null = null;
   private readonly obstacles: Rect[] = [
     { x: 115, y: 205, w: 230, h: 120 },
     { x: 690, y: 165, w: 220, h: 135 },
@@ -47,18 +64,30 @@ export class VillageScene extends Phaser.Scene {
       ?? this.add.rectangle(430, 455, 24, 42, 0xe03a3e).setStrokeStyle(4, 0x111315).setDepth(20);
     renderVillageProductionForeground(this);
     this.publishPlayerPosition();
+
+    const runtime = getRuntime();
+    this.unsubscribeState = runtime.state.subscribe((snapshot) => {
+      this.syncCanonicalLocation(snapshot.world.location_id);
+      this.renderNearbyNpcs(snapshot.world.visible_actors);
+    });
+
     const keyboard = this.input.keyboard;
     if (!keyboard) throw new Error("Keyboard input unavailable");
-    this.keys = keyboard.addKeys("W,A,S,D,E");
-    keyboard.on("keydown-E", () => void this.interact());
+    this.keys = keyboard.addKeys("W,A,S,D,E", false);
     this.events.once("shutdown", () => {
-      keyboard.removeAllListeners("keydown-E");
+      this.unsubscribeState?.();
+      this.unsubscribeState = null;
+      this.destroyRenderedNpcs();
       this.clearInteraction();
       this.hint.textContent = "";
     });
   }
 
   update(_time: number, delta: number): void {
+    if (isTextEntryActive()) return;
+
+    if (Phaser.Input.Keyboard.JustDown(this.keys.E)) void this.interact();
+
     // A long browser frame must not teleport the player through narrow collision/interaction bands.
     const speed = 0.22 * Math.min(delta, 50);
     let dx = 0;
@@ -70,6 +99,56 @@ export class VillageScene extends Phaser.Scene {
     this.movePlayer(dx, dy);
     this.publishPlayerPosition();
     this.updateHint();
+  }
+
+  private syncCanonicalLocation(locationId: string): void {
+    if (this.canonicalLocationId === locationId) return;
+    this.canonicalLocationId = locationId;
+    document.body.dataset.canonicalLocation = locationId;
+    const anchor = CANONICAL_LOCATION_ANCHORS[locationId];
+    if (!anchor || !this.player) return;
+    this.player.x = anchor.x;
+    this.player.y = anchor.y;
+    this.publishPlayerPosition();
+  }
+
+  private renderNearbyNpcs(visible_actors: VisibleActor[]): void {
+    const nearby = visible_actors.filter((actor) => actor.actor_type === "npc");
+    const nextIds = new Set(nearby.map((actor) => actor.actor_id));
+
+    for (const [actorId, view] of this.renderedNpcs) {
+      if (nextIds.has(actorId)) continue;
+      view.destroy(true);
+      this.renderedNpcs.delete(actorId);
+    }
+
+    nearby.forEach((actor, index) => {
+      if (this.renderedNpcs.has(actor.actor_id)) return;
+      const fallback = { x: 420 + index * 70, y: 400 };
+      const anchor = NPC_ANCHORS[actor.actor_id] ?? fallback;
+      const body = this.add.rectangle(0, 0, 30, 48, 0xe9e4d7)
+        .setStrokeStyle(4, 0x24272a);
+      const accent = this.add.rectangle(0, -19, 30, 7, 0x60d5d8);
+      const label = this.add.text(-34, 31, actor.name, {
+        color: "#f1eee4",
+        backgroundColor: "#24272a",
+        fontSize: "14px",
+        fontFamily: "sans-serif",
+        padding: { x: 4, y: 2 }
+      });
+      const view = this.add.container(anchor.x, anchor.y, [body, accent, label]).setDepth(19);
+      this.renderedNpcs.set(actor.actor_id, view);
+    });
+
+    this.renderedNpcIds = nextIds;
+    document.body.dataset.renderedNpcIds = [...this.renderedNpcIds].sort().join(",");
+  }
+
+  private destroyRenderedNpcs(): void {
+    for (const view of this.renderedNpcs.values()) view.destroy(true);
+    this.renderedNpcs.clear();
+    this.renderedNpcIds.clear();
+    delete document.body.dataset.renderedNpcIds;
   }
 
   private publishPlayerPosition(): void {
@@ -250,6 +329,13 @@ export class VillageScene extends Phaser.Scene {
     if (!result.success) throw new Error(result.summary);
     await runtime.state.refresh();
   }
+}
+
+function isTextEntryActive(): boolean {
+  const active = document.activeElement;
+  return active instanceof HTMLInputElement
+    || active instanceof HTMLTextAreaElement
+    || (active instanceof HTMLElement && active.isContentEditable);
 }
 
 function distance(ax: number, ay: number, bx: number, by: number): number {
