@@ -237,7 +237,7 @@ export class VillageScene extends Phaser.Scene {
       const name = npcName(npc.actor_id, npc.name);
       this.offerInteraction(
         { kind: "npc", actorId: npc.actor_id, name },
-        actionControlHint(`поговорить с ${name}`)
+        actionControlHint(`поговорить с ${npcInstrumentalName(npc.actor_id, npc.name)}`)
       );
       return;
     }
@@ -370,6 +370,14 @@ function npcName(actorId: string, fallback: string): string {
   if (actorId === "npc_kaspar") return "Каспар";
   if (actorId === "npc_wayfarer_1") return "Тален";
   if (actorId === "npc_oren") return "Орен";
+  return fallback;
+}
+
+function npcInstrumentalName(actorId: string, fallback: string): string {
+  if (actorId === "npc_mira") return "Мирой";
+  if (actorId === "npc_kaspar") return "Каспаром";
+  if (actorId === "npc_wayfarer_1") return "Таленом";
+  if (actorId === "npc_oren") return "Ореном";
   return fallback;
 }
 
