@@ -87,8 +87,6 @@ export function preloadTavernProductionArt(scene: Phaser.Scene): void {
 }
 
 export function renderVillageProductionBackground(scene: Phaser.Scene): boolean {
-  if (renderVillagePrototypeBackground(scene)) return true;
-
   const declared = villageLayerNames().filter((layer) => Boolean(currentManifest.village.layers[layer]));
   const loaded = declared.filter((layer) => scene.textures.exists(VILLAGE_KEYS[layer]));
   const runtimeMissing = declared
@@ -97,6 +95,19 @@ export function renderVillageProductionBackground(scene: Phaser.Scene): boolean 
   const required = requiredVillageLayers();
   const fullReady = currentReadiness.village.ready
     && required.every((layer) => scene.textures.exists(VILLAGE_KEYS[layer]));
+
+  if (fullReady) {
+    for (const layer of loaded) {
+      if (layer === "foreground") continue;
+      addVillageCanvasLayer(scene, layer);
+    }
+    if (runtimeMissing.length > 0) appendRuntimeMissing(runtimeMissing);
+    document.body.dataset.artMode = "production";
+    document.body.dataset.villageArt = "production";
+    return true;
+  }
+
+  if (renderVillagePrototypeBackground(scene)) return true;
 
   if (loaded.length === 0) {
     markSceneFallback("village", runtimeMissing);
@@ -109,9 +120,9 @@ export function renderVillageProductionBackground(scene: Phaser.Scene): boolean 
   }
 
   if (runtimeMissing.length > 0) appendRuntimeMissing(runtimeMissing);
-  document.body.dataset.artMode = fullReady ? "production" : "partial-production";
-  document.body.dataset.villageArt = fullReady ? "production" : "partial-production";
-  return fullReady;
+  document.body.dataset.artMode = "partial-production";
+  document.body.dataset.villageArt = "partial-production";
+  return false;
 }
 
 export function renderVillageProductionForeground(scene: Phaser.Scene): void {
@@ -126,17 +137,18 @@ export function renderVillageProductionForeground(scene: Phaser.Scene): void {
 }
 
 export function renderTavernProductionBackground(scene: Phaser.Scene): boolean {
-  if (renderTavernPrototypeBackground(scene)) return true;
-
-  if (!currentReadiness.tavern.ready || !scene.textures.exists(KEYS.tavernBackground)) {
-    markSceneFallback("tavern", currentReadiness.tavern.ready ? ["texture:tavern.background"] : []);
-    return false;
+  if (currentReadiness.tavern.ready && scene.textures.exists(KEYS.tavernBackground)) {
+    addFullCanvasLayer(scene, KEYS.tavernBackground, -20);
+    document.body.dataset.artMode = "production";
+    document.body.dataset.tavernArt = "production";
+    return true;
   }
 
-  addFullCanvasLayer(scene, KEYS.tavernBackground, -20);
-  document.body.dataset.artMode = "production";
-  document.body.dataset.tavernArt = "production";
-  return true;
+  const runtimeMissing = currentReadiness.tavern.ready ? ["texture:tavern.background"] : [];
+  if (renderTavernPrototypeBackground(scene)) return true;
+
+  markSceneFallback("tavern", runtimeMissing);
+  return false;
 }
 
 export function renderTavernProductionForeground(scene: Phaser.Scene): void {
@@ -146,51 +158,45 @@ export function renderTavernProductionForeground(scene: Phaser.Scene): void {
 }
 
 export function createProductionPlayer(scene: Phaser.Scene, x: number, y: number): Phaser.GameObjects.Image | null {
-  if (document.body.dataset.artMode === "prototype") {
-    const prototype = createPrototypePlayer(scene, x, y);
-    if (prototype) return prototype;
+  if (currentReadiness.player && scene.textures.exists(KEYS.player)) {
+    document.body.dataset.playerArt = "production";
+    return scene.add.image(x, y, KEYS.player)
+      .setOrigin(0.5, 0.93)
+      .setDisplaySize(48, 72)
+      .setDepth(20);
   }
-  if (!currentReadiness.player || !scene.textures.exists(KEYS.player)) {
-    if (currentReadiness.player) document.body.dataset.playerArt = "fallback-load-error";
-    return null;
-  }
-  document.body.dataset.playerArt = "production";
-  return scene.add.image(x, y, KEYS.player)
-    .setOrigin(0.5, 0.93)
-    .setDisplaySize(48, 72)
-    .setDepth(20);
+  if (currentReadiness.player) document.body.dataset.playerArt = "fallback-load-error";
+  const prototype = createPrototypePlayer(scene, x, y);
+  if (prototype) return prototype;
+  return null;
 }
 
 export function createProductionOren(scene: Phaser.Scene, x: number, y: number): Phaser.GameObjects.Image | null {
-  if (document.body.dataset.artMode === "prototype") {
-    const prototype = createPrototypeOren(scene, x, y);
-    if (prototype) return prototype;
+  if (currentReadiness.oren && scene.textures.exists(KEYS.oren)) {
+    document.body.dataset.orenArt = "production";
+    return scene.add.image(x, y, KEYS.oren)
+      .setOrigin(0.5, 0.93)
+      .setDisplaySize(64, 88)
+      .setDepth(18);
   }
-  if (!currentReadiness.oren || !scene.textures.exists(KEYS.oren)) {
-    if (currentReadiness.oren) document.body.dataset.orenArt = "fallback-load-error";
-    return null;
-  }
-  document.body.dataset.orenArt = "production";
-  return scene.add.image(x, y, KEYS.oren)
-    .setOrigin(0.5, 0.93)
-    .setDisplaySize(64, 88)
-    .setDepth(18);
+  if (currentReadiness.oren) document.body.dataset.orenArt = "fallback-load-error";
+  const prototype = createPrototypeOren(scene, x, y);
+  if (prototype) return prototype;
+  return null;
 }
 
 export function createProductionFirewood(scene: Phaser.Scene, x: number, y: number): Phaser.GameObjects.Image | null {
-  if (document.body.dataset.artMode === "prototype") {
-    const prototype = createPrototypeFirewood(scene, x, y);
-    if (prototype) return prototype;
+  if (currentReadiness.firewood && scene.textures.exists(KEYS.firewood)) {
+    document.body.dataset.firewoodArt = "production";
+    return scene.add.image(x, y, KEYS.firewood)
+      .setOrigin(0.5, 0.5)
+      .setDisplaySize(44, 29)
+      .setDepth(12);
   }
-  if (!currentReadiness.firewood || !scene.textures.exists(KEYS.firewood)) {
-    if (currentReadiness.firewood) document.body.dataset.firewoodArt = "fallback-load-error";
-    return null;
-  }
-  document.body.dataset.firewoodArt = "production";
-  return scene.add.image(x, y, KEYS.firewood)
-    .setOrigin(0.5, 0.5)
-    .setDisplaySize(44, 29)
-    .setDepth(12);
+  if (currentReadiness.firewood) document.body.dataset.firewoodArt = "fallback-load-error";
+  const prototype = createPrototypeFirewood(scene, x, y);
+  if (prototype) return prototype;
+  return null;
 }
 
 function publishManifestDiagnostics(): void {

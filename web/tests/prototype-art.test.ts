@@ -44,13 +44,33 @@ test("checked-in prototype art is complete and non-trivial", () => {
   assert.deepEqual(provenance.external_assets, []);
 });
 
-test("runtime bridge gives complete prototype art precedence without deleting existing fallbacks", () => {
+test("runtime bridge prefers fully ready production scenes and keeps prototype as fallback", () => {
   const source = readFileSync(new URL("../src/productionArt.ts", import.meta.url), "utf8");
   const prototypeRuntime = readFileSync(new URL("../src/prototypeArt.ts", import.meta.url), "utf8");
+
   assert.match(source, /preloadVillagePrototypeArt\(scene\)/);
   assert.match(source, /preloadTavernPrototypeArt\(scene\)/);
-  assert.match(source, /if \(renderVillagePrototypeBackground\(scene\)\) return true;/);
-  assert.match(source, /if \(renderTavernPrototypeBackground\(scene\)\) return true;/);
+
+  const villageReadyGate = source.indexOf("if (fullReady) {");
+  const villagePrototypeFallback = source.indexOf("if (renderVillagePrototypeBackground(scene)) return true;");
+  assert.ok(villageReadyGate >= 0, "village must have an explicit fully-ready production gate");
+  assert.ok(villagePrototypeFallback >= 0, "village must retain the complete prototype fallback");
+  assert.ok(
+    villageReadyGate < villagePrototypeFallback,
+    "fully ready village production art must render before the prototype fallback"
+  );
+
+  const tavernReadyGate = source.indexOf(
+    "if (currentReadiness.tavern.ready && scene.textures.exists(KEYS.tavernBackground)) {"
+  );
+  const tavernPrototypeFallback = source.indexOf("if (renderTavernPrototypeBackground(scene)) return true;");
+  assert.ok(tavernReadyGate >= 0, "tavern must have an explicit loaded production gate");
+  assert.ok(tavernPrototypeFallback >= 0, "tavern must retain the complete prototype fallback");
+  assert.ok(
+    tavernReadyGate < tavernPrototypeFallback,
+    "loaded tavern production art must render before the prototype fallback"
+  );
+
   assert.match(source, /document\.body\.dataset\.villageArt === "prototype"/);
   assert.match(source, /document\.body\.dataset\.tavernArt === "prototype"/);
   assert.match(prototypeRuntime, /scene\.load\.svg\(key, prototypeAssetUrl\(path\)\)/);

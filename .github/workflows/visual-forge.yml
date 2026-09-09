@@ -51,4 +51,4 @@ jobs:
           name: visual-forge-preview
           path: visual-forge-preview.png
           if-no-files-found: error
-          retention-days: 7
+          retention-days: 3

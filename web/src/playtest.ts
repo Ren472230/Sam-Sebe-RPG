@@ -1,0 +1,282 @@
+import { GameApi } from "./api";
+import {
+  clientErrorText,
+  postPlaytestEvent,
+  type PlaytestClientEventType
+} from "./playtestClient";
+
+const SESSION_KEY = "samseberpg.playtest.session";
+const STARTED_KEY = "samseberpg.playtest.started";
+const sessionId = existingOrNewSessionId();
+
+type PendingEvent = {
+  event_type: PlaytestClientEventType;
+  success: boolean;
+  summary: string;
+  evidence?: Record<string, unknown>;
+};
+
+type PlaytestReport = {
+  markdown: string;
+  result?: string;
+};
+
+let playerId: string | null = null;
+let ready = false;
+const pending: PendingEvent[] = [];
+const originalConsoleError = console.error.bind(console);
+
+document.body.dataset.playtestSession = sessionId;
+
+console.error = (...args: unknown[]): void => {
+  record("CONSOLE_ERROR", false, args.map(clientErrorText).join(" "));
+  originalConsoleError(...args);
+};
+
+window.addEventListener("error", (event) => {
+  record("CLIENT_ERROR", false, clientErrorText(event.error ?? event.message), {
+    filename: event.filename || undefined,
+    line: event.lineno || undefined,
+    column: event.colno || undefined
+  });
+});
+
+window.addEventListener("unhandledrejection", (event) => {
+  record("UNHANDLED_REJECTION", false, clientErrorText(event.reason));
+});
+
+document.addEventListener("samseberpg:dialogue-result", (event) => {
+  if (!(event instanceof CustomEvent)) return;
+  const detail = event.detail as { npc_id?: unknown; used_fallback?: unknown };
+  if (typeof detail?.npc_id !== "string" || typeof detail.used_fallback !== "boolean") return;
+  record(
+    "DIALOGUE_RESULT",
+    true,
+    "Dialogue response received",
+    { npc_id: detail.npc_id, used_fallback: detail.used_fallback }
+  );
+});
+
+let lastScene: string | null = null;
+let dialogueWasOpen = false;
+const observer = new MutationObserver(() => {
+  observeScene();
+  observeDialogue();
+});
+observer.observe(document.body, {
+  subtree: true,
+  childList: true,
+  attributes: true,
+  attributeFilter: ["data-scene", "hidden"]
+});
+observeScene();
+observeDialogue();
+bindReportExport();
+
+void initialize();
+
+async function initialize(): Promise<void> {
+  const api = new GameApi();
+  let backendHealthy = false;
+  try {
+    backendHealthy = await api.health();
+    playerId = await api.createSession("Ren");
+    const snapshot = await api.getState(playerId);
+    await recordSessionBoundary(snapshot.world_pulse.tick, snapshot.world.location_id);
+    ready = true;
+    await flushPending();
+
+    const firstPlayableFrame = await waitForPlayableFrame(12_000);
+    await send({
+      event_type: "GAME_BOOT",
+      success: backendHealthy && firstPlayableFrame,
+      summary: firstPlayableFrame ? "Playable frame rendered" : "Playable frame did not render",
+      evidence: {
+        backend_healthy: backendHealthy,
+        first_playable_frame: firstPlayableFrame,
+        scene: document.body.dataset.scene ?? null
+      }
+    });
+  } catch (error) {
+    if (playerId !== null && sessionStorage.getItem(STARTED_KEY) !== "1") {
+      await safePost({
+        event_type: "SESSION_START",
+        success: true,
+        summary: "Playtest session started before boot failure",
+        evidence: { world_tick: 0 }
+      });
+      sessionStorage.setItem(STARTED_KEY, "1");
+    }
+    ready = playerId !== null;
+    await flushPending();
+    if (playerId !== null) {
+      await safePost({
+        event_type: "GAME_BOOT",
+        success: false,
+        summary: clientErrorText(error),
+        evidence: {
+          backend_healthy: backendHealthy,
+          first_playable_frame: false
+        }
+      });
+    }
+  }
+}
+
+async function recordSessionBoundary(worldTick: number, locationId: string): Promise<void> {
+  if (sessionStorage.getItem(STARTED_KEY) === "1") {
+    await safePost({
+      event_type: "PAGE_RELOAD",
+      success: true,
+      summary: "Page reloaded",
+      evidence: { world_tick: worldTick, location_id: locationId }
+    });
+    return;
+  }
+
+  await safePost({
+    event_type: "SESSION_START",
+    success: true,
+    summary: "Autonomous playtest session started",
+    evidence: { world_tick: worldTick, location_id: locationId }
+  });
+  sessionStorage.setItem(STARTED_KEY, "1");
+}
+
+function record(
+  eventType: PlaytestClientEventType,
+  success: boolean,
+  summary: string,
+  evidence?: Record<string, unknown>
+): void {
+  const event = { event_type: eventType, success, summary, evidence };
+  if (!ready || playerId === null) {
+    pending.push(event);
+    return;
+  }
+  void safePost(event);
+}
+
+async function flushPending(): Promise<void> {
+  if (!ready || playerId === null) return;
+  const queued = pending.splice(0, pending.length);
+  for (const event of queued) {
+    await safePost(event);
+  }
+}
+
+async function send(event: PendingEvent): Promise<void> {
+  if (playerId === null) return;
+  await postPlaytestEvent({
+    session_id: sessionId,
+    player_id: playerId,
+    event_type: event.event_type,
+    success: event.success,
+    summary: event.summary,
+    evidence: event.evidence
+  });
+}
+
+async function safePost(event: PendingEvent): Promise<void> {
+  try {
+    await send(event);
+  } catch {
+    // Telemetry must never become a new gameplay failure mode.
+  }
+}
+
+function bindReportExport(): void {
+  const button = document.getElementById("playtest-export");
+  const status = document.getElementById("playtest-export-status");
+  if (!(button instanceof HTMLButtonElement) || !(status instanceof HTMLElement)) return;
+
+  button.addEventListener("click", () => {
+    void exportCurrentReport(button, status);
+  });
+}
+
+async function exportCurrentReport(button: HTMLButtonElement, status: HTMLElement): Promise<void> {
+  button.disabled = true;
+  status.textContent = "Формирую отчёт…";
+  try {
+    const response = await fetch(`/api/playtest/report/${encodeURIComponent(sessionId)}`);
+    if (!response.ok) throw new Error(`report request failed: ${response.status}`);
+    const payload: unknown = await response.json();
+    if (!isPlaytestReport(payload)) throw new Error("playtest report is malformed");
+
+    const blob = new Blob([payload.markdown], { type: "text/markdown;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `sam-sebe-rpg-playtest-${safeFilenamePart(sessionId)}.md`;
+    document.body.append(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 0);
+
+    status.textContent = payload.result
+      ? `Отчёт скачан · результат: ${payload.result}`
+      : "Отчёт скачан";
+  } catch {
+    status.textContent = "Не удалось скачать отчёт. Попробуйте ещё раз после начала игры.";
+  } finally {
+    button.disabled = false;
+  }
+}
+
+function isPlaytestReport(value: unknown): value is PlaytestReport {
+  if (typeof value !== "object" || value === null) return false;
+  const report = value as Record<string, unknown>;
+  return typeof report.markdown === "string" && report.markdown.length > 0
+    && (report.result === undefined || typeof report.result === "string");
+}
+
+function safeFilenamePart(value: string): string {
+  return value.replace(/[^a-zA-Z0-9._-]+/g, "-");
+}
+
+function observeScene(): void {
+  const scene = document.body.dataset.scene;
+  if (!scene || scene === lastScene) return;
+  lastScene = scene;
+  record("SCENE_ENTER", true, `Entered scene ${scene}`, { scene });
+}
+
+function observeDialogue(): void {
+  const dialogue = document.getElementById("dialogue");
+  if (!dialogue) return;
+  const open = !dialogue.hidden;
+  if (open && !dialogueWasOpen) {
+    const heading = dialogue.querySelector("h2")?.textContent?.trim() ?? "";
+    record("DIALOGUE_OPEN", true, heading ? `Opened dialogue with ${heading}` : "Opened dialogue", {
+      npc_id: heading === "Орен" ? "npc_oren" : null,
+      heading
+    });
+  }
+  dialogueWasOpen = open;
+}
+
+async function waitForPlayableFrame(timeoutMs: number): Promise<boolean> {
+  const started = performance.now();
+  while (performance.now() - started < timeoutMs) {
+    const canvas = document.querySelector<HTMLCanvasElement>("#game canvas");
+    const scene = document.body.dataset.scene;
+    if (canvas && canvas.width > 0 && canvas.height > 0 && (scene === "village" || scene === "tavern")) {
+      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+      return true;
+    }
+    await new Promise((resolve) => window.setTimeout(resolve, 50));
+  }
+  return false;
+}
+
+function existingOrNewSessionId(): string {
+  const existing = sessionStorage.getItem(SESSION_KEY);
+  if (existing) return existing;
+  const generated = typeof crypto !== "undefined" && "randomUUID" in crypto
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  const value = `playtest-${generated}`;
+  sessionStorage.setItem(SESSION_KEY, value);
+  return value;
+}
