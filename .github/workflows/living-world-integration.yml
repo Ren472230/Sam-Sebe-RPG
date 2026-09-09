@@ -79,9 +79,7 @@ jobs:
         run: npm run build
       - name: Install Chromium
         working-directory: web
-        run: |
-          sudo rm -f /etc/apt/sources.list.d/google-chrome.list
-          npx playwright install --with-deps chromium
+        run: npx playwright install chromium
       - name: Real browser critical route
         working-directory: web
         env:
