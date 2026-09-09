@@ -97,7 +97,7 @@ export class TavernScene extends Phaser.Scene {
       const name = npcName(visitor.actor_id, visitor.name);
       this.offerInteraction(
         { kind: "npc", actorId: visitor.actor_id, name },
-        actionControlHint(`поговорить с ${name}`)
+        actionControlHint(`поговорить с ${npcInstrumentalName(visitor.actor_id, visitor.name)}`)
       );
     } else if (distance(this.player.x, this.player.y, this.oren.x, this.oren.y) < 85) {
       this.offerInteraction(
@@ -240,6 +240,14 @@ function npcName(actorId: string, fallback: string): string {
   if (actorId === "npc_kaspar") return "Каспар";
   if (actorId === "npc_wayfarer_1") return "Тален";
   if (actorId === "npc_oren") return "Орен";
+  return fallback;
+}
+
+function npcInstrumentalName(actorId: string, fallback: string): string {
+  if (actorId === "npc_mira") return "Мирой";
+  if (actorId === "npc_kaspar") return "Каспаром";
+  if (actorId === "npc_wayfarer_1") return "Таленом";
+  if (actorId === "npc_oren") return "Ореном";
   return fallback;
 }
 
