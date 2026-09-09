@@ -57,36 +57,41 @@ async function releaseMovementKeys(page: Page): Promise<void> {
   await page.waitForTimeout(50);
 }
 
-async function moveAxisTo(
+async function moveTowardInteraction(
   page: Page,
-  axis: "x" | "y",
-  target: number,
-  tolerance = 8,
+  targetX: number,
+  targetY: number,
+  hintText: string,
   timeout = 10_000
 ): Promise<void> {
   const started = Date.now();
-  let heldKey: string | null = null;
+  const hint = page.locator("#interaction-hint");
   await releaseMovementKeys(page);
-  try {
-    while (Date.now() - started < timeout) {
-      const position = await playerPosition(page);
-      const value = position[axis];
-      if (Number.isFinite(value) && Math.abs(value - target) <= tolerance) return;
-      const key = axis === "x"
-        ? (value < target ? "d" : "a")
-        : (value < target ? "s" : "w");
-      if (heldKey !== key) {
-        if (heldKey) await page.keyboard.up(heldKey);
-        await page.keyboard.down(key);
-        heldKey = key;
-      }
-      await page.waitForTimeout(50);
+
+  while (Date.now() - started < timeout) {
+    if ((await hint.textContent())?.includes(hintText)) return;
+
+    const position = await playerPosition(page);
+    const dx = targetX - position.x;
+    const dy = targetY - position.y;
+    const horizontal = dx >= 0 ? "d" : "a";
+    const vertical = dy >= 0 ? "s" : "w";
+    const keys = Math.abs(dx) >= Math.abs(dy)
+      ? [horizontal, vertical]
+      : [vertical, horizontal];
+
+    for (const key of keys) {
+      await page.keyboard.down(key);
+      await page.waitForTimeout(70);
+      await page.keyboard.up(key);
+      await page.waitForTimeout(35);
+      if ((await hint.textContent())?.includes(hintText)) return;
     }
-  } finally {
-    if (heldKey) await page.keyboard.up(heldKey);
-    await releaseMovementKeys(page);
   }
-  throw new Error(`player did not reach ${axis}=${target}; last=${JSON.stringify(await playerPosition(page))}`);
+
+  throw new Error(
+    `player did not reach interaction ${JSON.stringify(hintText)} near (${targetX}, ${targetY}); last=${JSON.stringify(await playerPosition(page))}`
+  );
 }
 
 test("a real NPC reply reaches the playtest report as neural-or-fallback metadata without dialogue text", async ({ page }, testInfo) => {
@@ -102,8 +107,7 @@ test("a real NPC reply reaches the playtest report as neural-or-fallback metadat
     const sessionId = await body.getAttribute("data-playtest-session");
     expect(sessionId).toBeTruthy();
 
-    await moveAxisTo(page, "x", 650);
-    await moveAxisTo(page, "y", 325);
+    await moveTowardInteraction(page, 650, 325, "поговорить с Ореном");
     await expect(page.locator("#interaction-hint")).toContainText("поговорить с Ореном");
     await page.keyboard.press("e");
 
