@@ -1,10 +1,36 @@
 param(
-    [switch]$Reset
+    [switch]$Reset,
+    [switch]$PromptForOpenAIKey
 )
 
 $ErrorActionPreference = "Stop"
 $Root = Split-Path -Parent $MyInvocation.MyCommand.Path
 Set-Location $Root
+
+if ($PromptForOpenAIKey -and -not $env:OPENAI_API_KEY) {
+    Write-Host ""
+    Write-Host "OpenAI NPC dialogue key is not configured for this process."
+    $SecureKey = Read-Host "Paste OpenAI API key (input is hidden)" -AsSecureString
+    $KeyPtr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($SecureKey)
+    try {
+        $PlainKey = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($KeyPtr)
+        if (-not [string]::IsNullOrWhiteSpace($PlainKey)) {
+            $env:OPENAI_API_KEY = $PlainKey
+            Write-Host "OpenAI NPC dialogue: enabled for this playtest session."
+        }
+        else {
+            Write-Host "OpenAI NPC dialogue: fallback mode (no key supplied)."
+        }
+    }
+    finally {
+        [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($KeyPtr)
+        Remove-Variable PlainKey -ErrorAction SilentlyContinue
+        Remove-Variable SecureKey -ErrorAction SilentlyContinue
+    }
+}
+elseif ($env:OPENAI_API_KEY) {
+    Write-Host "OpenAI NPC dialogue: enabled from existing environment."
+}
 
 if ($Reset) {
     python scripts/reset_stream_slice.py
