@@ -189,3 +189,31 @@ test("390px tavern uses the touch action label near Oren", async ({ page }, test
     await diagnostics.attach(testInfo);
   }
 });
+
+
+test("desktop player talks to Mira only after approaching her and can type Russian ы", async ({ page }, testInfo) => {
+  const diagnostics = installBrowserDiagnostics(page);
+  try {
+    await page.goto("/");
+    await expect(page.locator("body")).toHaveAttribute("data-scene", "village");
+    await expect(page.locator("body")).toHaveAttribute("data-rendered-npc-ids", /npc_mira/);
+    await expect(page.getByRole("button", { name: "Поговорить: Мира", exact: true })).toHaveCount(0);
+
+    const hint = page.locator("#interaction-hint");
+    await moveUntilHint(page, ["w", "a"], "поговорить с Мирой");
+    await expect(hint).toContainText("поговорить с Мирой");
+    await page.keyboard.press("e");
+
+    const dialogue = page.locator("#dialogue");
+    await expect(dialogue).toBeVisible();
+    await expect(dialogue.locator("h2")).toHaveText("Мира");
+    const input = dialogue.locator("textarea");
+    await input.fill("Ты слышишь меня?");
+    await expect(input).toHaveValue("Ты слышишь меня?");
+
+    await page.screenshot({ path: "test-results/spatial-mira-dialogue.png", fullPage: true });
+    diagnostics.assertClean();
+  } finally {
+    await diagnostics.attach(testInfo);
+  }
+});
