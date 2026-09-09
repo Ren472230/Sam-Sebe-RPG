@@ -74,9 +74,11 @@ async function moveAndInteractWhenHint(
 }
 
 async function enterTavernFromVillage(page: Page): Promise<void> {
-  // Go to the right edge first, then approach the door diagonally from the walkable road below.
-  await moveAxisTo(page, "x", 936, 4);
-  await moveAndInteractWhenHint(page, ["w", "a"], "войти в таверну");
+  // Approach the canonical tavern door from the walkable road below. Staying near x=800
+  // reaches the interaction band before the tavern collision rectangle and avoids an
+  // unnecessary detour to the world edge in low-FPS headless runs.
+  await moveAxisTo(page, "x", 800, 12);
+  await moveAndInteractWhenHint(page, ["w"], "войти в таверну");
   await expect(page.locator("body")).toHaveAttribute("data-scene", "tavern");
 }
 

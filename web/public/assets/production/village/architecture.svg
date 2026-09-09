@@ -22,7 +22,7 @@
     <rect x="152" y="118" width="30" height="28" rx="4" fill="#8AF0EA" stroke="#1E232B" stroke-width="3"/>
     <path d="M58 169h134" stroke="#1E232B" stroke-width="3" stroke-dasharray="7 6" opacity="0.4"/>
   </g>
-  <g transform="translate(655 128)">
+  <g transform="translate(702 128)">
     <ellipse cx="120" cy="244" rx="132" ry="24" fill="#0F1318" fill-opacity="0.18"/>
     <rect x="33" y="106" width="174" height="128" fill="#E9E3D6" stroke="#1E232B" stroke-width="4"/>
     <path d="M16 112 120 42 228 112z" fill="#2C3440" stroke="#0F1318" stroke-width="4"/>
