@@ -1,12 +1,12 @@
 {
   "run_id": "2026-09-08-world-ready-autonomous",
   "working_branch": "autotest/world-ready-2026-09-08",
-  "run_cycle": 11,
+  "run_cycle": 12,
   "historical_pr_cycle_marker": 6,
-  "current_champion": "f2a5db77bf89b1bd4f9709fd71b95e4a493fab80",
+  "current_champion": "2f663f298ffaf05f7182a2bddee079c4c4dc9bdf",
   "current_challenger": null,
-  "phase": "ready_for_human_experience_gate",
-  "last_accepted_cycle": "one-click-human-playtest-launcher",
+  "phase": "stabilizing_fresh_zip_launch",
+  "last_accepted_cycle": "real-human-control-stabilization",
   "presentation_context": "Desktop playability and audience readability are the primary experience target; mobile remains a supported fallback target.",
   "blockers": [
     "Local container cannot clone github.com because DNS/network access is blocked; connected GitHub plus repository CI and browser checks are used as the execution and evidence path.",
@@ -47,7 +47,12 @@
       "cycle": 11,
       "feature_commit": "f2a5db77bf89b1bd4f9709fd71b95e4a493fab80",
       "summary": "Added a Windows double-click human-playtest launcher that resets the isolated demo database, waits for the local server, and opens normal player mode with report export available."
+    },
+    {
+      "cycle": 12,
+      "feature_commit": "2f663f298ffaf05f7182a2bddee079c4c4dc9bdf",
+      "summary": "Used the first real human FAIL report to fix text-entry key capture, repeated/missed E interactions, Oren auto-submit, ghost NPC talk controls, visible NPC materialization, canonical visual re-anchoring, and misleading untested-reload report semantics. All six mandatory gates passed on the stabilized head."
     }
   ],
-  "next_main_constraint": "Run the first fresh Human Experience Gate using PLAY_SAM_SEBE_RPG.bat, collect the downloaded Markdown report plus subjective player feedback, then rank the next change from observed evidence. Production visual completeness remains a known follow-up constraint."
+  "next_main_constraint": "A fresh downloaded ZIP is not truly one-click yet: the first human run hit ModuleNotFoundError for samseberpg and required manual pip/npm installation. Make PLAY_SAM_SEBE_RPG bootstrap missing local dependencies idempotently and keep startup failures visible."
 }
