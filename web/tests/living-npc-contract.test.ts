@@ -121,6 +121,13 @@ test("dialogue panel exposes generic NPC free-text interaction", async () => {
   assert.match(source, /npcId/);
 });
 
+test("opening Oren does not auto-submit text before the player can type", async () => {
+  const source = await readFile(new URL("../src/ui/DialoguePanel.ts", import.meta.url), "utf8");
+  assert.match(source, /async openOren\(\): Promise<void>/);
+  assert.match(source, /await this\.openNpc\("npc_oren"\);/);
+  assert.doesNotMatch(source, /Привет\. Есть работа\?/);
+});
+
 test("world pulse exposes canonical Living NPC controls", async () => {
   const source = await readFile(new URL("../src/main.ts", import.meta.url), "utf8");
   assert.match(source, /openNpc/);
