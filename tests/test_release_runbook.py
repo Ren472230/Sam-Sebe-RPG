@@ -35,3 +35,16 @@ def test_human_playtest_has_one_click_normal_mode_launcher() -> None:
 
     readme = (root / "README.md").read_text(encoding="utf-8")
     assert "PLAY_SAM_SEBE_RPG.bat" in readme
+
+
+def test_human_playtest_securely_prompts_for_openai_key_when_missing() -> None:
+    root = Path(__file__).resolve().parents[1]
+    launcher = (root / "PLAY_SAM_SEBE_RPG.bat").read_text(encoding="utf-8")
+    runner = (root / "RUN_STREAM_SLICE.ps1").read_text(encoding="utf-8")
+
+    assert "-PromptForOpenAIKey" in launcher
+    assert "[switch]$PromptForOpenAIKey" in runner
+    assert "Read-Host" in runner
+    assert "-AsSecureString" in runner
+    assert "SecureStringToBSTR" in runner
+    assert "$env:OPENAI_API_KEY" in runner
