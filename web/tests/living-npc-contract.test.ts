@@ -144,13 +144,14 @@ test("talk actions are derived from actors actually visible to the player", asyn
   assert.doesNotMatch(source, /for \(const npcId of snapshot\.living_npc\.nearby_npc_ids\)/);
 });
 
-test("gameplay keyboard yields to text entry and uses one-shot interaction keys", async () => {
+test("gameplay keyboard yields to text entry and handles E exactly once without missing quick presses", async () => {
   for (const filename of ["VillageScene.ts", "TavernScene.ts"]) {
     const source = await readFile(new URL(`../src/scenes/${filename}`, import.meta.url), "utf8");
     assert.match(source, /addKeys\("W,A,S,D,E",\s*false\)/, `${filename} must not capture text-entry keys globally`);
     assert.match(source, /isTextEntryActive\(\)/, `${filename} must suspend gameplay keys while typing`);
-    assert.match(source, /Phaser\.Input\.Keyboard\.JustDown\(this\.keys\.E\)/, `${filename} must trigger E once per press`);
-    assert.doesNotMatch(source, /keyboard\.on\("keydown-E"/, `${filename} must not reopen dialogue on OS key repeat`);
+    assert.match(source, /keyboard\.on\("keydown-E",\s*\(event: KeyboardEvent\)/, `${filename} must react to the actual key edge rather than frame polling`);
+    assert.match(source, /event\.repeat\s*\|\|\s*isTextEntryActive\(\)/, `${filename} must ignore OS key repeat and text entry`);
+    assert.doesNotMatch(source, /Phaser\.Input\.Keyboard\.JustDown\(this\.keys\.E\)/, `${filename} must not miss quick E presses between frames`);
   }
 });
 
