@@ -230,9 +230,12 @@ function bindWorldPulse(state: ClientState, dialogue: DialoguePanel, streamMode:
     }
 
     livingActions.replaceChildren();
-    for (const npcId of snapshot.living_npc.nearby_npc_ids) {
-      livingActions.append(actionButton(`Поговорить: ${actorDisplayName(npcId, npcId)}`, () => {
-        void dialogue.openNpc(npcId);
+    const talkableNpcs = snapshot.world.visible_actors.filter(
+      (actor) => actor.actor_type === "npc"
+    );
+    for (const actor of talkableNpcs) {
+      livingActions.append(actionButton(`Поговорить: ${actorDisplayName(actor.actor_id, actor.name)}`, () => {
+        void dialogue.openNpc(actor.actor_id);
       }));
     }
     for (const destination of snapshot.living_npc.adjacent_locations) {
