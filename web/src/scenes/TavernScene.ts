@@ -49,6 +49,10 @@ export class TavernScene extends Phaser.Scene {
     const keyboard = this.input.keyboard;
     if (!keyboard) throw new Error("Keyboard input unavailable");
     this.keys = keyboard.addKeys("W,A,S,D,E", false);
+    keyboard.on("keydown-E", (event: KeyboardEvent) => {
+      if (event.repeat || isTextEntryActive()) return;
+      void this.interact();
+    });
     this.events.once("shutdown", () => {
       this.clearInteraction();
       this.hint.textContent = "";
@@ -57,8 +61,6 @@ export class TavernScene extends Phaser.Scene {
 
   update(_time: number, delta: number): void {
     if (isTextEntryActive()) return;
-
-    if (Phaser.Input.Keyboard.JustDown(this.keys.E)) void this.interact();
 
     const speed = 0.22 * Math.min(delta, 50);
     let dx = 0;
