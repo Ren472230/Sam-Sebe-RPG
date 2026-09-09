@@ -48,3 +48,19 @@ def test_human_playtest_securely_prompts_for_openai_key_when_missing() -> None:
     assert "-AsSecureString" in runner
     assert "SecureStringToBSTR" in runner
     assert "$env:OPENAI_API_KEY" in runner
+
+
+def test_fresh_zip_launcher_bootstraps_missing_dependencies_and_keeps_errors_visible() -> None:
+    root = Path(__file__).resolve().parents[1]
+    launcher = (root / "PLAY_SAM_SEBE_RPG.bat").read_text(encoding="utf-8")
+    runner = (root / "RUN_STREAM_SLICE.ps1").read_text(encoding="utf-8")
+
+    assert "powershell.exe -NoExit" in launcher
+    assert 'Get-Command python' in runner
+    assert 'python -c "import samseberpg"' in runner
+    assert 'python -m pip install -e ".[dev]"' in runner
+    assert 'Get-Command npm' in runner
+    assert 'Test-Path (Join-Path $Root "web/node_modules")' in runner
+    assert 'npm install --no-audit --no-fund' in runner
+    assert "Installing local Python package" in runner
+    assert "Installing web dependencies" in runner
