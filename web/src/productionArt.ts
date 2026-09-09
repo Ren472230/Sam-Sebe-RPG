@@ -87,7 +87,7 @@ export function preloadTavernProductionArt(scene: Phaser.Scene): void {
 }
 
 export function renderVillageProductionBackground(scene: Phaser.Scene): boolean {
-  if (renderVillagePrototypeBackground(scene)) return true;
+  if (!currentReadiness.village.ready && renderVillagePrototypeBackground(scene)) return true;
 
   const declared = villageLayerNames().filter((layer) => Boolean(currentManifest.village.layers[layer]));
   const loaded = declared.filter((layer) => scene.textures.exists(VILLAGE_KEYS[layer]));
@@ -126,7 +126,7 @@ export function renderVillageProductionForeground(scene: Phaser.Scene): void {
 }
 
 export function renderTavernProductionBackground(scene: Phaser.Scene): boolean {
-  if (renderTavernPrototypeBackground(scene)) return true;
+  if (!currentReadiness.tavern.ready && renderTavernPrototypeBackground(scene)) return true;
 
   if (!currentReadiness.tavern.ready || !scene.textures.exists(KEYS.tavernBackground)) {
     markSceneFallback("tavern", currentReadiness.tavern.ready ? ["texture:tavern.background"] : []);
@@ -242,6 +242,10 @@ function villageLayerNames(): VillageLayerName[] {
 
 function queueImage(scene: Phaser.Scene, key: string, path?: string): void {
   if (!path || scene.textures.exists(key)) return;
+  if (path.toLowerCase().endsWith(".svg")) {
+    scene.load.svg(key, assetUrl(path));
+    return;
+  }
   scene.load.image(key, assetUrl(path));
 }
 
