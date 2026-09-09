@@ -10,6 +10,7 @@ ALLOWED_CLIENT_EVENTS = {
     "GAME_BOOT",
     "SCENE_ENTER",
     "DIALOGUE_OPEN",
+    "DIALOGUE_RESULT",
     "PAGE_RELOAD",
     "CLIENT_ERROR",
     "CONSOLE_ERROR",
@@ -62,6 +63,8 @@ class PlaytestService:
             raise ValueError("session_id is required")
         if event_type not in ALLOWED_CLIENT_EVENTS:
             raise ValueError(f"unsupported playtest event: {event_type}")
+        if event_type == "DIALOGUE_RESULT":
+            summary, evidence = _dialogue_result_payload(evidence)
         occurred_at = _timestamp(self.clock.now())
         payload = json.dumps(evidence or {}, separators=(",", ":"), sort_keys=True)
         with self.db.connect() as conn:
@@ -171,6 +174,9 @@ class PlaytestService:
             for event in client_events
             if event["event_type"] == "GAME_BOOT" and not event["success"]
         ]
+        dialogue_events = [
+            event for event in client_events if event["event_type"] == "DIALOGUE_RESULT"
+        ]
 
         boot_event = next(
             (
@@ -240,6 +246,17 @@ class PlaytestService:
             "meaningful_events_observed": len(world_events),
             "advanced": steps_advanced > 0,
             "meaningful_events": len(world_events) > 0,
+        }
+        dialogue = {
+            "responses_observed": len(dialogue_events),
+            "neural_responses": sum(
+                event["evidence"].get("used_fallback") is False
+                for event in dialogue_events
+            ),
+            "fallback_responses": sum(
+                event["evidence"].get("used_fallback") is True
+                for event in dialogue_events
+            ),
         }
         errors = {
             "expected_gameplay_failures": len(expected_failures),
@@ -322,6 +339,7 @@ class PlaytestService:
             "boot": boot,
             "player_route": route,
             "living_world": living,
+            "dialogue": dialogue,
             "errors": errors,
             "checks": checks,
             "timeline": timeline,
@@ -414,6 +432,18 @@ def _wait_ticks(event: dict[str, Any]) -> int:
     return _int_value(modifiers.get("ticks"), 1)
 
 
+def _dialogue_result_payload(evidence: dict[str, Any] | None) -> tuple[str, dict[str, Any]]:
+    source = evidence if isinstance(evidence, dict) else {}
+    clean: dict[str, Any] = {}
+    npc_id = source.get("npc_id")
+    used_fallback = source.get("used_fallback")
+    if isinstance(npc_id, str) and npc_id.strip():
+        clean["npc_id"] = npc_id.strip()
+    if type(used_fallback) is bool:
+        clean["used_fallback"] = used_fallback
+    return "Dialogue response received", clean
+
+
 def _json_object(value: Any) -> dict[str, Any]:
     try:
         parsed = json.loads(str(value))
@@ -444,6 +474,7 @@ def _render_markdown(report: dict[str, Any]) -> str:
         return f"{'✓' if item['passed'] else '✗'} {item['label']}"
 
     living = report["living_world"]
+    dialogue = report["dialogue"]
     errors = report["errors"]
     timeline_lines = []
     for event in report["timeline"]:
@@ -481,6 +512,11 @@ def _render_markdown(report: dict[str, Any]) -> str:
             "## LIVING WORLD",
             f"{'✓' if living['advanced'] else '✗'} advanced {living['steps_advanced']} simulation step(s)",
             f"{'✓' if living['meaningful_events'] else '✗'} meaningful world events observed: {living['meaningful_events_observed']}",
+            "",
+            "## DIALOGUE PROVIDER",
+            f"Responses observed: {dialogue['responses_observed']}",
+            f"Neural responses: {dialogue['neural_responses']}",
+            f"Fallback responses: {dialogue['fallback_responses']}",
             "",
             "## ERRORS",
             f"Expected gameplay failures: {errors['expected_gameplay_failures']}",
