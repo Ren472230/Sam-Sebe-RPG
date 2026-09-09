@@ -29,7 +29,7 @@ async function bootstrap(): Promise<void> {
   const dialogue = new DialoguePanel(state);
   setRuntime({ api, state, dialogue });
   bindHud(state, streamMode);
-  bindWorldPulse(state, dialogue, streamMode);
+  bindWorldPulse(state, streamMode);
   if (streamMode) bindStreamStatus(state);
 
   const initialScenes = state.snapshot?.world.location_id === "tavern_interior"
@@ -154,7 +154,7 @@ function streamActivityLabel(snapshot: GameSnapshot, actorId: string, fallback: 
   return `${name} занят своими делами`;
 }
 
-function bindWorldPulse(state: ClientState, dialogue: DialoguePanel, streamMode: boolean): void {
+function bindWorldPulse(state: ClientState, streamMode: boolean): void {
   const root = document.getElementById("world-pulse");
   const tick = document.getElementById("world-pulse-tick");
   const nearby = document.getElementById("world-pulse-nearby");
@@ -230,14 +230,6 @@ function bindWorldPulse(state: ClientState, dialogue: DialoguePanel, streamMode:
     }
 
     livingActions.replaceChildren();
-    const talkableNpcs = snapshot.world.visible_actors.filter(
-      (actor) => actor.actor_type === "npc"
-    );
-    for (const actor of talkableNpcs) {
-      livingActions.append(actionButton(`Поговорить: ${actorDisplayName(actor.actor_id, actor.name)}`, () => {
-        void dialogue.openNpc(actor.actor_id);
-      }));
-    }
     for (const destination of snapshot.living_npc.adjacent_locations) {
       livingActions.append(actionButton(`Идти: ${locationName(destination.id, destination.name)}`, () => {
         void runAction({
