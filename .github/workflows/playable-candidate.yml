@@ -61,7 +61,9 @@ jobs:
         run: npm run build
       - name: Install Chromium
         working-directory: web
-        run: npx playwright install --with-deps chromium
+        run: |
+          sudo rm -f /etc/apt/sources.list.d/google-chrome.list
+          npx playwright install --with-deps chromium
       - name: Reset browser database
         run: rm -f data/e2e-world.sqlite3
       - name: Real browser integrated route

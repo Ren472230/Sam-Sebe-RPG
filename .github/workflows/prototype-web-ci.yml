@@ -41,7 +41,9 @@ jobs:
         run: npm install --no-audit --no-fund
 
       - name: Install Playwright Chromium
-        run: npx playwright install --with-deps chromium
+        run: |
+          sudo rm -f /etc/apt/sources.list.d/google-chrome.list
+          npx playwright install --with-deps chromium
 
       - name: Run web contract tests
         run: npm run test:contract
