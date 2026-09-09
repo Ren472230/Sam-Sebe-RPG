@@ -230,3 +230,23 @@ def test_console_error_turns_reconstructed_session_into_fail(tmp_path: Path) -> 
     assert report["verdict"] == "NOT SAFE FOR HUMAN EXPERIENCE TEST"
     assert report["errors"]["console_errors"] == 1
     assert report["boot"]["no_fatal_console_errors"] is False
+
+
+def test_unattempted_reload_is_not_reported_as_a_persistence_failure(tmp_path: Path) -> None:
+    service, _, _ = _build_completed_session(tmp_path)
+    with service.db.connect() as conn:
+        conn.execute(
+            "DELETE FROM playtest_events WHERE session_id = ? AND event_type = 'PAGE_RELOAD'",
+            ("session-pass",),
+        )
+
+    report = service.report("session-pass")
+
+    assert report["player_route"]["persistence_after_reload"] is None
+    persistence_check = next(
+        item for item in report["checks"] if item["key"] == "persistence_after_reload"
+    )
+    assert persistence_check["passed"] is None
+    assert report["result"] == "PASS"
+    assert report["verdict"] == "SAFE FOR HUMAN EXPERIENCE TEST"
+    assert "– persistence after reload: not tested" in report["markdown"]
