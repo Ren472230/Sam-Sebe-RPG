@@ -7,6 +7,38 @@ $ErrorActionPreference = "Stop"
 $Root = Split-Path -Parent $MyInvocation.MyCommand.Path
 Set-Location $Root
 
+if (-not (Get-Command python -ErrorAction SilentlyContinue)) {
+    throw "Python 3.12+ was not found. Install Python, reopen this launcher, and try again."
+}
+
+python -c "import samseberpg" 2>$null
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "Installing local Python package and test/runtime dependencies..."
+    python -m pip install -e ".[dev]"
+    if ($LASTEXITCODE -ne 0) {
+        throw "Python dependency installation failed. Review the pip output above."
+    }
+}
+
+if (-not (Get-Command npm -ErrorAction SilentlyContinue)) {
+    throw "Node.js 22+ / npm was not found. Install Node.js, reopen this launcher, and try again."
+}
+
+$WebNodeModules = Join-Path $Root "web/node_modules"
+if (-not (Test-Path (Join-Path $Root "web/node_modules"))) {
+    Write-Host "Installing web dependencies..."
+    Push-Location (Join-Path $Root "web")
+    try {
+        npm install --no-audit --no-fund
+        if ($LASTEXITCODE -ne 0) {
+            throw "Web dependency installation failed. Review the npm output above."
+        }
+    }
+    finally {
+        Pop-Location
+    }
+}
+
 if ($PromptForOpenAIKey -and -not $env:OPENAI_API_KEY) {
     Write-Host ""
     Write-Host "OpenAI NPC dialogue key is not configured for this process."
