@@ -23,8 +23,8 @@ export class DialoguePanel {
     if (initialText?.trim()) await this.send(initialText.trim());
   }
 
-  async openOren(userText = "Привет. Есть работа?"): Promise<void> {
-    await this.openNpc("npc_oren", userText);
+  async openOren(): Promise<void> {
+    await this.openNpc("npc_oren");
   }
 
   close(): void {
