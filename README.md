@@ -31,9 +31,25 @@ This keeps the playable candidate visually coherent without claiming unfinished 
 ### Requirements
 
 - Python 3.12+
-- Node.js 22+
+- Node.js 22+ with npm
 
-Install dependencies from the repository root:
+### Human playtest
+
+On a freshly downloaded ZIP, double-click:
+
+`PLAY_SAM_SEBE_RPG.bat`
+
+The launcher now bootstraps missing local project dependencies automatically: it installs the editable Python package only when `samseberpg` is not importable, and runs `npm install` only when `web/node_modules` is absent. It then resets only the isolated Stream Slice database, runs the existing preflight, waits for the local web server, and opens the normal player-facing game at:
+
+`http://127.0.0.1:5173/`
+
+If startup fails, the `Sam-Sebe-RPG server` PowerShell window stays open so the actual error remains readable instead of disappearing.
+
+If `OPENAI_API_KEY` is not already present in the process, the playtest launcher asks for it using hidden PowerShell input. The key is kept only in that process and is not written to the repository.
+
+Play naturally. At the end, press **Скачать отчёт теста** in the game and share the downloaded `.md` file for analysis.
+
+Manual dependency installation remains available for development/debugging:
 
 ```powershell
 python -m pip install -e ".[dev]"
@@ -41,18 +57,6 @@ cd web
 npm install
 cd ..
 ```
-
-### Human playtest
-
-After dependencies are installed, double-click:
-
-`PLAY_SAM_SEBE_RPG.bat`
-
-The launcher resets only the isolated Stream Slice database, runs the existing preflight, waits for the local web server, and opens the normal player-facing game at:
-
-`http://127.0.0.1:5173/`
-
-Play naturally. At the end, press **Скачать отчёт теста** in the game and share the downloaded `.md` file for analysis.
 
 ### Reproducible public demo
 
