@@ -128,6 +128,13 @@ test("opening Oren does not auto-submit text before the player can type", async 
   assert.doesNotMatch(source, /Привет\. Есть работа\?/);
 });
 
+test("dialogue success emits provider metadata without reply text", async () => {
+  const source = await readFile(new URL("../src/ui/DialoguePanel.ts", import.meta.url), "utf8");
+  assert.match(source, /samseberpg:dialogue-result/);
+  assert.match(source, /dialogueResultEvidence\(this\.npcId,\s*decision\.used_fallback\)/);
+  assert.doesNotMatch(source, /detail:\s*\{[^}]*text:/s);
+});
+
 test("world pulse keeps canonical world actions but does not offer remote NPC talk buttons", async () => {
   const source = await readFile(new URL("../src/main.ts", import.meta.url), "utf8");
   assert.match(source, /adjacent_locations/);
