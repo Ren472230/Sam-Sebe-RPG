@@ -2,6 +2,52 @@ import { expect, test, type Page } from "@playwright/test";
 
 import { installBrowserDiagnostics } from "./helpers/browser-diagnostics";
 
+type PlayerPosition = { x: number; y: number };
+
+async function playerPosition(page: Page): Promise<PlayerPosition> {
+  return page.evaluate(() => ({
+    x: Number(document.body.dataset.playerX),
+    y: Number(document.body.dataset.playerY)
+  }));
+}
+
+async function releaseMovementKeys(page: Page): Promise<void> {
+  for (const key of ["w", "a", "s", "d"]) await page.keyboard.up(key);
+  await page.waitForTimeout(50);
+}
+
+async function moveAxisTo(
+  page: Page,
+  axis: "x" | "y",
+  target: number,
+  tolerance = 8,
+  timeout = 10_000
+): Promise<void> {
+  const started = Date.now();
+  let heldKey: string | null = null;
+  await releaseMovementKeys(page);
+  try {
+    while (Date.now() - started < timeout) {
+      const position = await playerPosition(page);
+      const value = position[axis];
+      if (Number.isFinite(value) && Math.abs(value - target) <= tolerance) return;
+      const key = axis === "x"
+        ? (value < target ? "d" : "a")
+        : (value < target ? "s" : "w");
+      if (heldKey !== key) {
+        if (heldKey) await page.keyboard.up(heldKey);
+        await page.keyboard.down(key);
+        heldKey = key;
+      }
+      await page.waitForTimeout(50);
+    }
+  } finally {
+    if (heldKey) await page.keyboard.up(heldKey);
+    await releaseMovementKeys(page);
+  }
+  throw new Error(`player did not reach ${axis}=${target}; last=${JSON.stringify(await playerPosition(page))}`);
+}
+
 async function moveUntilHint(page: Page, keys: string[], text: string): Promise<void> {
   const hint = page.locator("#interaction-hint");
   for (let attempt = 0; attempt < 40; attempt += 1) {
@@ -233,9 +279,13 @@ test("desktop player talks to Mira only after approaching her and can type Russi
     await expect(page.locator("body")).toHaveAttribute("data-rendered-npc-ids", /npc_mira/);
     await expect(page.getByRole("button", { name: "Поговорить: Мира", exact: true })).toHaveCount(0);
 
+    await moveAxisTo(page, "y", 365, 8);
+    await moveAxisTo(page, "x", 250, 8);
+    const position = await playerPosition(page);
+    expect(Math.hypot(position.x - 250, position.y - 365)).toBeLessThan(20);
+
     const hint = page.locator("#interaction-hint");
-    await moveUntilHint(page, ["w", "a"], "поговорить с Мирой");
-    await expect(hint).toContainText("поговорить с Мирой");
+    await expect(hint).toContainText("поговорить с Мирой", { timeout: 2_000 });
     await page.keyboard.press("e");
 
     const dialogue = page.locator("#dialogue");
