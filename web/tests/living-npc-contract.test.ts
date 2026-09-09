@@ -129,3 +129,20 @@ test("world pulse exposes canonical Living NPC controls", async () => {
   assert.match(source, /action_type:\s*"GIVE"/);
   assert.match(source, /recipient_id:\s*"npc_mira"/);
 });
+
+test("gameplay keyboard yields to text entry and uses one-shot interaction keys", async () => {
+  for (const filename of ["VillageScene.ts", "TavernScene.ts"]) {
+    const source = await readFile(new URL(`../src/scenes/${filename}`, import.meta.url), "utf8");
+    assert.match(source, /addKeys\("W,A,S,D,E",\s*false\)/, `${filename} must not capture text-entry keys globally`);
+    assert.match(source, /isTextEntryActive\(\)/, `${filename} must suspend gameplay keys while typing`);
+    assert.match(source, /Phaser\.Input\.Keyboard\.JustDown\(this\.keys\.E\)/, `${filename} must trigger E once per press`);
+    assert.doesNotMatch(source, /keyboard\.on\("keydown-E"/, `${filename} must not reopen dialogue on OS key repeat`);
+  }
+});
+
+test("village scene materializes canonical nearby NPCs before offering dialogue", async () => {
+  const source = await readFile(new URL("../src/scenes/VillageScene.ts", import.meta.url), "utf8");
+  assert.match(source, /visible_actors/);
+  assert.match(source, /renderNearbyNpcs\(/);
+  assert.match(source, /renderedNpcIds/);
+});
