@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 import { clientErrorText, dialogueResultEvidence, postPlaytestEvent } from "../src/playtestClient.ts";
@@ -65,6 +66,15 @@ test("dialogue result evidence exposes provider source without dialogue text", (
     used_fallback: false
   });
   assert.equal("text" in evidence, false);
+});
+
+
+test("playtest instrumentation records dialogue result metadata", async () => {
+  const source = await readFile(new URL("../src/playtest.ts", import.meta.url), "utf8");
+
+  assert.match(source, /addEventListener\("samseberpg:dialogue-result"/);
+  assert.match(source, /record\(\s*"DIALOGUE_RESULT"/);
+  assert.match(source, /used_fallback/);
 });
 
 
