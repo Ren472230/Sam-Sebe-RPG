@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="540" viewBox="0 0 960 540" role="img" aria-label="Start Village mid nature layer">
+  <rect width="960" height="540" fill="none"/>
+  <g opacity="0.98">
+    <g transform="translate(60 270)">
+      <ellipse cx="65" cy="125" rx="72" ry="22" fill="#0F1318" fill-opacity="0.13"/>
+      <path d="M68 24l54 64H14z" fill="#596A58"/>
+      <path d="M68 0l42 56H26z" fill="#70826E"/>
+      <rect x="58" y="78" width="19" height="42" rx="5" fill="#39434E"/>
+      <g transform="translate(110 74)">
+        <path d="M0 36c0-22 20-36 46-36s46 14 46 36c0 13-8 23-19 30-9 6-16 15-18 27H38c-2-12-9-21-18-27C8 59 0 49 0 36z" fill="#70826E"/>
+        <rect x="40" y="63" width="12" height="43" rx="4" fill="#39434E"/>
+      </g>
+    </g>
+    <g transform="translate(732 298)">
+      <ellipse cx="75" cy="99" rx="70" ry="20" fill="#0F1318" fill-opacity="0.13"/>
+      <path d="M76 18l58 68H18z" fill="#596A58"/>
+      <path d="M76 0l44 58H32z" fill="#70826E"/>
+      <rect x="67" y="75" width="18" height="34" rx="5" fill="#39434E"/>
+      <g transform="translate(-30 76)">
+        <ellipse cx="48" cy="34" rx="44" ry="24" fill="#70826E"/>
+        <ellipse cx="32" cy="22" rx="20" ry="12" fill="#596A58"/>
+        <ellipse cx="64" cy="20" rx="23" ry="13" fill="#596A58"/>
+      </g>
+    </g>
+    <g>
+      <g transform="translate(220 378)">
+        <ellipse cx="44" cy="32" rx="44" ry="15" fill="#0F1318" fill-opacity="0.13"/>
+        <ellipse cx="46" cy="28" rx="42" ry="18" fill="#70826E"/>
+        <ellipse cx="26" cy="21" rx="18" ry="10" fill="#596A58"/>
+        <ellipse cx="66" cy="18" rx="20" ry="11" fill="#596A58"/>
+      </g>
+      <g transform="translate(610 396)">
+        <ellipse cx="54" cy="25" rx="48" ry="14" fill="#0F1318" fill-opacity="0.13"/>
+        <ellipse cx="50" cy="21" rx="46" ry="16" fill="#70826E"/>
+        <ellipse cx="32" cy="17" rx="18" ry="8" fill="#596A58"/>
+        <ellipse cx="66" cy="12" rx="20" ry="9" fill="#596A58"/>
+      </g>
+      <g transform="translate(488 384)">
+        <ellipse cx="22" cy="17" rx="24" ry="10" fill="#0F1318" fill-opacity="0.14"/>
+        <path d="M7 4 19 0l18 7 8 16-12 8H8L0 18z" fill="#D8D2C4" stroke="#1E232B" stroke-opacity="0.4" stroke-width="2"/>
+      </g>
+    </g>
+  </g>
+</svg>

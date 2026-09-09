@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="540" viewBox="0 0 960 540" role="img" aria-label="Start Village foreground layer">
+  <rect width="960" height="540" fill="none"/>
+  <g opacity="0.98">
+    <g transform="translate(0 440)">
+      <path d="M0 100c48-52 75-61 94-100 13 24 20 53 39 76 21-30 28-49 53-76 11 21 25 56 45 75 14-17 24-37 36-54 30 28 46 66 73 87z" fill="#596A58"/>
+      <path d="M212 100c37-34 56-58 72-92 15 26 22 58 40 79 20-26 39-55 56-77 18 28 25 61 48 90z" fill="#70826E"/>
+    </g>
+    <g transform="translate(650 430)">
+      <path d="M310 110c-41-47-62-71-88-110-15 30-26 59-48 84-19-24-30-53-52-80-17 22-24 55-46 78-15-18-24-39-35-57-26 26-41 57-62 85z" fill="#596A58"/>
+      <path d="M120 118c-35-38-48-59-67-88-14 25-19 55-36 74-14-18-23-41-38-62-15 20-22 46-39 65-12-14-19-29-29-43-21 23-32 39-52 54z" fill="#70826E"/>
+    </g>
+    <g opacity="0.9">
+      <circle cx="806" cy="458" r="8" fill="#D83A45"/>
+      <circle cx="817" cy="448" r="7" fill="#D83A45"/>
+      <circle cx="792" cy="448" r="7" fill="#D83A45"/>
+      <circle cx="806" cy="437" r="7" fill="#D83A45"/>
+      <circle cx="126" cy="462" r="6" fill="#D59C3F"/>
+      <circle cx="138" cy="452" r="5" fill="#F2C36B"/>
+    </g>
+  </g>
+</svg>

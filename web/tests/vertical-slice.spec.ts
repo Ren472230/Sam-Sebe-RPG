@@ -74,9 +74,11 @@ async function moveAndInteractWhenHint(
 }
 
 async function enterTavernFromVillage(page: Page): Promise<void> {
-  // Go to the right edge first, then approach the door diagonally from the walkable road below.
-  await moveAxisTo(page, "x", 936, 4);
-  await moveAndInteractWhenHint(page, ["w", "a"], "войти в таверну");
+  // Approach the canonical tavern door from the walkable road below. Staying near x=800
+  // reaches the interaction band before the tavern collision rectangle and avoids an
+  // unnecessary detour to the world edge in low-FPS headless runs.
+  await moveAxisTo(page, "x", 800, 12);
+  await moveAndInteractWhenHint(page, ["w"], "войти в таверну");
   await expect(page.locator("body")).toHaveAttribute("data-scene", "tavern");
 }
 
@@ -168,23 +170,23 @@ async function verifyLivingWorldApi(page: Page): Promise<void> {
   expect(replay.event_id).toBe(waitNine.event_id);
 }
 
-test("player can finish the firewood route with prototype art, persistent state, and live Living World", async ({ page }) => {
+test("player can finish the firewood route with stream production art, persistent state, and live Living World", async ({ page }) => {
   test.setTimeout(120_000);
   await page.goto("/");
   const body = page.locator("body");
   await expect(body).toHaveAttribute("data-scene", "village");
-  await expect(body).toHaveAttribute("data-art-mode", "prototype");
-  await expect(body).toHaveAttribute("data-village-art", "prototype");
-  await expect(body).toHaveAttribute("data-player-art", "prototype");
-  await expect(body).toHaveAttribute("data-firewood-art", "prototype");
+  await expect(body).toHaveAttribute("data-art-mode", "production");
+  await expect(body).toHaveAttribute("data-village-art", "production");
+  await expect(body).toHaveAttribute("data-player-art", "production");
+  await expect(body).toHaveAttribute("data-firewood-art", "production");
   await expect(page.locator("#hud")).toContainText("Workshop Yard");
   await page.screenshot({ path: "test-results/01-village.png", fullPage: true });
 
   await enterTavernFromVillage(page);
-  await expect(body).toHaveAttribute("data-art-mode", "prototype");
-  await expect(body).toHaveAttribute("data-tavern-art", "prototype");
-  await expect(body).toHaveAttribute("data-player-art", "prototype");
-  await expect(body).toHaveAttribute("data-oren-art", "prototype");
+  await expect(body).toHaveAttribute("data-art-mode", "production");
+  await expect(body).toHaveAttribute("data-tavern-art", "production");
+  await expect(body).toHaveAttribute("data-player-art", "production");
+  await expect(body).toHaveAttribute("data-oren-art", "production");
   await approachOren(page);
   await expect(page.getByRole("button", { name: "Взяться за дрова" })).toBeVisible();
   await page.screenshot({ path: "test-results/02-oren-offer.png", fullPage: true });
@@ -215,10 +217,10 @@ test("player can finish the firewood route with prototype art, persistent state,
 
   await page.reload();
   await expect(body).toHaveAttribute("data-scene", "tavern");
-  await expect(body).toHaveAttribute("data-art-mode", "prototype");
-  await expect(body).toHaveAttribute("data-tavern-art", "prototype");
-  await expect(body).toHaveAttribute("data-player-art", "prototype");
-  await expect(body).toHaveAttribute("data-oren-art", "prototype");
+  await expect(body).toHaveAttribute("data-art-mode", "production");
+  await expect(body).toHaveAttribute("data-tavern-art", "production");
+  await expect(body).toHaveAttribute("data-player-art", "production");
+  await expect(body).toHaveAttribute("data-oren-art", "production");
   await expect(page.locator("#hud")).toContainText("дрова доставлены ✓");
   await expect(page.locator("#hud")).toContainText("монеты 15");
   await expect(page.locator("#hud")).toContainText("доверие Орена 10");

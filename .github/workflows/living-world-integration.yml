@@ -79,7 +79,7 @@ jobs:
         run: npm run build
       - name: Install Chromium
         working-directory: web
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install chromium
       - name: Real browser critical route
         working-directory: web
         env:
