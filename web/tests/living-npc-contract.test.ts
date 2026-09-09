@@ -128,20 +128,14 @@ test("opening Oren does not auto-submit text before the player can type", async 
   assert.doesNotMatch(source, /Привет\. Есть работа\?/);
 });
 
-test("world pulse exposes canonical Living NPC controls", async () => {
+test("world pulse keeps canonical world actions but does not offer remote NPC talk buttons", async () => {
   const source = await readFile(new URL("../src/main.ts", import.meta.url), "utf8");
-  assert.match(source, /openNpc/);
   assert.match(source, /adjacent_locations/);
   assert.match(source, /driftwood_1/);
   assert.match(source, /action_type:\s*"GIVE"/);
   assert.match(source, /recipient_id:\s*"npc_mira"/);
-});
-
-test("talk actions are derived from actors actually visible to the player", async () => {
-  const source = await readFile(new URL("../src/main.ts", import.meta.url), "utf8");
-  assert.match(source, /const talkableNpcs = snapshot\.world\.visible_actors\.filter/);
-  assert.match(source, /for \(const actor of talkableNpcs\)/);
-  assert.doesNotMatch(source, /for \(const npcId of snapshot\.living_npc\.nearby_npc_ids\)/);
+  assert.doesNotMatch(source, /Поговорить:/);
+  assert.doesNotMatch(source, /const talkableNpcs = snapshot\.world\.visible_actors\.filter/);
 });
 
 test("gameplay keyboard yields to text entry and handles E exactly once without missing quick presses", async () => {
@@ -155,9 +149,21 @@ test("gameplay keyboard yields to text entry and handles E exactly once without 
   }
 });
 
-test("village scene materializes canonical nearby NPCs before offering dialogue", async () => {
+test("village scene materializes and talks only to spatially nearby authoritative NPCs", async () => {
   const source = await readFile(new URL("../src/scenes/VillageScene.ts", import.meta.url), "utf8");
   assert.match(source, /visible_actors/);
   assert.match(source, /renderNearbyNpcs\(/);
   assert.match(source, /renderedNpcIds/);
+  assert.match(source, /kind:\s*"npc"/);
+  assert.match(source, /nearestNpc\(/);
+  assert.match(source, /dialogue\.openNpc\(interaction\.actorId\)/);
+  assert.match(source, /поговорить с/);
+});
+
+test("tavern materializes authoritative visitors instead of naming invisible NPCs", async () => {
+  const source = await readFile(new URL("../src/scenes/TavernScene.ts", import.meta.url), "utf8");
+  assert.match(source, /visible_actors/);
+  assert.match(source, /npc_wayfarer_1/);
+  assert.match(source, /renderVisibleVisitors\(/);
+  assert.match(source, /dialogue\.openNpc\(interaction\.actorId\)/);
 });
