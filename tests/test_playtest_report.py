@@ -208,6 +208,11 @@ def test_report_reconstructs_pass_without_requiring_session_end(tmp_path: Path) 
         "console_errors": 0,
         "crashes": 0,
     }
+    assert report["dialogue"] == {
+        "responses_observed": 0,
+        "neural_responses": 0,
+        "fallback_responses": 0,
+    }
     assert any(item["source"] == "world" for item in report["timeline"])
     assert "Expected gameplay failures: 1" in report["markdown"]
     assert "SAFE FOR HUMAN EXPERIENCE TEST" in report["markdown"]
@@ -250,3 +255,60 @@ def test_unattempted_reload_is_not_reported_as_a_persistence_failure(tmp_path: P
     assert report["result"] == "PASS"
     assert report["verdict"] == "SAFE FOR HUMAN EXPERIENCE TEST"
     assert "– persistence after reload: not tested" in report["markdown"]
+
+
+def test_dialogue_result_telemetry_counts_provider_source_without_storing_text(tmp_path: Path) -> None:
+    service, clock, player_id = _build_completed_session(tmp_path)
+
+    clock.advance(timedelta(milliseconds=100))
+    service.record(
+        "session-pass",
+        "DIALOGUE_RESULT",
+        player_id=player_id,
+        summary="SECRET NPC LINE",
+        evidence={
+            "npc_id": "npc_mira",
+            "used_fallback": False,
+            "text": "SECRET NPC LINE",
+        },
+    )
+    clock.advance(timedelta(milliseconds=100))
+    service.record(
+        "session-pass",
+        "DIALOGUE_RESULT",
+        player_id=player_id,
+        summary="ANOTHER SECRET NPC LINE",
+        evidence={
+            "npc_id": "npc_oren",
+            "used_fallback": True,
+            "text": "ANOTHER SECRET NPC LINE",
+        },
+    )
+
+    with service.db.connect() as conn:
+        rows = conn.execute(
+            "SELECT summary, evidence_json FROM playtest_events "
+            "WHERE session_id = ? AND event_type = 'DIALOGUE_RESULT' ORDER BY id",
+            ("session-pass",),
+        ).fetchall()
+
+    assert [str(row[0]) for row in rows] == [
+        "Dialogue response received",
+        "Dialogue response received",
+    ]
+    assert [json.loads(str(row[1])) for row in rows] == [
+        {"npc_id": "npc_mira", "used_fallback": False},
+        {"npc_id": "npc_oren", "used_fallback": True},
+    ]
+
+    report = service.report("session-pass")
+
+    assert report["dialogue"] == {
+        "responses_observed": 2,
+        "neural_responses": 1,
+        "fallback_responses": 1,
+    }
+    assert "Neural responses: 1" in report["markdown"]
+    assert "Fallback responses: 1" in report["markdown"]
+    assert "SECRET NPC LINE" not in report["markdown"]
+    assert "ANOTHER SECRET NPC LINE" not in report["markdown"]
