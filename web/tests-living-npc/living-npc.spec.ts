@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
 import { installBrowserDiagnostics } from "../tests/helpers/browser-diagnostics";
+import { approachAndTalk } from "../tests/helpers/spatial-navigation";
 
 type LivingState = {
   player_id: string;
@@ -49,15 +50,14 @@ test("Living NPC browser route remembers a commitment and lets the player beat K
   try {
     await page.goto("/");
     await expect(page.locator("#hud")).toContainText("Мастерская");
-    await expect(page.getByRole("button", { name: "Поговорить: Мира", exact: true })).toBeVisible();
+    await expect(page.locator("body")).toHaveAttribute("data-rendered-npc-ids", /npc_mira/);
     const playerId = await currentPlayerId(page);
 
     await page.getByRole("button", { name: "Подождать 5 шагов", exact: true }).click();
     await expect(page.locator("#world-pulse-tick")).toContainText("Шаг 5", { timeout: 10_000 });
     await expect(page.locator("#world-pulse-events")).toContainText("Мира просит древесину");
 
-    await page.getByRole("button", { name: "Поговорить: Мира", exact: true }).click();
-    await expect(page.locator("#dialogue h2")).toHaveText("Мира");
+    await approachAndTalk(page, 250, 365, "поговорить с Мирой", "Мира");
     await sendDialogue(page, "Что случилось?", /Работа встала/i);
     const commitmentResponse = page.waitForResponse((response) =>
       response.url().endsWith("/api/dialogue") && response.request().method() === "POST"
@@ -76,11 +76,10 @@ test("Living NPC browser route remembers a commitment and lets the player beat K
 
     await clickLivingAction(page, "Идти: площадь", "Площадь");
     await clickLivingAction(page, "Идти: река", "Берег реки");
-    await expect(page.getByRole("button", { name: "Поговорить: Каспар", exact: true })).toBeVisible();
+    await expect(page.locator("body")).toHaveAttribute("data-rendered-npc-ids", /npc_kaspar/);
     await expect(page.getByRole("button", { name: "Подобрать корягу", exact: true })).toBeVisible();
 
-    await page.getByRole("button", { name: "Поговорить: Каспар", exact: true }).click();
-    await expect(page.locator("#dialogue h2")).toHaveText("Каспар");
+    await approachAndTalk(page, 610, 410, "поговорить с Каспаром", "Каспар");
     await expect(page.locator("#dialogue")).not.toContainText("Я принесу тебе древесину");
     await sendDialogue(page, "Что здесь происходит?", /дело|берег|древес/i);
     await expect(page.locator("#dialogue")).not.toContainText("Я принесу тебе древесину");
@@ -101,7 +100,7 @@ test("Living NPC browser route remembers a commitment and lets the player beat K
     expect(snapshot.living_npc.driftwood.location_id).toBeNull();
     expect(snapshot.living_npc.driftwood.owner_actor_id).toBeNull();
 
-    await page.getByRole("button", { name: "Поговорить: Мира", exact: true }).click();
+    await approachAndTalk(page, 250, 365, "поговорить с Мирой", "Мира");
     await sendDialogue(page, "Ну что, теперь можешь работать?", /Пока всё идёт|работ/i);
     await expect(page.locator("#dialogue")).not.toContainText("Работа встала");
     await page.screenshot({ path: "test-results/living-npc-02-resolved.png", fullPage: true });
@@ -114,8 +113,8 @@ test("Living NPC browser route remembers a commitment and lets the player beat K
     const reloaded = await state(page, playerId);
     expect(reloaded.living_npc.mira.requested_wood).toBe(false);
     expect(reloaded.living_npc.mira.wood_stock).toBe(1);
-    await expect(page.getByRole("button", { name: "Поговорить: Мира", exact: true })).toBeVisible();
-    await page.getByRole("button", { name: "Поговорить: Мира", exact: true }).click();
+    await expect(page.locator("body")).toHaveAttribute("data-rendered-npc-ids", /npc_mira/);
+    await approachAndTalk(page, 250, 365, "поговорить с Мирой", "Мира");
     await sendDialogue(page, "Можешь продолжать работу?", /Пока всё идёт|работ/i);
     await page.screenshot({ path: "test-results/living-npc-03-reloaded.png", fullPage: true });
 

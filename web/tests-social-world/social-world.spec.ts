@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
 import { installBrowserDiagnostics } from "../tests/helpers/browser-diagnostics";
+import { approachAndTalk } from "../tests/helpers/spatial-navigation";
 
 type SocialState = {
   player_id: string;
@@ -54,8 +55,7 @@ async function waitOneTick(page: Page, playerId: string): Promise<void> {
 }
 
 async function talkToKaspar(page: Page, expected: RegExp | string): Promise<void> {
-  await page.getByRole("button", { name: "Поговорить: Каспар", exact: true }).click();
-  await expect(page.locator("#dialogue h2")).toHaveText("Каспар");
+  await approachAndTalk(page, 610, 410, "поговорить с Каспаром", "Каспар");
   await sendDialogue(page, "Что ты обо мне слышал?", expected);
 }
 
@@ -66,13 +66,14 @@ test("Social World spreads Mira's report to Kaspar only after their real deliver
   try {
     await page.goto("/");
     await expect(page.locator("#hud")).toContainText("Мастерская");
+    await expect(page.locator("body")).toHaveAttribute("data-rendered-npc-ids", /npc_mira/);
     const playerId = await currentPlayerId(page);
 
     await page.getByRole("button", { name: "Подождать 5 шагов", exact: true }).click();
     await expect(page.locator("#world-pulse-tick")).toContainText("Шаг 5", { timeout: 10_000 });
     await expect(page.locator("#world-pulse-events")).toContainText("Мира просит древесину");
 
-    await page.getByRole("button", { name: "Поговорить: Мира", exact: true }).click();
+    await approachAndTalk(page, 250, 365, "поговорить с Мирой", "Мира");
     const commitmentResponse = page.waitForResponse((response) =>
       response.url().endsWith("/api/dialogue") && response.request().method() === "POST"
     );
@@ -84,9 +85,9 @@ test("Social World spreads Mira's report to Kaspar only after their real deliver
 
     await clickLivingAction(page, "Идти: площадь", "Площадь");
     await clickLivingAction(page, "Идти: река", "Берег реки");
-    await expect(page.getByRole("button", { name: "Поговорить: Каспар", exact: true })).toBeVisible();
+    await expect(page.locator("body")).toHaveAttribute("data-rendered-npc-ids", /npc_kaspar/);
 
-    await page.getByRole("button", { name: "Поговорить: Каспар", exact: true }).click();
+    await approachAndTalk(page, 610, 410, "поговорить с Каспаром", "Каспар");
     await sendDialogue(page, "Что ты обо мне слышал?");
     await expect(page.locator("#dialogue")).not.toContainText("Мира говорила");
     await page.screenshot({ path: "test-results-social-world/social-01-pre-contact.png", fullPage: true });
@@ -103,7 +104,7 @@ test("Social World spreads Mira's report to Kaspar only after their real deliver
     expect(delivered.living_npc.kaspar.goal).toBeNull();
 
     await clickLivingAction(page, "Идти: площадь", "Площадь");
-    await expect(page.getByRole("button", { name: "Поговорить: Каспар", exact: true })).toBeVisible();
+    await expect(page.locator("body")).toHaveAttribute("data-rendered-npc-ids", /npc_kaspar/);
     await talkToKaspar(page, /Мира говорила.*обещал.*древесин/i);
     await page.screenshot({ path: "test-results-social-world/social-02-post-contact.png", fullPage: true });
     await page.getByRole("button", { name: "Закрыть", exact: true }).click();
@@ -111,7 +112,7 @@ test("Social World spreads Mira's report to Kaspar only after their real deliver
     await page.reload();
     await expect(page.locator("#hud")).toContainText("Площадь");
     expect(await currentPlayerId(page)).toBe(playerId);
-    await expect(page.getByRole("button", { name: "Поговорить: Каспар", exact: true })).toBeVisible();
+    await expect(page.locator("body")).toHaveAttribute("data-rendered-npc-ids", /npc_kaspar/);
     await talkToKaspar(page, /Мира говорила.*обещал.*древесин/i);
     await page.screenshot({ path: "test-results-social-world/social-03-reloaded.png", fullPage: true });
 
