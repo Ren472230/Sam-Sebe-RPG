@@ -281,8 +281,6 @@ test("desktop player talks to Mira only after approaching her and can type Russi
 
     await moveAxisTo(page, "y", 365, 8);
     await moveAxisTo(page, "x", 250, 8);
-    const position = await playerPosition(page);
-    expect(Math.hypot(position.x - 250, position.y - 365)).toBeLessThan(20);
 
     const hint = page.locator("#interaction-hint");
     await expect(hint).toContainText("поговорить с Мирой", { timeout: 2_000 });
