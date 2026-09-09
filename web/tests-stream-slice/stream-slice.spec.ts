@@ -15,6 +15,8 @@ type StreamState = {
   };
 };
 
+type PlayerPosition = { x: number; y: number };
+
 async function currentPlayerId(page: Page): Promise<string> {
   const response = await page.request.post("/api/session", {
     data: { external_id: "local-player", name: "Ren" }
@@ -59,9 +61,85 @@ async function waitOneTick(page: Page, playerId: string): Promise<void> {
   ).toBe(before + 1);
 }
 
+async function playerPosition(page: Page): Promise<PlayerPosition> {
+  return page.evaluate(() => ({
+    x: Number(document.body.dataset.playerX),
+    y: Number(document.body.dataset.playerY)
+  }));
+}
+
+async function releaseMovementKeys(page: Page): Promise<void> {
+  for (const key of ["w", "a", "s", "d"]) await page.keyboard.up(key);
+  await page.waitForTimeout(50);
+}
+
+async function moveAxisTo(
+  page: Page,
+  axis: "x" | "y",
+  target: number,
+  tolerance = 9,
+  timeout = 10_000
+): Promise<void> {
+  const started = Date.now();
+  let heldKey: string | null = null;
+  await releaseMovementKeys(page);
+  try {
+    while (Date.now() - started < timeout) {
+      const position = await playerPosition(page);
+      const value = position[axis];
+      if (Number.isFinite(value) && Math.abs(value - target) <= tolerance) return;
+      const key = axis === "x"
+        ? (value < target ? "d" : "a")
+        : (value < target ? "s" : "w");
+      if (heldKey !== key) {
+        if (heldKey) await page.keyboard.up(heldKey);
+        await page.keyboard.down(key);
+        heldKey = key;
+      }
+      await page.waitForTimeout(50);
+    }
+  } finally {
+    if (heldKey) await page.keyboard.up(heldKey);
+    await releaseMovementKeys(page);
+  }
+  throw new Error(`player did not reach ${axis}=${target}; last=${JSON.stringify(await playerPosition(page))}`);
+}
+
+async function approachAndTalk(
+  page: Page,
+  x: number,
+  y: number,
+  hint: string,
+  heading: string
+): Promise<void> {
+  await moveAxisTo(page, "x", x);
+  await moveAxisTo(page, "y", y);
+  await expect(page.locator("#interaction-hint")).toContainText(hint, { timeout: 3_000 });
+  await page.keyboard.press("e");
+  await expect(page.locator("#dialogue")).toBeVisible({ timeout: 5_000 });
+  await expect(page.locator("#dialogue h2")).toHaveText(heading);
+}
+
+async function enterTavernSpatially(page: Page): Promise<void> {
+  await moveAxisTo(page, "x", 825);
+  await moveAxisTo(page, "y", 325);
+  await expect(page.locator("#interaction-hint")).toContainText("войти в таверну", { timeout: 3_000 });
+  await page.keyboard.press("e");
+  await expect(page.locator("body")).toHaveAttribute("data-scene", "tavern", { timeout: 10_000 });
+  await expect(page.locator("body")).toHaveAttribute("data-rendered-tavern-npc-ids", /npc_oren/, { timeout: 10_000 });
+}
+
+async function exitTavernSpatially(page: Page): Promise<void> {
+  await moveAxisTo(page, "x", 110);
+  await moveAxisTo(page, "y", 420);
+  await expect(page.locator("#interaction-hint")).toContainText("выйти в деревню", { timeout: 3_000 });
+  await page.keyboard.press("e");
+  await expect(page.locator("body")).toHaveAttribute("data-scene", "village", { timeout: 10_000 });
+}
+
 
 test("Stream Slice shows one causal evening, hospitality loop and persistence without leaking internals", async ({ page }, testInfo) => {
-  test.setTimeout(150_000);
+  test.setTimeout(180_000);
   const diagnostics = installBrowserDiagnostics(page);
 
   try {
@@ -78,13 +156,13 @@ test("Stream Slice shows one causal evening, hospitality loop and persistence wi
     await expect(page.locator("#world-pulse-tick")).toContainText("Шаг 5", { timeout: 10_000 });
     await expect(page.locator("#stream-status")).toContainText(/Мира просит древесину/i);
 
-    await page.getByRole("button", { name: "Поговорить: Мира", exact: true }).click();
+    await approachAndTalk(page, 250, 365, "поговорить с Мирой", "Мира");
     await sendDialogue(page, "Я принесу тебе древесину.", /Договорились/i);
     await closeDialogue(page);
 
     await clickLivingAction(page, "Идти: площадь", "Площадь");
     await clickLivingAction(page, "Идти: река", "Берег реки");
-    await page.getByRole("button", { name: "Поговорить: Каспар", exact: true }).click();
+    await approachAndTalk(page, 610, 410, "поговорить с Каспаром", "Каспар");
     await sendDialogue(page, "Что ты обо мне слышал?");
     await expect(page.locator("#dialogue")).not.toContainText("Мира говорила");
     await closeDialogue(page);
@@ -94,7 +172,7 @@ test("Stream Slice shows one causal evening, hospitality loop and persistence wi
     }
     expect((await state(page, playerId)).living_npc.tick).toBe(9);
     await clickLivingAction(page, "Идти: площадь", "Площадь");
-    await page.getByRole("button", { name: "Поговорить: Каспар", exact: true }).click();
+    await approachAndTalk(page, 610, 410, "поговорить с Каспаром", "Каспар");
     await sendDialogue(page, "Что ты обо мне слышал?", /Мира говорила.*обещал.*древесин/i);
     await page.screenshot({ path: "test-results-stream-slice/stream-02-kaspar-after-contact.png", fullPage: true });
     await closeDialogue(page);
@@ -104,34 +182,35 @@ test("Stream Slice shows one causal evening, hospitality loop and persistence wi
     await expect(page.locator("#stream-status")).toContainText(/Тален.*таверн|гост/i);
     await expect(page.locator("#stream-status")).toContainText(/Орен.*хлеб/i);
 
-    await clickLivingAction(page, "Идти: таверна", "Таверна");
-    await page.getByRole("button", { name: "Поговорить: Тален", exact: true }).click();
-    await expect(page.locator("#dialogue h2")).toHaveText("Тален");
+    await enterTavernSpatially(page);
+    await expect(page.locator("body")).toHaveAttribute("data-rendered-tavern-npc-ids", /npc_wayfarer_1/);
+    await approachAndTalk(page, 500, 385, "поговорить с Таленом", "Тален");
     await sendDialogue(page, "Что случилось в дороге?", /восточн.*караван/i);
     await expect(page.locator("#dialogue")).not.toContainText(/локальная реплика|AI-реплика|социальная память/i);
     await page.screenshot({ path: "test-results-stream-slice/stream-03-wayfarer.png", fullPage: true });
     await closeDialogue(page);
 
-    await page.getByRole("button", { name: "Поговорить: Орен", exact: true }).click();
+    await approachAndTalk(page, 650, 325, "поговорить с Ореном", "Орен");
     await sendDialogue(page, "Что рассказал Тален?", /Тален.*восточн.*караван/i);
     await sendDialogue(page, "Нужна помощь с гостем?", /хлеб/i);
     await page.screenshot({ path: "test-results-stream-slice/stream-04-oren-bread.png", fullPage: true });
     await closeDialogue(page);
 
+    await exitTavernSpatially(page);
     await clickLivingAction(page, "Идти: площадь", "Площадь");
     await page.getByRole("button", { name: "Подобрать хлеб", exact: true }).click();
-    await clickLivingAction(page, "Идти: таверна", "Таверна");
+    await enterTavernSpatially(page);
     await page.getByRole("button", { name: "Отдать хлеб Орену", exact: true }).click();
 
-    await page.getByRole("button", { name: "Поговорить: Орен", exact: true }).click();
+    await approachAndTalk(page, 650, 325, "поговорить с Ореном", "Орен");
     await sendDialogue(page, "Хлеб подошёл?", /спасибо|хлеб|гост/i);
     await closeDialogue(page);
 
     await page.reload();
     await expect(page.locator("body")).toHaveClass(/stream-mode/);
     expect(await currentPlayerId(page)).toBe(playerId);
-    await expect(page.getByRole("button", { name: "Поговорить: Орен", exact: true })).toBeVisible();
-    await page.getByRole("button", { name: "Поговорить: Орен", exact: true }).click();
+    await expect(page.locator("body")).toHaveAttribute("data-scene", "tavern");
+    await approachAndTalk(page, 650, 325, "поговорить с Ореном", "Орен");
     await sendDialogue(page, "Что рассказал Тален?", /Тален.*караван/i);
     await page.screenshot({ path: "test-results-stream-slice/stream-05-reloaded.png", fullPage: true });
 
