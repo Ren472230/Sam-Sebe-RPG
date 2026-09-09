@@ -48,17 +48,19 @@ export class TavernScene extends Phaser.Scene {
     this.publishPlayerPosition();
     const keyboard = this.input.keyboard;
     if (!keyboard) throw new Error("Keyboard input unavailable");
-    this.keys = keyboard.addKeys("W,A,S,D,E");
-    keyboard.on("keydown-E", () => void this.interact());
+    this.keys = keyboard.addKeys("W,A,S,D,E", false);
     this.events.once("shutdown", () => {
-      keyboard.removeAllListeners("keydown-E");
       this.clearInteraction();
       this.hint.textContent = "";
     });
   }
 
   update(_time: number, delta: number): void {
-    const speed = 0.22 * delta;
+    if (isTextEntryActive()) return;
+
+    if (Phaser.Input.Keyboard.JustDown(this.keys.E)) void this.interact();
+
+    const speed = 0.22 * Math.min(delta, 50);
     let dx = 0;
     let dy = 0;
     if (this.keys.A.isDown) dx -= speed;
@@ -147,6 +149,13 @@ export class TavernScene extends Phaser.Scene {
     if (!result.success) throw new Error(result.summary);
     await runtime.state.refresh();
   }
+}
+
+function isTextEntryActive(): boolean {
+  const active = document.activeElement;
+  return active instanceof HTMLInputElement
+    || active instanceof HTMLTextAreaElement
+    || (active instanceof HTMLElement && active.isContentEditable);
 }
 
 function distance(ax: number, ay: number, bx: number, by: number): number {
