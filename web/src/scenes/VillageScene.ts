@@ -74,6 +74,10 @@ export class VillageScene extends Phaser.Scene {
     const keyboard = this.input.keyboard;
     if (!keyboard) throw new Error("Keyboard input unavailable");
     this.keys = keyboard.addKeys("W,A,S,D,E", false);
+    keyboard.on("keydown-E", (event: KeyboardEvent) => {
+      if (event.repeat || isTextEntryActive()) return;
+      void this.interact();
+    });
     this.events.once("shutdown", () => {
       this.unsubscribeState?.();
       this.unsubscribeState = null;
@@ -85,8 +89,6 @@ export class VillageScene extends Phaser.Scene {
 
   update(_time: number, delta: number): void {
     if (isTextEntryActive()) return;
-
-    if (Phaser.Input.Keyboard.JustDown(this.keys.E)) void this.interact();
 
     // A long browser frame must not teleport the player through narrow collision/interaction bands.
     const speed = 0.22 * Math.min(delta, 50);
