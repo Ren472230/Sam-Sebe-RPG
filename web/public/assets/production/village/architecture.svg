@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="540" viewBox="0 0 960 540" role="img" aria-label="Start Village architecture layer">
+  <rect width="960" height="540" fill="none"/>
+  <g transform="translate(70 150)">
+    <ellipse cx="150" cy="232" rx="118" ry="20" fill="#0F1318" fill-opacity="0.18"/>
+    <path d="M42 90h214v126H42z" fill="#E9E3D6" stroke="#1E232B" stroke-width="4"/>
+    <path d="M22 100 148 24 282 100z" fill="#2C3440" stroke="#0F1318" stroke-width="4"/>
+    <rect x="127" y="140" width="46" height="76" rx="6" fill="#2C3440"/>
+    <rect x="70" y="128" width="38" height="34" rx="4" fill="#8AF0EA" stroke="#1E232B" stroke-width="3"/>
+    <rect x="188" y="128" width="38" height="34" rx="4" fill="#8AF0EA" stroke="#1E232B" stroke-width="3"/>
+    <path d="M68 185h34v18H68zm122 0h34v18h-34z" fill="#D83A45" opacity="0.8"/>
+    <g transform="translate(94 44)">
+      <path d="M0 0h16l7 18-15 4z" fill="#D83A45"/>
+      <circle cx="38" cy="16" r="9" fill="#D59C3F" opacity="0.85"/>
+    </g>
+  </g>
+  <g transform="translate(370 165)">
+    <ellipse cx="122" cy="221" rx="108" ry="18" fill="#0F1318" fill-opacity="0.16"/>
+    <rect x="38" y="84" width="170" height="118" rx="4" fill="#F4F1E8" stroke="#1E232B" stroke-width="4"/>
+    <path d="M20 94 121 26 226 94z" fill="#1E232B" stroke="#0F1318" stroke-width="4"/>
+    <rect x="111" y="131" width="32" height="71" rx="5" fill="#2C3440"/>
+    <rect x="64" y="118" width="30" height="28" rx="4" fill="#8AF0EA" stroke="#1E232B" stroke-width="3"/>
+    <rect x="152" y="118" width="30" height="28" rx="4" fill="#8AF0EA" stroke="#1E232B" stroke-width="3"/>
+    <path d="M58 169h134" stroke="#1E232B" stroke-width="3" stroke-dasharray="7 6" opacity="0.4"/>
+  </g>
+  <g transform="translate(655 128)">
+    <ellipse cx="120" cy="244" rx="132" ry="24" fill="#0F1318" fill-opacity="0.18"/>
+    <rect x="33" y="106" width="174" height="128" fill="#E9E3D6" stroke="#1E232B" stroke-width="4"/>
+    <path d="M16 112 120 42 228 112z" fill="#2C3440" stroke="#0F1318" stroke-width="4"/>
+    <rect x="53" y="138" width="44" height="44" rx="5" fill="#8AF0EA" stroke="#1E232B" stroke-width="3"/>
+    <rect x="145" y="138" width="44" height="44" rx="5" fill="#8AF0EA" stroke="#1E232B" stroke-width="3"/>
+    <rect x="109" y="161" width="28" height="73" rx="5" fill="#2C3440"/>
+    <g transform="translate(10 114)">
+      <rect x="0" y="74" width="24" height="34" fill="#1E232B"/>
+      <rect x="4" y="54" width="16" height="22" fill="#D59C3F" opacity="0.75"/>
+    </g>
+    <path d="M81 83c17 0 17-24 34-24s17 24 34 24" fill="none" stroke="#D83A45" stroke-width="5" stroke-linecap="round"/>
+  </g>
+</svg>
