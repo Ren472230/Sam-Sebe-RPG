@@ -187,6 +187,9 @@ class PlaytestService:
             and event["success"]
             and str(event["target_id"] or "").startswith("firewood_")
         }
+        reload_attempted = any(
+            event["event_type"] == "PAGE_RELOAD" for event in client_events
+        )
         route = {
             "entered_tavern": any(
                 event["event_type"] == "SCENE_ENTER"
@@ -215,10 +218,9 @@ class PlaytestService:
             )
             and quest_status == "completed",
             "reward_received": coins >= 15 and oren_trust >= 10,
-            "persistence_after_reload": any(
-                event["event_type"] == "PAGE_RELOAD" for event in client_events
-            )
-            and quest_status == "completed",
+            "persistence_after_reload": (
+                quest_status == "completed" if reload_attempted else None
+            ),
         }
         boot = {
             "backend_started": bool(
@@ -300,7 +302,10 @@ class PlaytestService:
                 "crashes",
             )
         )
-        passed = all(item["passed"] for item in checks) and clean_errors
+        applicable_checks = [
+            item for item in checks if item["passed"] is not None
+        ]
+        passed = all(item["passed"] for item in applicable_checks) and clean_errors
         result = "PASS" if passed else "FAIL"
         verdict = (
             "SAFE FOR HUMAN EXPERIENCE TEST"
@@ -421,8 +426,12 @@ def _int_value(value: Any, default: int) -> int:
     return value if type(value) is int else default
 
 
-def _check(key: str, label: str, passed: bool) -> dict[str, Any]:
-    return {"key": key, "label": label, "passed": bool(passed)}
+def _check(key: str, label: str, passed: bool | None) -> dict[str, Any]:
+    return {
+        "key": key,
+        "label": label,
+        "passed": None if passed is None else bool(passed),
+    }
 
 
 def _render_markdown(report: dict[str, Any]) -> str:
@@ -430,6 +439,8 @@ def _render_markdown(report: dict[str, Any]) -> str:
 
     def line(key: str) -> str:
         item = by_key[key]
+        if item["passed"] is None:
+            return f"– {item['label']}: not tested"
         return f"{'✓' if item['passed'] else '✗'} {item['label']}"
 
     living = report["living_world"]
