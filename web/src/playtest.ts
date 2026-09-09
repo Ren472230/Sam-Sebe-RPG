@@ -45,6 +45,18 @@ window.addEventListener("unhandledrejection", (event) => {
   record("UNHANDLED_REJECTION", false, clientErrorText(event.reason));
 });
 
+document.addEventListener("samseberpg:dialogue-result", (event) => {
+  if (!(event instanceof CustomEvent)) return;
+  const detail = event.detail as { npc_id?: unknown; used_fallback?: unknown };
+  if (typeof detail?.npc_id !== "string" || typeof detail.used_fallback !== "boolean") return;
+  record(
+    "DIALOGUE_RESULT",
+    true,
+    "Dialogue response received",
+    { npc_id: detail.npc_id, used_fallback: detail.used_fallback }
+  );
+});
+
 let lastScene: string | null = null;
 let dialogueWasOpen = false;
 const observer = new MutationObserver(() => {
