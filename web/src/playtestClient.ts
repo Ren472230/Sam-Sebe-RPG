@@ -3,6 +3,7 @@ export type PlaytestClientEventType =
   | "GAME_BOOT"
   | "SCENE_ENTER"
   | "DIALOGUE_OPEN"
+  | "DIALOGUE_RESULT"
   | "PAGE_RELOAD"
   | "CLIENT_ERROR"
   | "CONSOLE_ERROR"
@@ -35,6 +36,13 @@ export async function postPlaytestEvent(
     throw new Error("playtest event response is malformed");
   }
   return payload.event_id;
+}
+
+export function dialogueResultEvidence(
+  npcId: string,
+  usedFallback: boolean
+): { npc_id: string; used_fallback: boolean } {
+  return { npc_id: npcId, used_fallback: usedFallback };
 }
 
 export function clientErrorText(value: unknown): string {
