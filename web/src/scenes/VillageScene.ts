@@ -13,7 +13,10 @@ import { getRuntime } from "../runtime";
 
 type Hotspot = { id: string; x: number; y: number; view: any };
 type Rect = { x: number; y: number; w: number; h: number };
-type VillageInteraction = { kind: "firewood"; item: Hotspot } | { kind: "tavern" };
+type VillageInteraction =
+  | { kind: "firewood"; item: Hotspot }
+  | { kind: "tavern" }
+  | { kind: "npc"; actorId: string; name: string };
 
 const CANONICAL_LOCATION_ANCHORS: Record<string, { x: number; y: number }> = {
   workshop_yard: { x: 330, y: 455 },
@@ -131,7 +134,7 @@ export class VillageScene extends Phaser.Scene {
       const body = this.add.rectangle(0, 0, 30, 48, 0xe9e4d7)
         .setStrokeStyle(4, 0x24272a);
       const accent = this.add.rectangle(0, -19, 30, 7, 0x60d5d8);
-      const label = this.add.text(-34, 31, actor.name, {
+      const label = this.add.text(-34, 31, npcName(actor.actor_id, actor.name), {
         color: "#f1eee4",
         backgroundColor: "#24272a",
         fontSize: "14px",
@@ -228,6 +231,17 @@ export class VillageScene extends Phaser.Scene {
       this.offerInteraction({ kind: "firewood", item: wood }, actionControlHint("подобрать дрова"));
       return;
     }
+
+    const npc = this.nearestNpc();
+    if (npc) {
+      const name = npcName(npc.actor_id, npc.name);
+      this.offerInteraction(
+        { kind: "npc", actorId: npc.actor_id, name },
+        actionControlHint(`поговорить с ${name}`)
+      );
+      return;
+    }
+
     if (distance(this.player.x, this.player.y, this.tavern.x, this.tavern.y) < 85) {
       this.offerInteraction({ kind: "tavern" }, actionControlHint("войти в таверну"));
       return;
@@ -259,11 +273,29 @@ export class VillageScene extends Phaser.Scene {
       await this.pickupFirewood(interaction.item);
       return;
     }
+    if (interaction.kind === "npc") {
+      await getRuntime().dialogue.openNpc(interaction.actorId);
+      return;
+    }
     await this.enterTavern();
   }
 
   private nearestFirewood(): Hotspot | null {
     return this.firewood.find((item) => distance(this.player.x, this.player.y, item.x, item.y) < 52) ?? null;
+  }
+
+  private nearestNpc(): VisibleActor | null {
+    const visibleActors = getRuntime().state.snapshot?.world.visible_actors ?? [];
+    let best: { actor: VisibleActor; distance: number } | null = null;
+    for (const actor of visibleActors) {
+      if (actor.actor_type !== "npc") continue;
+      const view = this.renderedNpcs.get(actor.actor_id);
+      if (!view) continue;
+      const gap = distance(this.player.x, this.player.y, view.x, view.y);
+      if (gap >= 72 || (best && best.distance <= gap)) continue;
+      best = { actor, distance: gap };
+    }
+    return best?.actor ?? null;
   }
 
   private async pickupFirewood(item: Hotspot): Promise<void> {
@@ -331,6 +363,14 @@ export class VillageScene extends Phaser.Scene {
     if (!result.success) throw new Error(result.summary);
     await runtime.state.refresh();
   }
+}
+
+function npcName(actorId: string, fallback: string): string {
+  if (actorId === "npc_mira") return "Мира";
+  if (actorId === "npc_kaspar") return "Каспар";
+  if (actorId === "npc_wayfarer_1") return "Тален";
+  if (actorId === "npc_oren") return "Орен";
+  return fallback;
 }
 
 function isTextEntryActive(): boolean {
