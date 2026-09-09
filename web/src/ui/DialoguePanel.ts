@@ -1,4 +1,5 @@
 import type { QuestResult } from "../api";
+import { dialogueResultEvidence } from "../playtestClient";
 import type { ClientState } from "../state";
 
 type TranscriptLine = { speaker: "player" | "npc" | "quest" | "system"; text: string };
@@ -45,6 +46,9 @@ export class DialoguePanel {
         this.npcId,
         clean
       );
+      document.dispatchEvent(new CustomEvent("samseberpg:dialogue-result", {
+        detail: dialogueResultEvidence(this.npcId, decision.used_fallback)
+      }));
       await this.state.refresh();
       this.transcript.push({ speaker: "npc", text: decision.text });
     } catch (error) {
