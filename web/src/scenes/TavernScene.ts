@@ -1,6 +1,6 @@
 import Phaser from "phaser";
 
-import { requestId } from "../api";
+import { requestId, type VisibleActor } from "../api";
 import { actionControlHint, movementControlHint } from "../controlHints";
 import {
   createProductionOren,
@@ -11,7 +11,15 @@ import {
 } from "../productionArt";
 import { getRuntime } from "../runtime";
 
-type TavernInteraction = "oren" | "exit";
+type TavernInteraction =
+  | { kind: "npc"; actorId: string; name: string }
+  | { kind: "exit" };
+
+type VisitorView = { actor: VisibleActor; view: Phaser.GameObjects.Container };
+
+const VISITOR_ANCHORS: Record<string, { x: number; y: number }> = {
+  npc_wayfarer_1: { x: 500, y: 385 }
+};
 
 export class TavernScene extends Phaser.Scene {
   private player: any;
@@ -22,6 +30,8 @@ export class TavernScene extends Phaser.Scene {
   private readonly interactionGraceMs = 600;
   private readonly oren = { x: 650, y: 325 };
   private readonly exit = { x: 110, y: 420 };
+  private readonly visitors = new Map<string, VisitorView>();
+  private unsubscribeState: (() => void) | null = null;
 
   constructor() {
     super("TavernScene");
@@ -46,6 +56,12 @@ export class TavernScene extends Phaser.Scene {
       ?? this.add.rectangle(270, 425, 24, 42, 0xe03a3e).setStrokeStyle(4, 0x111315).setDepth(20);
     renderTavernProductionForeground(this);
     this.publishPlayerPosition();
+
+    const runtime = getRuntime();
+    this.unsubscribeState = runtime.state.subscribe((snapshot) => {
+      this.renderVisibleVisitors(snapshot.world.visible_actors);
+    });
+
     const keyboard = this.input.keyboard;
     if (!keyboard) throw new Error("Keyboard input unavailable");
     this.keys = keyboard.addKeys("W,A,S,D,E", false);
@@ -54,6 +70,9 @@ export class TavernScene extends Phaser.Scene {
       void this.interact();
     });
     this.events.once("shutdown", () => {
+      this.unsubscribeState?.();
+      this.unsubscribeState = null;
+      this.destroyVisitors();
       this.clearInteraction();
       this.hint.textContent = "";
     });
@@ -73,16 +92,79 @@ export class TavernScene extends Phaser.Scene {
     this.player.y = Phaser.Math.Clamp(this.player.y + dy, 315, 470);
     this.publishPlayerPosition();
 
-    if (distance(this.player.x, this.player.y, this.oren.x, this.oren.y) < 85) {
-      this.offerInteraction("oren", actionControlHint("поговорить с Ореном"));
+    const visitor = this.nearestVisitor();
+    if (visitor) {
+      const name = npcName(visitor.actor_id, visitor.name);
+      this.offerInteraction(
+        { kind: "npc", actorId: visitor.actor_id, name },
+        actionControlHint(`поговорить с ${name}`)
+      );
+    } else if (distance(this.player.x, this.player.y, this.oren.x, this.oren.y) < 85) {
+      this.offerInteraction(
+        { kind: "npc", actorId: "npc_oren", name: "Орен" },
+        actionControlHint("поговорить с Ореном")
+      );
     } else if (distance(this.player.x, this.player.y, this.exit.x, this.exit.y) < 70) {
-      this.offerInteraction("exit", actionControlHint("выйти в деревню"));
+      this.offerInteraction({ kind: "exit" }, actionControlHint("выйти в деревню"));
     } else if (this.interaction && this.time.now <= this.interactionExpiresAt) {
       return;
     } else {
       this.clearInteraction();
       this.hint.textContent = movementControlHint();
     }
+  }
+
+  private renderVisibleVisitors(visible_actors: VisibleActor[]): void {
+    const visitors = visible_actors.filter(
+      (actor) => actor.actor_type === "npc" && actor.actor_id !== "npc_oren"
+    );
+    const nextIds = new Set(visitors.map((actor) => actor.actor_id));
+
+    for (const [actorId, current] of this.visitors) {
+      if (nextIds.has(actorId)) continue;
+      current.view.destroy(true);
+      this.visitors.delete(actorId);
+    }
+
+    visitors.forEach((actor, index) => {
+      const current = this.visitors.get(actor.actor_id);
+      if (current) {
+        current.actor = actor;
+        return;
+      }
+      const anchor = VISITOR_ANCHORS[actor.actor_id] ?? { x: 450 + index * 70, y: 390 };
+      const body = this.add.rectangle(0, 0, 30, 50, 0xe9e4d7)
+        .setStrokeStyle(4, 0x24272a);
+      const accent = this.add.rectangle(0, -20, 30, 7, 0xe0a34c);
+      const label = this.add.text(-34, 32, npcName(actor.actor_id, actor.name), {
+        color: "#f1eee4",
+        backgroundColor: "#24272a",
+        fontSize: "14px",
+        fontFamily: "sans-serif",
+        padding: { x: 4, y: 2 }
+      });
+      const view = this.add.container(anchor.x, anchor.y, [body, accent, label]).setDepth(19);
+      this.visitors.set(actor.actor_id, { actor, view });
+    });
+
+    const rendered = ["npc_oren", ...this.visitors.keys()].sort();
+    document.body.dataset.renderedTavernNpcIds = rendered.join(",");
+  }
+
+  private destroyVisitors(): void {
+    for (const current of this.visitors.values()) current.view.destroy(true);
+    this.visitors.clear();
+    delete document.body.dataset.renderedTavernNpcIds;
+  }
+
+  private nearestVisitor(): VisibleActor | null {
+    let best: { actor: VisibleActor; distance: number } | null = null;
+    for (const { actor, view } of this.visitors.values()) {
+      const gap = distance(this.player.x, this.player.y, view.x, view.y);
+      if (gap >= 78 || (best && best.distance <= gap)) continue;
+      best = { actor, distance: gap };
+    }
+    return best?.actor ?? null;
   }
 
   private drawGreyboxWorld(): void {
@@ -121,8 +203,8 @@ export class TavernScene extends Phaser.Scene {
       return;
     }
     this.clearInteraction();
-    if (interaction === "oren") {
-      await getRuntime().dialogue.openOren();
+    if (interaction.kind === "npc") {
+      await getRuntime().dialogue.openNpc(interaction.actorId);
       return;
     }
     await this.leaveTavern();
@@ -151,6 +233,14 @@ export class TavernScene extends Phaser.Scene {
     if (!result.success) throw new Error(result.summary);
     await runtime.state.refresh();
   }
+}
+
+function npcName(actorId: string, fallback: string): string {
+  if (actorId === "npc_mira") return "Мира";
+  if (actorId === "npc_kaspar") return "Каспар";
+  if (actorId === "npc_wayfarer_1") return "Тален";
+  if (actorId === "npc_oren") return "Орен";
+  return fallback;
 }
 
 function isTextEntryActive(): boolean {
