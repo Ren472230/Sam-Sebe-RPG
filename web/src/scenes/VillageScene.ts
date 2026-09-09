@@ -382,6 +382,8 @@ function npcInstrumentalName(actorId: string, fallback: string): string {
 }
 
 function isTextEntryActive(): boolean {
+  const dialogue = document.getElementById("dialogue");
+  if (dialogue && !dialogue.hidden) return true;
   const active = document.activeElement;
   return active instanceof HTMLInputElement
     || active instanceof HTMLTextAreaElement
