@@ -105,6 +105,43 @@ async function moveAxisTo(
   throw new Error(`player did not reach ${axis}=${target}; last=${JSON.stringify(await playerPosition(page))}`);
 }
 
+async function moveAxisToOrInteraction(
+  page: Page,
+  axis: "x" | "y",
+  target: number,
+  hintText: string,
+  tolerance = 9,
+  timeout = 10_000
+): Promise<void> {
+  const started = Date.now();
+  const hint = page.locator("#interaction-hint");
+  let heldKey: string | null = null;
+  await releaseMovementKeys(page);
+  try {
+    while (Date.now() - started < timeout) {
+      if ((await hint.textContent())?.includes(hintText)) return;
+      const position = await playerPosition(page);
+      const value = position[axis];
+      if (Number.isFinite(value) && Math.abs(value - target) <= tolerance) return;
+      const key = axis === "x"
+        ? (value < target ? "d" : "a")
+        : (value < target ? "s" : "w");
+      if (heldKey !== key) {
+        if (heldKey) await page.keyboard.up(heldKey);
+        await page.keyboard.down(key);
+        heldKey = key;
+      }
+      await page.waitForTimeout(50);
+    }
+  } finally {
+    if (heldKey) await page.keyboard.up(heldKey);
+    await releaseMovementKeys(page);
+  }
+  throw new Error(
+    `player did not reach ${axis}=${target} or interaction ${JSON.stringify(hintText)}; last=${JSON.stringify(await playerPosition(page))}`
+  );
+}
+
 async function approachAndTalk(
   page: Page,
   x: number,
@@ -112,8 +149,10 @@ async function approachAndTalk(
   hint: string,
   heading: string
 ): Promise<void> {
-  await moveAxisTo(page, "x", x);
-  await moveAxisTo(page, "y", y);
+  await moveAxisToOrInteraction(page, "x", x, hint);
+  if (!(await page.locator("#interaction-hint").textContent())?.includes(hint)) {
+    await moveAxisToOrInteraction(page, "y", y, hint);
+  }
   await expect(page.locator("#interaction-hint")).toContainText(hint, { timeout: 3_000 });
   await page.keyboard.press("e");
   await expect(page.locator("#dialogue")).toBeVisible({ timeout: 5_000 });
