@@ -190,3 +190,9 @@ test("runtime sprite policy prefers production, then prototype, then scene greyb
     );
   }
 });
+
+test("production loader handles SVG assets through Phaser SVG loading", () => {
+  const source = readFileSync(new URL("../src/productionArt.ts", import.meta.url), "utf8");
+  assert.match(source, /path\.toLowerCase\(\)\.endsWith\("\.svg"\)/);
+  assert.match(source, /scene\.load\.svg\(key, assetUrl\(path\)\)/);
+});
