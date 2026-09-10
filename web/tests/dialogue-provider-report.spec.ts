@@ -62,10 +62,11 @@ async function moveTowardInteraction(
   targetX: number,
   targetY: number,
   hintText: string,
-  timeout = 10_000
+  timeout = 20_000
 ): Promise<void> {
   const started = Date.now();
   const hint = page.locator("#interaction-hint");
+  const axisDeadZone = 28;
   await releaseMovementKeys(page);
 
   while (Date.now() - started < timeout) {
@@ -76,19 +77,21 @@ async function moveTowardInteraction(
     const dy = targetY - position.y;
     const horizontal = dx >= 0 ? "d" : "a";
     const vertical = dy >= 0 ? "s" : "w";
-    const keys = Math.abs(dx) >= Math.abs(dy)
-      ? [horizontal, vertical]
-      : [vertical, horizontal];
+    const keys: string[] = [];
+    if (Math.abs(dx) > axisDeadZone) keys.push(horizontal);
+    if (Math.abs(dy) > axisDeadZone) keys.push(vertical);
+    if (keys.length === 0) keys.push(Math.abs(dx) >= Math.abs(dy) ? horizontal : vertical);
 
-    for (const key of keys) {
-      await page.keyboard.down(key);
-      await page.waitForTimeout(70);
-      await page.keyboard.up(key);
-      await page.waitForTimeout(35);
-      if ((await hint.textContent())?.includes(hintText)) return;
+    try {
+      for (const key of keys) await page.keyboard.down(key);
+      await page.waitForTimeout(80);
+    } finally {
+      for (const key of keys) await page.keyboard.up(key);
     }
+    await page.waitForTimeout(25);
   }
 
+  await releaseMovementKeys(page);
   throw new Error(
     `player did not reach interaction ${JSON.stringify(hintText)} near (${targetX}, ${targetY}); last=${JSON.stringify(await playerPosition(page))}`
   );

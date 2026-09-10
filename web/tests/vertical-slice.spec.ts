@@ -91,8 +91,8 @@ async function moveAndInteractWhenHint(
 }
 
 async function enterTavernFromVillage(page: Page): Promise<void> {
-  await moveAxisTo(page, "x", 936, 4);
-  await moveAndInteractWhenHint(page, ["w", "a"], "войти в таверну");
+  await moveAxisTo(page, "x", 800, 12);
+  await moveAndInteractWhenHint(page, ["w"], "войти в таверну");
   await expect(page.locator("body")).toHaveAttribute("data-scene", "tavern");
 }
 
@@ -209,15 +209,18 @@ test("canonical route finishes the firewood quest, advances the Living World, pe
     const sessionId = await body.getAttribute("data-playtest-session");
     expect(sessionId).toBeTruthy();
 
-    await expect(body).toHaveAttribute("data-art-mode", "prototype");
-    await expect(body).toHaveAttribute("data-village-art", "prototype");
-    await expect(body).toHaveAttribute("data-player-art", "prototype");
-    await expect(body).toHaveAttribute("data-firewood-art", "prototype");
+    await expect(body).toHaveAttribute("data-art-mode", "production");
+    await expect(body).toHaveAttribute("data-village-art", "production");
+    await expect(body).toHaveAttribute("data-player-art", "production");
+    await expect(body).toHaveAttribute("data-firewood-art", "production");
     await expect(page.locator("#hud")).toContainText("Мастерская");
     await page.screenshot({ path: "test-results/01-village.png", fullPage: true });
 
     await enterTavernFromVillage(page);
-    await expect(body).toHaveAttribute("data-tavern-art", "prototype");
+    await expect(body).toHaveAttribute("data-art-mode", "production");
+    await expect(body).toHaveAttribute("data-tavern-art", "production");
+    await expect(body).toHaveAttribute("data-player-art", "production");
+    await expect(body).toHaveAttribute("data-oren-art", "production");
     await approachOren(page);
     await expect(page.getByRole("button", { name: "Взяться за дрова" })).toBeVisible();
     await page.screenshot({ path: "test-results/02-oren-offer.png", fullPage: true });
@@ -255,6 +258,10 @@ test("canonical route finishes the firewood quest, advances the Living World, pe
     await page.reload();
     await expect(body).toHaveAttribute("data-scene", "tavern");
     await expect(body).toHaveAttribute("data-playtest-session", sessionId!);
+    await expect(body).toHaveAttribute("data-art-mode", "production");
+    await expect(body).toHaveAttribute("data-tavern-art", "production");
+    await expect(body).toHaveAttribute("data-player-art", "production");
+    await expect(body).toHaveAttribute("data-oren-art", "production");
     await expect(page.locator("#hud")).toContainText("дрова доставлены ✓");
     await expect(page.locator("#hud")).toContainText("монеты 15");
     await expect(page.locator("#hud")).toContainText("доверие Орена 10");
