@@ -248,6 +248,10 @@ function villageLayerNames(): VillageLayerName[] {
 
 function queueImage(scene: Phaser.Scene, key: string, path?: string): void {
   if (!path || scene.textures.exists(key)) return;
+  if (path.toLowerCase().endsWith(".svg")) {
+    scene.load.svg(key, assetUrl(path));
+    return;
+  }
   scene.load.image(key, assetUrl(path));
 }
 
