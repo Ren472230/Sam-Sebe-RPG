@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Сам-себе-RPG — Vertical Slice</title>
+    <title>Сам-себе-RPG</title>
   </head>
   <body>
     <div id="app">
@@ -26,8 +26,14 @@
       </section>
       <main id="game"></main>
       <div id="interaction-hint"></div>
+      <section id="playtest-tools" aria-label="Отчёт игрового теста">
+        <button id="playtest-export" type="button">Скачать отчёт теста</button>
+        <span id="playtest-export-status" aria-live="polite">После игры скачай отчёт для разбора результата.</span>
+      </section>
       <section id="dialogue" aria-live="polite" hidden></section>
     </div>
+    <script type="module" src="/src/playtest.ts"></script>
+    <script type="module" src="/src/touchControls.ts"></script>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

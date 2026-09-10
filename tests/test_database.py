@@ -19,6 +19,7 @@ EXPECTED_TABLES = {
     "processed_interactions",
     "quests",
     "npc_memories",
+    "dialogue_turns",
 }
 
 
@@ -42,7 +43,7 @@ def test_initialize_bootstraps_one_shared_village_idempotently(tmp_path: Path) -
 
         assert conn.execute("SELECT COUNT(*) FROM worlds").fetchone()[0] == 1
         assert conn.execute("SELECT COUNT(*) FROM locations").fetchone()[0] == 4
-        assert conn.execute("SELECT COUNT(*) FROM npcs").fetchone()[0] == 3
+        assert conn.execute("SELECT COUNT(*) FROM npcs").fetchone()[0] == 4
         assert conn.execute("SELECT COUNT(*) FROM entities").fetchone()[0] >= 10
 
         stone = conn.execute(
@@ -82,4 +83,23 @@ def test_bootstrap_contains_required_npcs_and_locations(tmp_path: Path) -> None:
             "npc_mira": ("Mira", "craftswoman"),
             "npc_oren": ("Oren", "innkeeper"),
             "npc_kaspar": ("Kaspar", "forager"),
+            "npc_wayfarer_1": ("Talen", "wayfarer"),
         }
+
+
+def test_dialogue_turns_schema_exists(tmp_path: Path) -> None:
+    db = GameDatabase(tmp_path / "world.sqlite3")
+    db.initialize()
+
+    with db.connect() as conn:
+        columns = {row[1] for row in conn.execute("PRAGMA table_info(dialogue_turns)")}
+
+    assert {
+        "npc_actor_id",
+        "player_actor_id",
+        "user_text",
+        "npc_text",
+        "proposal_json",
+        "used_fallback",
+        "created_at",
+    } <= columns

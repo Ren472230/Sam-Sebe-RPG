@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="540" viewBox="0 0 960 540" role="img" aria-label="Start Village gameplay layer">
+  <defs>
+    <linearGradient id="pathGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#D8D2C4"/>
+      <stop offset="100%" stop-color="#C9C2B2"/>
+    </linearGradient>
+  </defs>
+  <rect width="960" height="540" fill="none"/>
+  <path d="M0 460c148-8 253-11 352-42 102-32 165-67 245-65 77 2 150 32 363 67v120H0z" fill="url(#pathGrad)" stroke="#1E232B" stroke-opacity="0.22" stroke-width="3"/>
+  <path d="M0 452c102 0 182-2 259-16 117-21 181-70 309-87 151-21 251 22 392 61" fill="none" stroke="#F4F1E8" stroke-opacity="0.55" stroke-width="6" stroke-linecap="round"/>
+  <g transform="translate(460 265)">
+    <ellipse cx="40" cy="126" rx="74" ry="18" fill="#0F1318" fill-opacity="0.18"/>
+    <ellipse cx="40" cy="62" rx="42" ry="42" fill="#2C3440"/>
+    <ellipse cx="40" cy="62" rx="32" ry="32" fill="#8AF0EA" opacity="0.85"/>
+    <rect x="2" y="62" width="76" height="56" rx="10" fill="#E9E3D6" stroke="#1E232B" stroke-width="4"/>
+    <rect x="18" y="86" width="44" height="32" rx="6" fill="#2C3440"/>
+    <rect x="-2" y="69" width="10" height="46" rx="4" fill="#E9E3D6" stroke="#1E232B" stroke-width="3"/>
+    <rect x="72" y="69" width="10" height="46" rx="4" fill="#E9E3D6" stroke="#1E232B" stroke-width="3"/>
+  </g>
+  <g transform="translate(115 432)">
+    <rect x="0" y="0" width="144" height="22" rx="6" fill="#39434E"/>
+    <rect x="18" y="-13" width="116" height="20" rx="6" fill="#2C3440"/>
+    <rect x="34" y="-25" width="70" height="16" rx="5" fill="#39434E"/>
+  </g>
+</svg>

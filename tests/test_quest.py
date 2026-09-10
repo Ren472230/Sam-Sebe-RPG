@@ -58,6 +58,7 @@ def test_turn_in_requires_five_owned_firewood(tmp_path: Path) -> None:
 
     assert result.success is False
     assert result.code == "INSUFFICIENT_FIREWOOD"
+    assert result.summary == "Орену всё ещё нужны дрова. Осталось принести: 1."
     assert result.state.status == "active"
     assert result.state.owned_firewood == 4
 
