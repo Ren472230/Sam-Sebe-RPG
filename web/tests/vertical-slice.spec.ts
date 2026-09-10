@@ -91,9 +91,27 @@ async function moveAndInteractWhenHint(
 }
 
 async function enterTavernFromVillage(page: Page): Promise<void> {
-  await moveAxisTo(page, "x", 800, 12);
-  await moveAndInteractWhenHint(page, ["w"], "войти в таверну");
-  await expect(page.locator("body")).toHaveAttribute("data-scene", "tavern");
+  const hint = page.locator("#interaction-hint");
+  const started = Date.now();
+  await releaseMovementKeys(page);
+
+  while (Date.now() - started < 20_000) {
+    if ((await hint.textContent())?.includes("войти в таверну")) {
+      await page.keyboard.press("e");
+      await expect(page.locator("body")).toHaveAttribute("data-scene", "tavern", { timeout: 10_000 });
+      return;
+    }
+
+    const { x } = await playerPosition(page);
+    const key = x < 790 ? "d" : x > 850 ? "a" : "w";
+    await page.keyboard.down(key);
+    await page.waitForTimeout(70);
+    await page.keyboard.up(key);
+    await page.waitForTimeout(100);
+  }
+
+  await releaseMovementKeys(page);
+  throw new Error(`player did not reach tavern interaction; last=${JSON.stringify(await playerPosition(page))}`);
 }
 
 async function approachOren(page: Page): Promise<void> {
