@@ -165,23 +165,33 @@ async function enterTavernSpatially(page: Page): Promise<void> {
   await releaseMovementKeys(page);
 
   while (Date.now() - started < 20_000) {
-    if ((await hint.textContent())?.includes("войти в таверну")) {
-      await page.keyboard.press("e");
-      await expect(page.locator("body")).toHaveAttribute("data-scene", "tavern", { timeout: 10_000 });
-      await expect(page.locator("body")).toHaveAttribute("data-rendered-tavern-npc-ids", /npc_oren/, { timeout: 10_000 });
-      return;
-    }
-
     const { x } = await playerPosition(page);
-    const key = x < 790 ? "d" : x > 850 ? "a" : "w";
+    if (x >= 790 && x <= 860) break;
+    const key = x < 790 ? "d" : "a";
     await page.keyboard.down(key);
-    await page.waitForTimeout(70);
+    await page.waitForTimeout(300);
     await page.keyboard.up(key);
-    await page.waitForTimeout(100);
+    await page.waitForTimeout(150);
   }
 
-  await releaseMovementKeys(page);
-  throw new Error(`player did not reach tavern interaction; last=${JSON.stringify(await playerPosition(page))}`);
+  const { x } = await playerPosition(page);
+  if (x < 790 || x > 860) {
+    throw new Error(`player did not reach tavern entry band; last=${JSON.stringify(await playerPosition(page))}`);
+  }
+
+  if (!(await hint.textContent())?.includes("войти в таверну")) {
+    await page.keyboard.down("w");
+    try {
+      await expect(hint).toContainText("войти в таверну", { timeout: 20_000 });
+    } finally {
+      await page.keyboard.up("w");
+      await releaseMovementKeys(page);
+    }
+  }
+
+  await page.keyboard.press("e");
+  await expect(page.locator("body")).toHaveAttribute("data-scene", "tavern", { timeout: 10_000 });
+  await expect(page.locator("body")).toHaveAttribute("data-rendered-tavern-npc-ids", /npc_oren/, { timeout: 10_000 });
 }
 
 async function exitTavernSpatially(page: Page): Promise<void> {
