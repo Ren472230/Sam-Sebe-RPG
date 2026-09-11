@@ -184,22 +184,11 @@ async function interactionSnapshot(
   }, { targetX, targetY, hintText, radius });
 }
 
-async function waitForPositionSettled(page: Page, timeout = 800): Promise<PlayerPosition> {
-  const started = Date.now();
-  let previous = await playerPosition(page);
-  let stableSamples = 0;
-  while (Date.now() - started < timeout) {
-    await page.waitForTimeout(40);
-    const current = await playerPosition(page);
-    if (current.x === previous.x && current.y === previous.y) {
-      stableSamples += 1;
-      if (stableSamples >= 2) return current;
-    } else {
-      stableSamples = 0;
-      previous = current;
-    }
-  }
-  return previous;
+async function waitForPositionSettled(page: Page): Promise<PlayerPosition> {
+  await page.evaluate(() => new Promise<void>((resolve) => {
+    requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+  }));
+  return playerPosition(page);
 }
 
 async function feedbackPulse(
