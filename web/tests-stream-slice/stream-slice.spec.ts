@@ -1,6 +1,11 @@
 import { expect, test, type Page } from "@playwright/test";
 
 import { installBrowserDiagnostics } from "../tests/helpers/browser-diagnostics";
+import {
+  approachAndTalk,
+  enterTavernSpatially,
+  exitTavernSpatially
+} from "../tests/helpers/spatial-navigation";
 
 
 type StreamState = {
@@ -14,8 +19,6 @@ type StreamState = {
     driftwood: { location_id: string | null; owner_actor_id: string | null };
   };
 };
-
-type PlayerPosition = { x: number; y: number };
 
 async function measuredStep<T>(title: string, body: () => Promise<T>): Promise<T> {
   const started = Date.now();
@@ -70,145 +73,9 @@ async function waitOneTick(page: Page, playerId: string): Promise<void> {
   ).toBe(before + 1);
 }
 
-async function playerPosition(page: Page): Promise<PlayerPosition> {
-  return page.evaluate(() => ({
-    x: Number(document.body.dataset.playerX),
-    y: Number(document.body.dataset.playerY)
-  }));
-}
-
-async function releaseMovementKeys(page: Page): Promise<void> {
-  for (const key of ["w", "a", "s", "d"]) await page.keyboard.up(key);
-  await page.waitForTimeout(50);
-}
-
-async function moveAxisTo(
-  page: Page,
-  axis: "x" | "y",
-  target: number,
-  tolerance = 9,
-  timeout = 10_000
-): Promise<void> {
-  const started = Date.now();
-  let heldKey: string | null = null;
-  await releaseMovementKeys(page);
-  try {
-    while (Date.now() - started < timeout) {
-      const position = await playerPosition(page);
-      const value = position[axis];
-      if (Number.isFinite(value) && Math.abs(value - target) <= tolerance) return;
-      const key = axis === "x"
-        ? (value < target ? "d" : "a")
-        : (value < target ? "s" : "w");
-      if (heldKey !== key) {
-        if (heldKey) await page.keyboard.up(heldKey);
-        await page.keyboard.down(key);
-        heldKey = key;
-      }
-      await page.waitForTimeout(50);
-    }
-  } finally {
-    if (heldKey) await page.keyboard.up(heldKey);
-    await releaseMovementKeys(page);
-  }
-  throw new Error(`player did not reach ${axis}=${target}; last=${JSON.stringify(await playerPosition(page))}`);
-}
-
-async function moveTowardInteraction(
-  page: Page,
-  targetX: number,
-  targetY: number,
-  hintText: string,
-  timeout = 20_000
-): Promise<void> {
-  const started = Date.now();
-  const hint = page.locator("#interaction-hint");
-  const axisDeadZone = 28;
-  await releaseMovementKeys(page);
-
-  while (Date.now() - started < timeout) {
-    if ((await hint.textContent())?.includes(hintText)) return;
-
-    const position = await playerPosition(page);
-    const dx = targetX - position.x;
-    const dy = targetY - position.y;
-    const horizontal = dx >= 0 ? "d" : "a";
-    const vertical = dy >= 0 ? "s" : "w";
-    const keys: string[] = [];
-    if (Math.abs(dx) > axisDeadZone) keys.push(horizontal);
-    if (Math.abs(dy) > axisDeadZone) keys.push(vertical);
-    if (keys.length === 0) keys.push(Math.abs(dx) >= Math.abs(dy) ? horizontal : vertical);
-
-    try {
-      for (const key of keys) await page.keyboard.down(key);
-      await page.waitForTimeout(80);
-    } finally {
-      for (const key of keys) await page.keyboard.up(key);
-    }
-    await page.waitForTimeout(25);
-  }
-
-  await releaseMovementKeys(page);
-  throw new Error(
-    `player did not reach interaction ${JSON.stringify(hintText)} near (${targetX}, ${targetY}); last=${JSON.stringify(await playerPosition(page))}`
-  );
-}
-
-async function approachAndTalk(
-  page: Page,
-  x: number,
-  y: number,
-  hint: string,
-  heading: string
-): Promise<void> {
-  await moveTowardInteraction(page, x, y, hint);
-  await expect(page.locator("#interaction-hint")).toContainText(hint, { timeout: 3_000 });
-  await page.keyboard.press("e");
-  await expect(page.locator("#dialogue")).toBeVisible({ timeout: 5_000 });
-  await expect(page.locator("#dialogue h2")).toHaveText(heading);
-}
-
-async function enterTavernSpatially(page: Page): Promise<void> {
-  const hint = page.locator("#interaction-hint");
-  const started = Date.now();
-  await releaseMovementKeys(page);
-
-  while (Date.now() - started < 20_000) {
-    const { x } = await playerPosition(page);
-    if (x >= 790 && x <= 860) break;
-    const key = x < 790 ? "d" : "a";
-    await page.keyboard.down(key);
-    await page.waitForTimeout(300);
-    await page.keyboard.up(key);
-    await page.waitForTimeout(150);
-  }
-
-  const { x } = await playerPosition(page);
-  if (x < 790 || x > 860) {
-    throw new Error(`player did not reach tavern entry band; last=${JSON.stringify(await playerPosition(page))}`);
-  }
-
-  if (!(await hint.textContent())?.includes("войти в таверну")) {
-    await page.keyboard.down("w");
-    try {
-      await expect(hint).toContainText("войти в таверну", { timeout: 20_000 });
-    } finally {
-      await page.keyboard.up("w");
-      await releaseMovementKeys(page);
-    }
-  }
-
-  await page.keyboard.press("e");
-  await expect(page.locator("body")).toHaveAttribute("data-scene", "tavern", { timeout: 10_000 });
+async function enterStreamTavern(page: Page): Promise<void> {
+  await enterTavernSpatially(page);
   await expect(page.locator("body")).toHaveAttribute("data-rendered-tavern-npc-ids", /npc_oren/, { timeout: 10_000 });
-}
-
-async function exitTavernSpatially(page: Page): Promise<void> {
-  await moveAxisTo(page, "x", 110);
-  await moveAxisTo(page, "y", 420);
-  await expect(page.locator("#interaction-hint")).toContainText("выйти в деревню", { timeout: 3_000 });
-  await page.keyboard.press("e");
-  await expect(page.locator("body")).toHaveAttribute("data-scene", "village", { timeout: 10_000 });
 }
 
 
@@ -264,7 +131,7 @@ test("Stream Slice shows one causal evening, hospitality loop and persistence wi
       await expect(page.locator("#stream-status")).toContainText(/Тален.*таверн|гост/i);
       await expect(page.locator("#stream-status")).toContainText(/Орен.*хлеб/i);
 
-      await enterTavernSpatially(page);
+      await enterStreamTavern(page);
       await expect(page.locator("body")).toHaveAttribute("data-rendered-tavern-npc-ids", /npc_wayfarer_1/);
       await approachAndTalk(page, 500, 385, "поговорить с Таленом", "Тален");
       await sendDialogue(page, "Что случилось в дороге?", /восточн.*караван/i);
@@ -283,7 +150,7 @@ test("Stream Slice shows one causal evening, hospitality loop and persistence wi
       await exitTavernSpatially(page);
       await clickLivingAction(page, "Идти: площадь", "Площадь");
       await page.getByRole("button", { name: "Подобрать хлеб", exact: true }).click();
-      await enterTavernSpatially(page);
+      await enterStreamTavern(page);
       await page.getByRole("button", { name: "Отдать хлеб Орену", exact: true }).click();
 
       await approachAndTalk(page, 650, 325, "поговорить с Ореном", "Орен");
