@@ -1,0 +1,139 @@
+name: Release Reproducibility Gate
+
+on:
+  push:
+    branches:
+      - agent/release-reproducibility-v1
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "web/package.json"
+      - "web/package-lock.json"
+      - "constraints/**"
+      - "pyproject.toml"
+      - "RUN_STREAM_SLICE.ps1"
+      - ".github/workflows/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-reproducibility-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  clean-checkout:
+    name: ${{ matrix.os }} clean dependency/build gate
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            venv_python: .venv/bin/python
+          - os: windows-latest
+            venv_python: .venv/Scripts/python.exe
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            pyproject.toml
+            constraints/python-3.12.txt
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Create isolated Python environment
+        shell: bash
+        run: python -m venv .venv
+
+      - name: Install constrained Python dependencies
+        shell: bash
+        run: '"${{ matrix.venv_python }}" -m pip install -c constraints/python-3.12.txt -e ".[dev]"'
+
+      - name: Check Python dependency consistency
+        shell: bash
+        run: '"${{ matrix.venv_python }}" -m pip check'
+
+      - name: Full Python suite
+        shell: bash
+        env:
+          OPENAI_API_KEY: ""
+        run: '"${{ matrix.venv_python }}" -m pytest -q tests'
+
+      - name: Stream Slice preflight
+        shell: bash
+        env:
+          OPENAI_API_KEY: ""
+        run: '"${{ matrix.venv_python }}" scripts/stream_preflight.py'
+
+      - name: Fresh npm install from lockfile
+        working-directory: web
+        run: npm ci --no-audit --no-fund
+
+      - name: Web contract tests
+        working-directory: web
+        run: npm run test:contract
+
+      - name: Production build
+        working-directory: web
+        run: npm run build
+
+      - name: Playwright package resolution
+        working-directory: web
+        run: npx playwright --version
+
+      - name: Windows timezone and SQLite preflight
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force data | Out-Null
+          Remove-Item data/repro-windows.sqlite3 -Force -ErrorAction SilentlyContinue
+          & ".\.venv\Scripts\python.exe" -c "import tzdata; from zoneinfo import ZoneInfo; from samseberpg.db import GameDatabase; assert ZoneInfo('UTC').key == 'UTC'; GameDatabase(r'data/repro-windows.sqlite3').initialize(); print('Windows reproducibility preflight OK')"
+
+      - name: Windows backend clean boot
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Remove-Item data/repro-server.out -Force -ErrorAction SilentlyContinue
+          Remove-Item data/repro-server.err -Force -ErrorAction SilentlyContinue
+          $env:SAM_SEBE_DB = "data/repro-windows.sqlite3"
+          $env:OPENAI_API_KEY = ""
+          $process = Start-Process ".\.venv\Scripts\python.exe" -ArgumentList "-m", "samseberpg.server" -PassThru -RedirectStandardOutput data/repro-server.out -RedirectStandardError data/repro-server.err
+          try {
+            $healthy = $false
+            for ($i = 0; $i -lt 30; $i++) {
+              try {
+                $health = Invoke-RestMethod -Uri "http://127.0.0.1:8000/api/health" -Method Get
+                if ($health.ok -eq $true) {
+                  $healthy = $true
+                  break
+                }
+              } catch {
+              }
+              Start-Sleep -Seconds 1
+            }
+            if (-not $healthy) {
+              if (Test-Path data/repro-server.err) { Get-Content data/repro-server.err }
+              throw "Backend health check failed on Windows"
+            }
+            Write-Host "Windows clean boot PASS"
+          } finally {
+            if ($null -ne $process -and -not $process.HasExited) {
+              Stop-Process -Id $process.Id -Force
+            }
+          }
