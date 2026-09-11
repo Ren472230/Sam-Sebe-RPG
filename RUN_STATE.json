@@ -1,7 +1,7 @@
 {
   "protocol_version": 1,
   "project": "Ren472230/Sam-Sebe-RPG",
-  "run_id": "2026-09-11-autonomy-pilot-install",
+  "run_id": "2026-09-11-pilot-cycle-1-tavern-entry",
   "authoritative_branch": "integration/audit-results-v1",
   "authoritative_head": "5f5695f5918ed5dbc4fefea5e6483795a00260d5",
   "working_branch": "agent/autonomy-pilot-v0.1",
@@ -16,21 +16,21 @@
     "merged": false
   },
   "phase": "integrated_release_candidate_stabilization",
-  "current_objective": "Stabilize the PR #53 browser acceptance path before telemetry integration.",
-  "next_action": "Fix the reproducible tavern-entry spatial navigation failure at web/tests/helpers/spatial-navigation.ts:316 with RED-to-GREEN evidence on agent/autonomy-pilot-v0.1.",
+  "current_objective": "Prove the targeted tavern-entry navigation fix on one exact pilot SHA.",
+  "next_action": "Complete the exact-SHA validation of 980a82f57fbd6d41d3d1e9f928ffdd925ed54c47 and reconcile every required workflow result before changing code again.",
   "blockers": [
-    "Stream Slice Gate run 34586828765 fails at Chromium tavern-entry navigation.",
-    "Playable Candidate Gate run 34586828698 is red and its current root cause must be reconciled after the primary spatial fix.",
-    "Prototype Web CI run 34586828701 is red and its current root cause must be reconciled after the primary spatial fix.",
-    "Living World Integration Gate run 34586828703 is red and its current root cause must be reconciled after the primary spatial fix."
+    "Source PR #53 Stream Slice Gate run 34586828765 fails at Chromium tavern-entry navigation.",
+    "Source PR #53 Playable Candidate Gate run 34586828698 is red; its browser route also contains tavern-entry failures.",
+    "Source PR #53 Prototype Web CI run 34586828701 is red and still requires factual reconciliation.",
+    "Source PR #53 Living World Integration Gate run 34586828703 is red and still requires factual reconciliation."
   ],
   "active_run": {
-    "run_id": null,
-    "status": "idle",
-    "started_at_utc": null,
-    "lease_expires_at_utc": null,
-    "base_sha": null,
-    "working_branch": null
+    "run_id": "2026-09-11-pilot-cycle-1-tavern-entry",
+    "status": "running",
+    "started_at_utc": "2026-09-11T11:10:35Z",
+    "lease_expires_at_utc": "2026-09-11T12:40:35Z",
+    "base_sha": "3db28e86dc8a03db72c8d8dd192dd11cdbf661c3",
+    "working_branch": "agent/autonomy-pilot-v0.1"
   },
   "last_handoff": {
     "completed_at_utc": "2026-09-11T11:06:15Z",
@@ -85,15 +85,15 @@
     "web_lockfile": "web/package-lock.json committed with lockfileVersion 3",
     "python_constraints": "constraints/python-3.12.txt",
     "ci_install_policy": "current release/browser workflows use npm ci and constrained pip installs",
-    "windows_launcher": "uses constrained pip and npm ci when the lockfile exists; npm install is a local fallback only when the lockfile is missing",
+    "windows_launcher": "uses constrained pip and npm ci when the lockfile exists; npm install is a local fallback only if the lockfile is missing",
     "repository_hygiene": "root .gitignore covers generated caches, environments, browser reports, local SQLite state, environment files, secrets and editor/OS debris",
     "github_releases": "none"
   },
   "known_limitations": [
-    "Four required browser-bearing workflows are red at the current authoritative PR #53 HEAD.",
-    "Only the latest Stream Slice tavern-entry failure has been deeply inspected during this installation; the other failure conclusions are factual but their root causes remain to be reconciled.",
+    "The first pilot code change was committed before the lease write. The cycle now records an active lease, and this ordering defect must be added to autonomous learning and strengthened in the source protocol before hourly scheduling.",
+    "Four required browser-bearing workflows are red at the source PR #53 authoritative HEAD.",
     "The active visual pack is a temporary complete SVG Stream Slice pack rather than final production art.",
     "A real human experience gate remains pending after technical stabilization."
   ],
-  "current_blocker": "Fix the reproducible Stream Slice tavern-entry spatial navigation defect, then reconcile the other browser-bearing failures on the exact resulting HEAD."
+  "current_blocker": "Complete exact-SHA validation of the targeted tavern-entry fix before any further code change."
 }
