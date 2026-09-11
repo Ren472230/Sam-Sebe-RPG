@@ -327,8 +327,8 @@ async function moveWithConcurrentKeysUntilHint(
 export async function enterTavernSpatially(page: Page): Promise<void> {
   const hint = page.locator("#interaction-hint");
   await moveAxisOneWayTo(page, "y", 455);
-  await moveAxisOneWayTo(page, "x", 600);
-  await moveWithConcurrentKeysUntilHint(page, ["d", "w"], "войти в таверну", 20_000);
+  await moveAxisOneWayTo(page, "x", 790);
+  await moveWithConcurrentKeysUntilHint(page, ["w"], "войти в таверну", 20_000);
   await expect(hint).toContainText("войти в таверну", { timeout: 3_000 });
   await page.keyboard.press("e");
   await expect(page.locator("body")).toHaveAttribute("data-scene", "tavern", { timeout: 10_000 });
