@@ -196,16 +196,6 @@ function movementKeyForBand(
   return null;
 }
 
-function crossedBand(
-  key: MovementKey,
-  value: number,
-  min: number,
-  max: number
-): boolean {
-  if (key === "d" || key === "s") return value >= min;
-  return value <= max;
-}
-
 export async function moveTowardInteraction(
   page: Page,
   targetX: number,
@@ -215,7 +205,7 @@ export async function moveTowardInteraction(
 ): Promise<void> {
   await installNavigationDiagnostics(page);
   const stableInteractionRadius = 68;
-  const axisMargin = 0;
+  const axisMargin = 8;
   const started = Date.now();
   let snapshot = await interactionSnapshot(page, targetX, targetY, hintText, stableInteractionRadius);
   if (snapshot.ready) return;
@@ -224,31 +214,29 @@ export async function moveTowardInteraction(
   const xMax = targetX + axisMargin;
   const yMin = targetY - axisMargin;
   const yMax = targetY + axisMargin;
-  let xKey = movementKeyForBand(snapshot.position.x, xMin, xMax, "a", "d");
-  let yKey = movementKeyForBand(snapshot.position.y, yMin, yMax, "w", "s");
+  let xKey: MovementKey | null = null;
+  let yKey: MovementKey | null = null;
 
   await releaseMovementKeys(page);
-  if (xKey) await page.keyboard.down(xKey);
-  if (yKey) await page.keyboard.down(yKey);
-
   try {
     while (Date.now() - started < timeout) {
       snapshot = await interactionSnapshot(page, targetX, targetY, hintText, stableInteractionRadius);
       if (snapshot.ready) break;
 
-      if (xKey && crossedBand(xKey, snapshot.position.x, xMin, xMax)) {
-        await page.keyboard.up(xKey);
-        xKey = null;
+      const nextXKey = movementKeyForBand(snapshot.position.x, xMin, xMax, "a", "d");
+      const nextYKey = movementKeyForBand(snapshot.position.y, yMin, yMax, "w", "s");
+
+      if (xKey !== nextXKey) {
+        if (xKey) await page.keyboard.up(xKey);
+        if (nextXKey) await page.keyboard.down(nextXKey);
+        xKey = nextXKey;
       }
-      if (yKey && crossedBand(yKey, snapshot.position.y, yMin, yMax)) {
-        await page.keyboard.up(yKey);
-        yKey = null;
+      if (yKey !== nextYKey) {
+        if (yKey) await page.keyboard.up(yKey);
+        if (nextYKey) await page.keyboard.down(nextYKey);
+        yKey = nextYKey;
       }
-      if (!xKey && !yKey) {
-        await page.waitForTimeout(50);
-        snapshot = await interactionSnapshot(page, targetX, targetY, hintText, stableInteractionRadius);
-        break;
-      }
+
       await page.waitForTimeout(25);
     }
   } finally {
