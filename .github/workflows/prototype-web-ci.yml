@@ -51,6 +51,9 @@ jobs:
       - name: Build web client
         run: npm run build
 
+      - name: Verify startup controls before the full route
+        run: npm run test:e2e -- tests/world-pulse.spec.ts -g "time controls wait for initial state"
+
       - name: Run browser vertical slice
         run: npm run test:e2e
 

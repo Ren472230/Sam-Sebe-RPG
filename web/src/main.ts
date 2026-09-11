@@ -318,6 +318,8 @@ function bindWorldPulse(state: ClientState, streamMode: boolean): void {
       });
     });
   }
+  // Initial state and listeners are ready; loading controls can now accept actions.
+  setBusy(false);
 }
 
 function actionButton(label: string, onClick: () => void): HTMLButtonElement {
