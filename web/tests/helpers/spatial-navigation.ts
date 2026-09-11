@@ -184,26 +184,54 @@ async function interactionSnapshot(
   }, { targetX, targetY, hintText, radius });
 }
 
-function movementKeyForBand(
-  value: number,
-  min: number,
-  max: number,
-  negative: MovementKey,
-  positive: MovementKey
-): MovementKey | null {
-  if (value < min) return positive;
-  if (value > max) return negative;
-  return null;
+async function waitForPositionSettled(page: Page, timeout = 800): Promise<PlayerPosition> {
+  const started = Date.now();
+  let previous = await playerPosition(page);
+  let stableSamples = 0;
+  while (Date.now() - started < timeout) {
+    await page.waitForTimeout(40);
+    const current = await playerPosition(page);
+    if (current.x === previous.x && current.y === previous.y) {
+      stableSamples += 1;
+      if (stableSamples >= 2) return current;
+    } else {
+      stableSamples = 0;
+      previous = current;
+    }
+  }
+  return previous;
 }
 
-function crossedBand(
-  key: MovementKey,
-  value: number,
-  min: number,
-  max: number
-): boolean {
-  if (key === "d" || key === "s") return value >= min;
-  return value <= max;
+async function feedbackPulse(
+  page: Page,
+  keys: MovementKey[],
+  hintText: string,
+  timeout = 1_000
+): Promise<void> {
+  const before = await playerPosition(page);
+  await releaseMovementKeys(page);
+  for (const key of keys) await page.keyboard.down(key);
+  try {
+    await page.waitForFunction(
+      ({ x, y, expectedHint }) => {
+        const currentX = Number(document.body.dataset.playerX);
+        const currentY = Number(document.body.dataset.playerY);
+        const hint = document.getElementById("interaction-hint")?.textContent ?? "";
+        return hint.includes(expectedHint)
+          || currentX !== x
+          || currentY !== y;
+      },
+      { x: before.x, y: before.y, expectedHint: hintText },
+      { timeout, polling: 25 }
+    );
+  } catch {
+    // A blocked direction is valid physical feedback. Release the keys and let
+    // the next pulse choose a new direction from the observed position.
+  } finally {
+    for (const key of keys) await page.keyboard.up(key);
+    await releaseMovementKeys(page);
+  }
+  await waitForPositionSettled(page);
 }
 
 export async function moveTowardInteraction(
@@ -215,46 +243,29 @@ export async function moveTowardInteraction(
 ): Promise<void> {
   await installNavigationDiagnostics(page);
   const stableInteractionRadius = 68;
-  const axisMargin = 0;
+  const coordinateTolerance = 3;
   const started = Date.now();
   let snapshot = await interactionSnapshot(page, targetX, targetY, hintText, stableInteractionRadius);
-  if (snapshot.ready) return;
 
-  const xMin = targetX - axisMargin;
-  const xMax = targetX + axisMargin;
-  const yMin = targetY - axisMargin;
-  const yMax = targetY + axisMargin;
-  let xKey = movementKeyForBand(snapshot.position.x, xMin, xMax, "a", "d");
-  let yKey = movementKeyForBand(snapshot.position.y, yMin, yMax, "w", "s");
+  while (Date.now() - started < timeout) {
+    if (snapshot.ready) return;
 
-  await releaseMovementKeys(page);
-  if (xKey) await page.keyboard.down(xKey);
-  if (yKey) await page.keyboard.down(yKey);
+    const dx = targetX - snapshot.position.x;
+    const dy = targetY - snapshot.position.y;
+    const keys: MovementKey[] = [];
+    if (Math.abs(dx) > coordinateTolerance) keys.push(dx > 0 ? "d" : "a");
+    if (Math.abs(dy) > coordinateTolerance) keys.push(dy > 0 ? "s" : "w");
 
-  try {
-    while (Date.now() - started < timeout) {
+    if (keys.length === 0) {
+      await releaseMovementKeys(page);
+      await page.waitForTimeout(700);
       snapshot = await interactionSnapshot(page, targetX, targetY, hintText, stableInteractionRadius);
-      if (snapshot.ready) break;
-
-      if (xKey && crossedBand(xKey, snapshot.position.x, xMin, xMax)) {
-        await page.keyboard.up(xKey);
-        xKey = null;
-      }
-      if (yKey && crossedBand(yKey, snapshot.position.y, yMin, yMax)) {
-        await page.keyboard.up(yKey);
-        yKey = null;
-      }
-      if (!xKey && !yKey) {
-        await page.waitForTimeout(50);
-        snapshot = await interactionSnapshot(page, targetX, targetY, hintText, stableInteractionRadius);
-        break;
-      }
-      await page.waitForTimeout(25);
+      if (snapshot.ready) return;
+      break;
     }
-  } finally {
-    if (xKey) await page.keyboard.up(xKey);
-    if (yKey) await page.keyboard.up(yKey);
-    await releaseMovementKeys(page);
+
+    await feedbackPulse(page, keys, hintText, Math.min(1_000, Math.max(100, timeout - (Date.now() - started))));
+    snapshot = await interactionSnapshot(page, targetX, targetY, hintText, stableInteractionRadius);
   }
 
   snapshot = await interactionSnapshot(page, targetX, targetY, hintText, stableInteractionRadius);
