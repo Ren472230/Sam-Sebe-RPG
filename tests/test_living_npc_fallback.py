@@ -60,3 +60,76 @@ def test_offline_mira_fallback_can_recognize_explicit_wood_commitment(
             ).fetchone()[0]
         )
     assert state == {"wood_stock": 0, "work_cycles": 2, "requested_wood": True}
+
+
+def test_offline_mira_generic_fallback_rotates_without_immediate_repetition(
+    tmp_path: Path,
+) -> None:
+    db = GameDatabase(tmp_path / "fallback-repetition.sqlite3")
+    db.initialize()
+    clock = FakeClock(datetime(2026, 9, 2, 12, 0, tzinfo=timezone.utc))
+    player = "player_fallback_repetition"
+    now = "2026-09-02T12:00:00.000Z"
+    with db.connect() as conn:
+        conn.execute(
+            "INSERT INTO actors (id, world_id, actor_type, name, location_id, created_at) "
+            "VALUES (?, ?, 'player', 'Ren', 'workshop_yard', ?)",
+            (player, DEFAULT_WORLD_ID, now),
+        )
+        conn.execute(
+            "INSERT INTO players (actor_id, discord_user_id, joined_at, coins) "
+            "VALUES (?, 'fallback-repetition', ?, 10)",
+            (player, now),
+        )
+        conn.execute(
+            "UPDATE npc_runtime_state SET state_json = ? WHERE npc_actor_id = 'npc_mira'",
+            (json.dumps({"wood_stock": 2, "work_cycles": 2, "requested_wood": False}),),
+        )
+    dialogue = DialogueService(db, QuestService(db, clock), provider=None)
+
+    first = dialogue.talk(player, "Как дела?", npc_id="npc_mira")
+    second = dialogue.talk(player, "Как дела?", npc_id="npc_mira")
+
+    assert first.used_fallback is True
+    assert second.used_fallback is True
+    assert first.text != second.text
+
+
+def test_offline_mira_fallback_changes_when_authoritative_state_changes(
+    tmp_path: Path,
+) -> None:
+    db = GameDatabase(tmp_path / "fallback-state.sqlite3")
+    db.initialize()
+    clock = FakeClock(datetime(2026, 9, 2, 12, 0, tzinfo=timezone.utc))
+    player = "player_fallback_state"
+    now = "2026-09-02T12:00:00.000Z"
+    with db.connect() as conn:
+        conn.execute(
+            "INSERT INTO actors (id, world_id, actor_type, name, location_id, created_at) "
+            "VALUES (?, ?, 'player', 'Ren', 'workshop_yard', ?)",
+            (player, DEFAULT_WORLD_ID, now),
+        )
+        conn.execute(
+            "INSERT INTO players (actor_id, discord_user_id, joined_at, coins) "
+            "VALUES (?, 'fallback-state', ?, 10)",
+            (player, now),
+        )
+        conn.execute(
+            "UPDATE npc_runtime_state SET state_json = ? WHERE npc_actor_id = 'npc_mira'",
+            (json.dumps({"wood_stock": 0, "work_cycles": 2, "requested_wood": True}),),
+        )
+    dialogue = DialogueService(db, QuestService(db, clock), provider=None)
+
+    blocked = dialogue.talk(player, "Как дела?", npc_id="npc_mira")
+    with db.connect() as conn:
+        conn.execute(
+            "UPDATE npc_runtime_state SET state_json = ? WHERE npc_actor_id = 'npc_mira'",
+            (json.dumps({"wood_stock": 2, "work_cycles": 2, "requested_wood": False}),),
+        )
+    working = dialogue.talk(player, "Как дела?", npc_id="npc_mira")
+
+    assert blocked.used_fallback is True
+    assert working.used_fallback is True
+    assert blocked.text != working.text
+    assert "встала" in blocked.text.lower()
+    assert "идёт" in working.text.lower()
