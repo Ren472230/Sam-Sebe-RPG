@@ -221,7 +221,20 @@ export async function moveTowardInteraction(
   try {
     while (Date.now() - started < timeout) {
       snapshot = await interactionSnapshot(page, targetX, targetY, hintText, stableInteractionRadius);
-      if (snapshot.ready) break;
+      if (snapshot.ready) {
+        if (xKey) {
+          await page.keyboard.up(xKey);
+          xKey = null;
+        }
+        if (yKey) {
+          await page.keyboard.up(yKey);
+          yKey = null;
+        }
+        await page.waitForTimeout(50);
+        snapshot = await interactionSnapshot(page, targetX, targetY, hintText, stableInteractionRadius);
+        if (snapshot.ready) return;
+        continue;
+      }
 
       const nextXKey = movementKeyForBand(snapshot.position.x, xMin, xMax, "a", "d");
       const nextYKey = movementKeyForBand(snapshot.position.y, yMin, yMax, "w", "s");
