@@ -149,11 +149,15 @@ export async function moveTowardInteraction(
       const dy = targetY - position.y;
       const horizontal: MovementKey = dx >= 0 ? "d" : "a";
       const vertical: MovementKey = dy >= 0 ? "s" : "w";
-      const desired: MovementKey[] = [];
 
-      if (Math.abs(dx) > axisDeadZone) desired.push(horizontal);
-      if (Math.abs(dy) > axisDeadZone) desired.push(vertical);
-      if (desired.length === 0) desired.push(Math.abs(dx) >= Math.abs(dy) ? horizontal : vertical);
+      // Use one axis at a time. Diagonal key holds can pin the player against the
+      // workshop/well collision corners under slow CI frames even though an
+      // unobstructed orthogonal route exists along the village lower lane.
+      const desired: MovementKey[] = Math.abs(dx) > axisDeadZone
+        ? [horizontal]
+        : Math.abs(dy) > axisDeadZone
+          ? [vertical]
+          : [Math.abs(dx) >= Math.abs(dy) ? horizontal : vertical];
 
       await syncHeldMovementKeys(page, held, desired);
       await page.waitForTimeout(75);
