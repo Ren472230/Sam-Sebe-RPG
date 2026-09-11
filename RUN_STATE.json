@@ -15,36 +15,32 @@
     "draft": true,
     "merged": false
   },
-  "phase": "integrated_release_candidate_stabilization",
-  "current_objective": "Prove the targeted tavern-entry navigation fix on one exact pilot SHA.",
-  "next_action": "Complete the exact-SHA validation of 980a82f57fbd6d41d3d1e9f928ffdd925ed54c47 and reconcile every required workflow result before changing code again.",
+  "phase": "autonomy_protocol_hardening_before_next_gameplay_cycle",
+  "current_objective": "Upgrade the installed autonomy control layer to the verified hard lease barrier before any further gameplay mutation.",
+  "next_action": "After the universal system SHA with the hard lease barrier is green, update the installed AGENTS/RUNBOOK/AUTONOMY_SYSTEM contract in this pilot branch under a correctly acquired lease.",
   "blockers": [
-    "Source PR #53 Stream Slice Gate run 34586828765 fails at Chromium tavern-entry navigation.",
-    "Source PR #53 Playable Candidate Gate run 34586828698 is red; its browser route also contains tavern-entry failures.",
-    "Source PR #53 Prototype Web CI run 34586828701 is red and still requires factual reconciliation.",
-    "Source PR #53 Living World Integration Gate run 34586828703 is red and still requires factual reconciliation."
+    "The installed autonomy source SHA 607aef5cb7f376e6c77b0855c1501d1f52d89b35 allowed an execution-order mistake where the first gameplay commit happened before the lease write; the universal source is being hardened before the next gameplay mutation.",
+    "Stream Slice validation run 34592686361 now passes tavern entry but fails later while approaching Talen at target (500,385): last position (556,315), distance 90, generic interaction hint, no browser console or page errors."
   ],
   "active_run": {
-    "run_id": "2026-09-11-pilot-cycle-1-tavern-entry",
-    "status": "running",
-    "started_at_utc": "2026-09-11T11:10:35Z",
-    "lease_expires_at_utc": "2026-09-11T12:40:35Z",
-    "base_sha": "3db28e86dc8a03db72c8d8dd192dd11cdbf661c3",
-    "working_branch": "agent/autonomy-pilot-v0.1"
+    "run_id": null,
+    "status": "idle",
+    "started_at_utc": null,
+    "lease_expires_at_utc": null,
+    "base_sha": null,
+    "working_branch": null
   },
   "last_handoff": {
-    "completed_at_utc": "2026-09-11T11:06:15Z",
-    "result": "Autonomous Project Development v0.1 control layer installed and stale PR #49 state reconciled to factual PR #53 state.",
-    "head_sha": "b85fbd348b7d653a8714d0425c9535caeaedbd98",
+    "completed_at_utc": "2026-09-11T11:16:55Z",
+    "result": "Cycle 1 replaced the open-loop tavern-entry D+W movement with the existing target-aware interaction controller at reachable point (825,330). Exact validation progressed through tavern entry and exposed the next independent Talen approach failure. The pilot also exposed that lease acquisition needs a hard pre-mutation barrier in the universal protocol.",
+    "head_sha": "980a82f57fbd6d41d3d1e9f928ffdd925ed54c47",
+    "work_head_sha": "980a82f57fbd6d41d3d1e9f928ffdd925ed54c47",
     "verification": [
-      "Source system package 607aef5cb7f376e6c77b0855c1501d1f52d89b35: contract tests passed and package validator passed.",
-      "PR #53 factual HEAD verified as 5f5695f5918ed5dbc4fefea5e6483795a00260d5.",
-      "Visual Forge Gate 34586828719: success.",
-      "Release Reproducibility Gate 34586828692: success.",
-      "Windows Compatibility Gate 34586828693: success.",
-      "Stream Slice Gate 34586828765: failure at Chromium acceptance; 22 Python tests, preflight, 45 web contracts and production build passed before the failure."
+      "RED source evidence: Stream Slice Gate 34586828765 on PR #53 HEAD 5f5695f5918ed5dbc4fefea5e6483795a00260d5 failed before tavern entry after open-loop D+W movement ended at (936,315).",
+      "Pilot validation: Stream Slice Gate 34592686361 on work SHA 980a82f57fbd6d41d3d1e9f928ffdd925ed54c47 reached and completed tavern entry, then failed later on approach to Talen.",
+      "At work SHA 980a82f57fbd6d41d3d1e9f928ffdd925ed54c47: 22 Stream Slice Python tests passed, preflight passed, 45 web contract tests passed, production build and bundle budget passed, Visual Forge Gate 34592686436 passed, Windows Compatibility Gate 34592686460 passed, Release Reproducibility Gate 34592686330 passed."
     ],
-    "next_action": "Fix the reproducible tavern-entry spatial navigation failure at web/tests/helpers/spatial-navigation.ts:316 with RED-to-GREEN evidence on agent/autonomy-pilot-v0.1."
+    "next_action": "After the universal system SHA with the hard lease barrier is green, update the installed AGENTS/RUNBOOK/AUTONOMY_SYSTEM contract in this pilot branch under a correctly acquired lease."
   },
   "human_gate": {
     "required": false,
@@ -81,19 +77,40 @@
       "status": "failure"
     }
   },
+  "pilot_validation_at_work_head": {
+    "work_head_sha": "980a82f57fbd6d41d3d1e9f928ffdd925ed54c47",
+    "visual_forge_gate": {
+      "run_id": 34592686436,
+      "status": "success"
+    },
+    "release_reproducibility_gate": {
+      "run_id": 34592686330,
+      "status": "success"
+    },
+    "windows_compatibility_gate": {
+      "run_id": 34592686460,
+      "status": "success"
+    },
+    "stream_slice_gate": {
+      "run_id": 34592686361,
+      "status": "failure",
+      "failure_scope": "later Talen approach after successful tavern entry"
+    }
+  },
   "release_reproducibility_work": {
     "web_lockfile": "web/package-lock.json committed with lockfileVersion 3",
     "python_constraints": "constraints/python-3.12.txt",
     "ci_install_policy": "current release/browser workflows use npm ci and constrained pip installs",
-    "windows_launcher": "uses constrained pip and npm ci when the lockfile exists; npm install is a local fallback only if the lockfile is missing",
+    "windows_launcher": "uses constrained pip and npm ci when the lockfile exists; npm install is a local fallback only when the lockfile is missing",
     "repository_hygiene": "root .gitignore covers generated caches, environments, browser reports, local SQLite state, environment files, secrets and editor/OS debris",
     "github_releases": "none"
   },
   "known_limitations": [
-    "The first pilot code change was committed before the lease write. The cycle now records an active lease, and this ordering defect must be added to autonomous learning and strengthened in the source protocol before hourly scheduling.",
-    "Four required browser-bearing workflows are red at the source PR #53 authoritative HEAD.",
+    "The first pilot gameplay commit happened before its lease write. This ordering error is explicitly recorded and the universal protocol is being hardened before any further gameplay mutation.",
+    "RUN_STATE cannot atomically embed the SHA of the commit that writes RUN_STATE itself. The universal protocol is being changed so last_handoff stores the verified work SHA and every next cycle fetches the factual current branch HEAD directly from GitHub.",
+    "The current pilot work SHA still has a later Stream Slice browser failure while approaching Talen.",
     "The active visual pack is a temporary complete SVG Stream Slice pack rather than final production art.",
     "A real human experience gate remains pending after technical stabilization."
   ],
-  "current_blocker": "Complete exact-SHA validation of the targeted tavern-entry fix before any further code change."
+  "current_blocker": "Finish and install the hardened autonomy protocol before the next gameplay mutation, then debug the new reproducible Talen approach failure."
 }
