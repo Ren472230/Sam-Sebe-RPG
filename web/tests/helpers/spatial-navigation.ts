@@ -21,6 +21,35 @@ export async function releaseMovementKeys(page: Page): Promise<void> {
   await page.waitForTimeout(50);
 }
 
+async function installNavigationDiagnostics(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    const debugWindow = window as Window & {
+      __navDebugInstalled?: boolean;
+      __navKeyTrace?: string[];
+      __navCanonicalMutations?: number;
+    };
+    debugWindow.__navKeyTrace = [];
+    debugWindow.__navCanonicalMutations = 0;
+    if (debugWindow.__navDebugInstalled) return;
+    debugWindow.__navDebugInstalled = true;
+
+    const pushKey = (phase: "down" | "up", event: KeyboardEvent): void => {
+      const trace = debugWindow.__navKeyTrace ?? [];
+      trace.push(`${phase}:${event.key.toLowerCase()}`);
+      debugWindow.__navKeyTrace = trace.slice(-24);
+    };
+    window.addEventListener("keydown", (event) => pushKey("down", event), true);
+    window.addEventListener("keyup", (event) => pushKey("up", event), true);
+
+    new MutationObserver((mutations) => {
+      const count = mutations.filter(
+        (mutation) => mutation.type === "attributes" && mutation.attributeName === "data-canonical-location"
+      ).length;
+      debugWindow.__navCanonicalMutations = (debugWindow.__navCanonicalMutations ?? 0) + count;
+    }).observe(document.body, { attributes: true, attributeFilter: ["data-canonical-location"] });
+  });
+}
+
 async function recordAxisTrace(page: Page, trace: AxisTrace): Promise<void> {
   await page.evaluate((entry) => {
     const current = document.body.dataset.movementTrace;
@@ -129,6 +158,7 @@ export async function moveTowardInteraction(
   hintText: string,
   timeout = 12_000
 ): Promise<void> {
+  await installNavigationDiagnostics(page);
   const hint = page.locator("#interaction-hint");
   const stableInteractionRadius = 60;
   const standoffX = Math.min(865, targetX + 45);
@@ -140,19 +170,24 @@ export async function moveTowardInteraction(
   await page.waitForTimeout(120);
 
   const settledPosition = await playerPosition(page);
-  const settledDistance = Math.hypot(
-    targetX - settledPosition.x,
-    targetY - settledPosition.y
-  );
+  const settledDistance = Math.hypot(targetX - settledPosition.x, targetY - settledPosition.y);
   const settledHint = await hint.textContent();
   if (settledDistance <= stableInteractionRadius && settledHint?.includes(hintText)) return;
 
-  const diagnostics = await page.evaluate(() => ({
-    canonicalLocation: document.body.dataset.canonicalLocation ?? null,
-    renderedNpcIds: document.body.dataset.renderedNpcIds ?? null,
-    renderedTavernNpcIds: document.body.dataset.renderedTavernNpcIds ?? null,
-    movementTrace: document.body.dataset.movementTrace ?? null
-  }));
+  const diagnostics = await page.evaluate(() => {
+    const debugWindow = window as Window & {
+      __navKeyTrace?: string[];
+      __navCanonicalMutations?: number;
+    };
+    return {
+      canonicalLocation: document.body.dataset.canonicalLocation ?? null,
+      renderedNpcIds: document.body.dataset.renderedNpcIds ?? null,
+      renderedTavernNpcIds: document.body.dataset.renderedTavernNpcIds ?? null,
+      movementTrace: document.body.dataset.movementTrace ?? null,
+      keyTrace: debugWindow.__navKeyTrace ?? [],
+      canonicalMutations: debugWindow.__navCanonicalMutations ?? 0
+    };
+  });
   throw new Error(
     `player did not reach stable interaction ${JSON.stringify(hintText)} near (${targetX}, ${targetY}); `
       + `last=${JSON.stringify(settledPosition)} distance=${Math.round(settledDistance)} `
