@@ -34,6 +34,49 @@ async function syncHeldMovementKeys(
   }
 }
 
+async function moveAxisIntoBand(
+  page: Page,
+  axis: "x" | "y",
+  min: number,
+  max: number,
+  timeout = 12_000
+): Promise<void> {
+  const start = await playerPosition(page);
+  const value = start[axis];
+  if (Number.isFinite(value) && value >= min && value <= max) return;
+
+  const key: MovementKey = axis === "x"
+    ? (value < min ? "d" : "a")
+    : (value < min ? "s" : "w");
+  const movingPositive = key === "d" || key === "s";
+  const threshold = movingPositive ? min : max;
+
+  await releaseMovementKeys(page);
+  await page.keyboard.down(key);
+  try {
+    await page.waitForFunction(
+      ({ watchedAxis, target, positive }) => {
+        const current = Number(
+          watchedAxis === "x" ? document.body.dataset.playerX : document.body.dataset.playerY
+        );
+        return Number.isFinite(current) && (positive ? current >= target : current <= target);
+      },
+      { watchedAxis: axis, target: threshold, positive: movingPositive },
+      { timeout, polling: "raf" }
+    );
+  } finally {
+    await page.keyboard.up(key);
+    await releaseMovementKeys(page);
+  }
+
+  const end = await playerPosition(page);
+  if (end[axis] < min || end[axis] > max) {
+    throw new Error(
+      `player crossed ${axis} band [${min}, ${max}] before input could stop; last=${JSON.stringify(end)}`
+    );
+  }
+}
+
 export async function moveAxisTo(
   page: Page,
   axis: "x" | "y",
@@ -107,8 +150,23 @@ export async function moveTowardInteraction(
 }
 
 export async function enterTavernSpatially(page: Page): Promise<void> {
-  await moveTowardInteraction(page, 825, 365, "войти в таверну", 20_000);
-  await expect(page.locator("#interaction-hint")).toContainText("войти в таверну", { timeout: 3_000 });
+  const hint = page.locator("#interaction-hint");
+
+  // Preserve the proven human route around the village collision geometry:
+  // travel east along the lower lane first, then approach the tavern door northward.
+  await moveAxisIntoBand(page, "x", 790, 860, 20_000);
+
+  if (!(await hint.textContent())?.includes("войти в таверну")) {
+    await page.keyboard.down("w");
+    try {
+      await expect(hint).toContainText("войти в таверну", { timeout: 20_000 });
+    } finally {
+      await page.keyboard.up("w");
+      await releaseMovementKeys(page);
+    }
+  }
+
+  await expect(hint).toContainText("войти в таверну", { timeout: 3_000 });
   await page.keyboard.press("e");
   await expect(page.locator("body")).toHaveAttribute("data-scene", "tavern", { timeout: 10_000 });
 }
