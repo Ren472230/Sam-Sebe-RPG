@@ -3,6 +3,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { expect, test, type Page } from "@playwright/test";
 
 import { installBrowserDiagnostics } from "./helpers/browser-diagnostics";
+import { enterTavernSpatially } from "./helpers/spatial-navigation";
 
 type PlayerPosition = { x: number; y: number };
 type ActionPayload = {
@@ -91,37 +92,7 @@ async function moveAndInteractWhenHint(
 }
 
 async function enterTavernFromVillage(page: Page): Promise<void> {
-  const hint = page.locator("#interaction-hint");
-  const started = Date.now();
-  await releaseMovementKeys(page);
-
-  while (Date.now() - started < 20_000) {
-    const { x } = await playerPosition(page);
-    if (x >= 790 && x <= 860) break;
-    const key = x < 790 ? "d" : "a";
-    await page.keyboard.down(key);
-    await page.waitForTimeout(300);
-    await page.keyboard.up(key);
-    await page.waitForTimeout(150);
-  }
-
-  const { x } = await playerPosition(page);
-  if (x < 790 || x > 860) {
-    throw new Error(`player did not reach tavern entry band; last=${JSON.stringify(await playerPosition(page))}`);
-  }
-
-  if (!(await hint.textContent())?.includes("войти в таверну")) {
-    await page.keyboard.down("w");
-    try {
-      await expect(hint).toContainText("войти в таверну", { timeout: 20_000 });
-    } finally {
-      await page.keyboard.up("w");
-      await releaseMovementKeys(page);
-    }
-  }
-
-  await page.keyboard.press("e");
-  await expect(page.locator("body")).toHaveAttribute("data-scene", "tavern", { timeout: 10_000 });
+  await enterTavernSpatially(page);
 }
 
 async function approachOren(page: Page): Promise<void> {
