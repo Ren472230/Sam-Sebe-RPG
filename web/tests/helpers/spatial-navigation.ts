@@ -14,6 +14,19 @@ export async function releaseMovementKeys(page: Page): Promise<void> {
   await page.waitForTimeout(50);
 }
 
+async function releaseHeldKeys(page: Page, heldKeys: Set<string>): Promise<void> {
+  for (const key of [...heldKeys]) {
+    await page.keyboard.up(key);
+    heldKeys.delete(key);
+  }
+}
+
+async function settleMovementFrames(page: Page): Promise<void> {
+  await page.evaluate(() => new Promise<void>((resolve) => {
+    requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+  }));
+}
+
 export async function moveTowardInteraction(
   page: Page,
   targetX: number,
@@ -24,12 +37,17 @@ export async function moveTowardInteraction(
   const started = Date.now();
   const hint = page.locator("#interaction-hint");
   const axisDeadZone = 20;
-  let heldKeys = new Set<string>();
+  const heldKeys = new Set<string>();
   await releaseMovementKeys(page);
 
   try {
     while (Date.now() - started < timeout) {
-      if ((await hint.textContent())?.includes(hintText)) return;
+      if ((await hint.textContent())?.includes(hintText)) {
+        await releaseHeldKeys(page, heldKeys);
+        await settleMovementFrames(page);
+        if ((await hint.textContent())?.includes(hintText)) return;
+        continue;
+      }
 
       const position = await playerPosition(page);
       const dx = targetX - position.x;
@@ -44,20 +62,25 @@ export async function moveTowardInteraction(
         desiredKeys.add(Math.abs(dx) >= Math.abs(dy) ? horizontal : vertical);
       }
 
-      for (const key of heldKeys) {
-        if (!desiredKeys.has(key)) await page.keyboard.up(key);
+      for (const key of [...heldKeys]) {
+        if (!desiredKeys.has(key)) {
+          await page.keyboard.up(key);
+          heldKeys.delete(key);
+        }
       }
       for (const key of desiredKeys) {
-        if (!heldKeys.has(key)) await page.keyboard.down(key);
+        if (!heldKeys.has(key)) {
+          await page.keyboard.down(key);
+          heldKeys.add(key);
+        }
       }
-      heldKeys = desiredKeys;
       await page.waitForTimeout(25);
     }
   } finally {
-    for (const key of heldKeys) await page.keyboard.up(key);
-    await releaseMovementKeys(page);
+    await releaseHeldKeys(page, heldKeys);
   }
 
+  await releaseMovementKeys(page);
   throw new Error(
     `player did not reach interaction ${JSON.stringify(hintText)} near (${targetX}, ${targetY}); last=${JSON.stringify(await playerPosition(page))}`
   );
