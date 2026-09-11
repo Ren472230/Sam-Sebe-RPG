@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
 import {
   approachAndTalk,
@@ -6,8 +6,23 @@ import {
   releaseMovementKeys
 } from "./helpers/spatial-navigation";
 
+async function useIsolatedPlayer(page: Page, externalId: string): Promise<void> {
+  await page.route("**/api/session", async (route) => {
+    const request = route.request();
+    if (request.method() !== "POST") {
+      await route.continue();
+      return;
+    }
+    const payload = request.postDataJSON() as { external_id?: string; name?: string };
+    await route.continue({
+      postData: JSON.stringify({ ...payload, external_id: externalId })
+    });
+  });
+}
+
 test("spatial tavern entry survives a slower browser", async ({ page, context }) => {
   test.setTimeout(45_000);
+  await useIsolatedPlayer(page, "e2e-nav-slow-player");
   const cdp = await context.newCDPSession(page);
 
   try {
@@ -25,11 +40,14 @@ test("spatial tavern entry survives a slower browser", async ({ page, context })
 
 test("canonical location change clears the previous NPC interaction immediately", async ({ page }) => {
   test.setTimeout(45_000);
+  await useIsolatedPlayer(page, "e2e-nav-stale-player");
   await page.goto("/");
   const body = page.locator("body");
   const hint = page.locator("#interaction-hint");
 
+  await expect(body).toHaveAttribute("data-canonical-location", "workshop_yard");
   await page.getByRole("button", { name: "Идти: площадь", exact: true }).click();
+  await expect(body).toHaveAttribute("data-canonical-location", "village_square");
   await page.getByRole("button", { name: "Идти: река", exact: true }).click();
   await expect(body).toHaveAttribute("data-canonical-location", "river_edge");
 
