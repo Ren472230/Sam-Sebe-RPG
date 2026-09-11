@@ -88,6 +88,18 @@ jobs:
         env:
           OPENAI_API_KEY: ""
         run: npm run test:e2e:stream-slice
+      - name: Upload compact review screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: candidate-review-screenshots
+          path: |
+            web/test-results/01-village.png
+            web/test-results/02-oren-offer.png
+            web/test-results/07-reloaded.png
+            web/test-results/08-living-world.png
+          if-no-files-found: ignore
+          retention-days: 3
       - name: Upload browser evidence
         if: failure()
         uses: actions/upload-artifact@v4
