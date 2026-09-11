@@ -1,7 +1,7 @@
 {
   "protocol_version": 1,
   "project": "Ren472230/Sam-Sebe-RPG",
-  "run_id": "2026-09-11-pilot-protocol-sync-ae96395a",
+  "run_id": "2026-09-11-pilot-cycle-2-talen-approach",
   "authoritative_branch": "integration/audit-results-v1",
   "authoritative_head": "5f5695f5918ed5dbc4fefea5e6483795a00260d5",
   "working_branch": "agent/autonomy-pilot-v0.1",
@@ -16,18 +16,18 @@
     "merged": false
   },
   "phase": "browser_spatial_stabilization",
-  "current_objective": "Debug the reproducible Stream Slice Talen approach failure after successful tavern entry.",
-  "next_action": "Start a new leased cycle from factual pilot branch HEAD and isolate why approachAndTalk cannot reach Talen interaction near target (500,385).",
+  "current_objective": "Isolate and fix the reproducible Stream Slice Talen interaction approach failure after successful tavern entry.",
+  "next_action": "Trace the Talen interaction target, tavern collision geometry and moveTowardInteraction behavior from failing run 34592686361 before proposing a fix.",
   "blockers": [
-    "Stream Slice validation run 34592686361 passes tavern entry but fails later while approaching Talen at target (500,385): last position (556,315), distance 90, generic interaction hint, no browser console or page errors."
+    "Stream Slice validation run 34592686361 passes tavern entry but fails while approaching Talen at target (500,385): last position (556,315), distance 90, generic interaction hint, no browser console or page errors."
   ],
   "active_run": {
-    "run_id": null,
-    "status": "idle",
-    "started_at_utc": null,
-    "lease_expires_at_utc": null,
-    "base_sha": null,
-    "working_branch": null
+    "run_id": "2026-09-11-pilot-cycle-2-talen-approach",
+    "status": "running",
+    "started_at_utc": "2026-09-11T11:46:30Z",
+    "lease_expires_at_utc": "2026-09-11T13:16:30Z",
+    "base_sha": "5cca15bcbd4a0127724f6945b2f7e615f34ff174",
+    "working_branch": "agent/autonomy-pilot-v0.1"
   },
   "last_handoff": {
     "completed_at_utc": "2026-09-11T11:48:00Z",
@@ -75,5 +75,5 @@
     "The active visual pack is a temporary complete SVG Stream Slice pack rather than final production art.",
     "A real human experience gate remains pending after technical stabilization."
   ],
-  "current_blocker": "The next independent browser blocker is the reproducible Talen interaction approach failure inside the tavern."
+  "current_blocker": "Reproducible Talen interaction approach failure inside the tavern."
 }
