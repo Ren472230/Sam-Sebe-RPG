@@ -3,7 +3,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { expect, test, type Page } from "@playwright/test";
 
 import { installBrowserDiagnostics } from "./helpers/browser-diagnostics";
-import { moveTowardInteraction } from "./helpers/spatial-navigation";
+import { moveUntilInteraction } from "./helpers/spatial-navigation";
 
 type PlayerPosition = { x: number; y: number };
 type ActionPayload = {
@@ -93,7 +93,7 @@ async function moveAndInteractWhenHint(
 
 async function enterTavernFromVillage(page: Page): Promise<void> {
   await moveAxisTo(page, "x", 825, 12, 20_000);
-  await moveTowardInteraction(page, 825, 330, "войти в таверну", 20_000);
+  await moveUntilInteraction(page, "w", "войти в таверну", 20_000);
   await page.keyboard.press("e");
   await expect(page.locator("body")).toHaveAttribute("data-scene", "tavern", { timeout: 10_000 });
 }
