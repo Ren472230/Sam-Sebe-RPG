@@ -119,13 +119,19 @@ export async function moveTowardInteraction(
   const hint = page.locator("#interaction-hint");
   const held = new Set<MovementKey>();
   const axisDeadZone = 28;
+  // Village NPC interaction radius is 72 px and Tavern visitors use 78–85 px.
+  // Requiring a tighter physical radius prevents a 600 ms grace-period hint from
+  // being mistaken for a stable interaction after the player has already overshot.
+  const stableInteractionRadius = 60;
   await releaseMovementKeys(page);
 
   try {
     while (Date.now() - started < timeout) {
-      if ((await hint.textContent())?.includes(hintText)) return;
-
       const position = await playerPosition(page);
+      const hintMatches = (await hint.textContent())?.includes(hintText) ?? false;
+      const targetDistance = Math.hypot(targetX - position.x, targetY - position.y);
+      if (hintMatches && targetDistance <= stableInteractionRadius) return;
+
       const dx = targetX - position.x;
       const dy = targetY - position.y;
       const horizontal: MovementKey = dx >= 0 ? "d" : "a";
