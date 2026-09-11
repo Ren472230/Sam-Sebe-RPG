@@ -120,8 +120,8 @@ export async function moveTowardInteraction(
   const held = new Set<MovementKey>();
   const axisDeadZone = 28;
   // Village NPC interaction radius is 72 px and Tavern visitors use 78–85 px.
-  // Requiring a tighter physical radius prevents a 600 ms grace-period hint from
-  // being mistaken for a stable interaction after the player has already overshot.
+  // A tighter radius leaves room for one final rendered movement frame while keys
+  // are being released. Success is accepted only after input is fully settled.
   const stableInteractionRadius = 60;
   await releaseMovementKeys(page);
 
@@ -130,7 +130,20 @@ export async function moveTowardInteraction(
       const position = await playerPosition(page);
       const hintMatches = (await hint.textContent())?.includes(hintText) ?? false;
       const targetDistance = Math.hypot(targetX - position.x, targetY - position.y);
-      if (hintMatches && targetDistance <= stableInteractionRadius) return;
+      if (hintMatches && targetDistance <= stableInteractionRadius) {
+        await syncHeldMovementKeys(page, held, []);
+        await releaseMovementKeys(page);
+        await page.waitForTimeout(120);
+
+        const settledPosition = await playerPosition(page);
+        const settledHintMatches = (await hint.textContent())?.includes(hintText) ?? false;
+        const settledDistance = Math.hypot(
+          targetX - settledPosition.x,
+          targetY - settledPosition.y
+        );
+        if (settledHintMatches && settledDistance <= stableInteractionRadius) return;
+        continue;
+      }
 
       const dx = targetX - position.x;
       const dy = targetY - position.y;
