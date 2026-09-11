@@ -92,23 +92,7 @@ async function moveAndInteractWhenHint(
 
 async function enterTavernFromVillage(page: Page): Promise<void> {
   const hint = page.locator("#interaction-hint");
-  const started = Date.now();
-  await releaseMovementKeys(page);
-
-  while (Date.now() - started < 20_000) {
-    const { x } = await playerPosition(page);
-    if (x >= 790 && x <= 860) break;
-    const key = x < 790 ? "d" : "a";
-    await page.keyboard.down(key);
-    await page.waitForTimeout(300);
-    await page.keyboard.up(key);
-    await page.waitForTimeout(150);
-  }
-
-  const { x } = await playerPosition(page);
-  if (x < 790 || x > 860) {
-    throw new Error(`player did not reach tavern entry band; last=${JSON.stringify(await playerPosition(page))}`);
-  }
+  await moveAxisTo(page, "x", 825, 35, 20_000);
 
   if (!(await hint.textContent())?.includes("войти в таверну")) {
     await page.keyboard.down("w");
