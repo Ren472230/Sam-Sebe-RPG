@@ -1,5 +1,69 @@
 import { expect, test } from "@playwright/test";
 
+test("time controls wait for initial state before accepting a single WAIT action", async ({ page }) => {
+  let releaseInitialState!: () => void;
+  const initialStateGate = new Promise<void>((resolve) => { releaseInitialState = resolve; });
+  let reportInitialTick!: (tick: number) => void;
+  const initialTickReady = new Promise<number>((resolve) => { reportInitialTick = resolve; });
+  const actions: Record<string, unknown>[] = [];
+  page.on("request", (request) => {
+    if (request.method() === "POST" && new URL(request.url()).pathname === "/api/action") {
+      actions.push(request.postDataJSON());
+    }
+  });
+
+  // Hold the real response so bootstrap cannot bind controls before the loading assertions.
+  await page.route("**/api/state/*", async (route) => {
+    const response = await route.fetch();
+    const snapshot = await response.json();
+    reportInitialTick(snapshot.world_pulse.tick);
+    await initialStateGate;
+    await route.fulfill({ response });
+  }, { times: 1 });
+
+  try {
+    await page.goto("/", { waitUntil: "domcontentloaded" });
+    const initialTick = await initialTickReady;
+    const waitOne = page.getByRole("button", { name: "Подождать 1 шаг", exact: true });
+    const waitFive = page.getByRole("button", { name: "Подождать 5 шагов", exact: true });
+    await expect(waitOne).toBeVisible();
+    await expect(waitFive).toBeVisible();
+    await expect(waitOne).toBeDisabled();
+    await expect(waitFive).toBeDisabled();
+    expect(actions).toHaveLength(0);
+
+    releaseInitialState();
+    await expect(waitOne).toBeEnabled();
+    await expect(waitFive).toBeEnabled();
+    const actionResponseReady = page.waitForResponse((response) =>
+      response.request().method() === "POST" && new URL(response.url()).pathname === "/api/action"
+    );
+    const updatedStateReady = page.waitForResponse((response) =>
+      response.request().method() === "GET" && new URL(response.url()).pathname.startsWith("/api/state/")
+    );
+    await waitFive.click();
+
+    const actionResponse = await actionResponseReady;
+    expect(actionResponse.ok()).toBeTruthy();
+    expect(await actionResponse.json()).toMatchObject({ success: true });
+    const updatedState = await updatedStateReady;
+    expect(updatedState.ok()).toBeTruthy();
+    expect((await updatedState.json()).world_pulse.tick).toBe(initialTick + 5);
+    await expect(page.locator("#world-pulse-tick")).toHaveText(`Шаг ${initialTick + 5}`);
+    await expect(waitOne).toBeEnabled();
+    await expect(waitFive).toBeEnabled();
+    expect(actions).toHaveLength(1);
+    expect(actions[0]).toMatchObject({
+      action_type: "WAIT",
+      modifiers: { ticks: 5 },
+      external_id: expect.any(String),
+      player_id: expect.any(String)
+    });
+  } finally {
+    releaseInitialState();
+  }
+});
+
 test("world pulse turns waiting into a visible world change", async ({ page }) => {
   test.setTimeout(60_000);
   await page.goto("/");
