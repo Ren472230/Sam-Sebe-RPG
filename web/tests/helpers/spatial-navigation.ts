@@ -115,20 +115,16 @@ export async function moveTowardInteraction(
   hintText: string,
   timeout = 12_000
 ): Promise<void> {
-  const started = Date.now();
   const hint = page.locator("#interaction-hint");
   const stableInteractionRadius = 60;
-  const lowerLaneY = 455;
-  // Approach NPCs from the right. For Mira this avoids the firewood cluster below
-  // her; for Kaspar/Talen it avoids the well collision rectangle. 45px plus the
-  // movement tolerance stays safely inside the 72–85px interaction radii.
+  // The canonical Mira acceptance already proves that moving vertically first and
+  // horizontally second is stable on this collision map. Keep a small right-side
+  // standoff so Mira stays clear of firewood and Talen stays clear of the well.
   const standoffX = Math.min(865, targetX + 45);
-  const remaining = (): number => Math.max(500, timeout - (Date.now() - started));
 
   await releaseMovementKeys(page);
-  await moveAxisTo(page, "y", lowerLaneY, 12, remaining());
-  await moveAxisTo(page, "x", standoffX, 12, remaining());
-  await moveAxisTo(page, "y", targetY, 12, remaining());
+  await moveAxisTo(page, "y", targetY, 8, timeout);
+  await moveAxisTo(page, "x", standoffX, 8, timeout);
   await releaseMovementKeys(page);
   await page.waitForTimeout(120);
 
