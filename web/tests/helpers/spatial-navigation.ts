@@ -2,6 +2,12 @@ import { expect, type Page } from "@playwright/test";
 
 export type PlayerPosition = { x: number; y: number };
 type MovementKey = "w" | "a" | "s" | "d";
+type AxisTrace = {
+  axis: "x" | "y";
+  target: number;
+  reached: PlayerPosition;
+  released: PlayerPosition;
+};
 
 export async function playerPosition(page: Page): Promise<PlayerPosition> {
   return page.evaluate(() => ({
@@ -12,9 +18,23 @@ export async function playerPosition(page: Page): Promise<PlayerPosition> {
 
 export async function releaseMovementKeys(page: Page): Promise<void> {
   for (const key of ["w", "a", "s", "d"] as const) await page.keyboard.up(key);
-  // Match the canonical acceptance helper: give Phaser one short window to
-  // observe key-up before the next axis is pressed.
   await page.waitForTimeout(50);
+}
+
+async function recordAxisTrace(page: Page, trace: AxisTrace): Promise<void> {
+  await page.evaluate((entry) => {
+    const current = document.body.dataset.movementTrace;
+    let parsed: unknown[] = [];
+    if (current) {
+      try {
+        const value = JSON.parse(current);
+        if (Array.isArray(value)) parsed = value;
+      } catch {
+        parsed = [];
+      }
+    }
+    document.body.dataset.movementTrace = JSON.stringify([...parsed.slice(-7), entry]);
+  }, trace);
 }
 
 async function moveAxisIntoBand(
@@ -69,12 +89,16 @@ export async function moveAxisTo(
 ): Promise<void> {
   const started = Date.now();
   let heldKey: MovementKey | null = null;
+  let reached: PlayerPosition | null = null;
   await releaseMovementKeys(page);
   try {
     while (Date.now() - started < timeout) {
       const position = await playerPosition(page);
       const value = position[axis];
-      if (Number.isFinite(value) && Math.abs(value - target) <= tolerance) return;
+      if (Number.isFinite(value) && Math.abs(value - target) <= tolerance) {
+        reached = position;
+        break;
+      }
       const key: MovementKey = axis === "x"
         ? (value < target ? "d" : "a")
         : (value < target ? "s" : "w");
@@ -89,7 +113,13 @@ export async function moveAxisTo(
     if (heldKey) await page.keyboard.up(heldKey);
     await releaseMovementKeys(page);
   }
-  throw new Error(`player did not reach ${axis}=${target}; last=${JSON.stringify(await playerPosition(page))}`);
+
+  const released = await playerPosition(page);
+  if (reached) {
+    await recordAxisTrace(page, { axis, target, reached, released });
+    return;
+  }
+  throw new Error(`player did not reach ${axis}=${target}; last=${JSON.stringify(released)}`);
 }
 
 export async function moveTowardInteraction(
@@ -101,9 +131,6 @@ export async function moveTowardInteraction(
 ): Promise<void> {
   const hint = page.locator("#interaction-hint");
   const stableInteractionRadius = 60;
-  // Canonical acceptance proves Y-then-X on this map. The 45px right-side
-  // standoff keeps Mira clear of firewood and Talen clear of the well while
-  // remaining comfortably inside every NPC interaction radius.
   const standoffX = Math.min(865, targetX + 45);
 
   await releaseMovementKeys(page);
@@ -123,7 +150,8 @@ export async function moveTowardInteraction(
   const diagnostics = await page.evaluate(() => ({
     canonicalLocation: document.body.dataset.canonicalLocation ?? null,
     renderedNpcIds: document.body.dataset.renderedNpcIds ?? null,
-    renderedTavernNpcIds: document.body.dataset.renderedTavernNpcIds ?? null
+    renderedTavernNpcIds: document.body.dataset.renderedTavernNpcIds ?? null,
+    movementTrace: document.body.dataset.movementTrace ?? null
   }));
   throw new Error(
     `player did not reach stable interaction ${JSON.stringify(hintText)} near (${targetX}, ${targetY}); `
@@ -134,9 +162,6 @@ export async function moveTowardInteraction(
 
 export async function enterTavernSpatially(page: Page): Promise<void> {
   const hint = page.locator("#interaction-hint");
-
-  // Preserve the proven human route around the village collision geometry:
-  // travel east along the lower lane first, then approach the tavern door northward.
   await moveAxisIntoBand(page, "x", 790, 860, 20_000);
 
   if (!(await hint.textContent())?.includes("войти в таверну")) {
