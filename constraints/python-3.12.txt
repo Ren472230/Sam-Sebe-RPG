@@ -1,0 +1,34 @@
+# Python 3.12 dependency snapshot for reproducible CI and clean Windows bootstrap.
+# Captured from candidate 7d7ec138cb15c253f22435f8d5c2983a2e1d1cd8 on 2026-09-10.
+# The Windows gate passed with this dependency family; Linux dependency/build stages also passed.
+# Keep pyproject.toml as lower-bound package metadata. Refresh this file deliberately and validate on both OSes.
+
+annotated-doc==0.0.5
+annotated-types==0.8.0
+anyio==4.15.1
+certifi==2026.7.22
+click==8.5.0
+colorama==0.4.6; sys_platform == "win32"
+fastapi==0.141.1
+h11==0.16.0
+httpcore==1.0.9
+httpcore2==2.12.0
+httpx==0.28.1
+httpx2==2.12.0
+idna==3.19
+iniconfig==2.3.0
+jiter==0.16.0
+openai==3.11.0
+packaging==26.3
+pluggy==1.6.0
+pydantic==2.13.5
+pydantic-core==2.46.5
+pygments==2.21.0
+pytest==9.1.1
+sniffio==1.3.1
+starlette==1.6.0
+truststore==0.10.4
+typing-extensions==4.16.0
+typing-inspection==0.4.4
+tzdata==2026.3
+uvicorn==0.52.4

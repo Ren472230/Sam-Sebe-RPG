@@ -33,7 +33,7 @@ python tools/visual_forge/visual_forge.py compose scene.json output.png
 Собрать проверочный кадр прямо из текущего production-манифеста:
 
 ```bash
-python tools/visual_forge/visual_forge.py compose-production-preview --root . --output visual-forge-preview.png
+python tools/visual_forge/visual_forge.py compose-production-preview --root . --output visual-forge-preview.svg
 ```
 
 Проверить активный production-манифест проекта:
