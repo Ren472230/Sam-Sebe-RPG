@@ -184,43 +184,12 @@ async function interactionSnapshot(
   }, { targetX, targetY, hintText, radius });
 }
 
-async function waitForPositionSettled(page: Page): Promise<PlayerPosition> {
-  await page.evaluate(() => new Promise<void>((resolve) => {
-    requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
-  }));
-  return playerPosition(page);
-}
-
-async function feedbackPulse(
-  page: Page,
-  keys: MovementKey[],
-  hintText: string,
-  timeout = 1_000
-): Promise<void> {
+async function tapMovementKey(page: Page, key: MovementKey): Promise<boolean> {
   const before = await playerPosition(page);
   await releaseMovementKeys(page);
-  for (const key of keys) await page.keyboard.down(key);
-  try {
-    await page.waitForFunction(
-      ({ x, y, expectedHint }) => {
-        const currentX = Number(document.body.dataset.playerX);
-        const currentY = Number(document.body.dataset.playerY);
-        const hint = document.getElementById("interaction-hint")?.textContent ?? "";
-        return hint.includes(expectedHint)
-          || currentX !== x
-          || currentY !== y;
-      },
-      { x: before.x, y: before.y, expectedHint: hintText },
-      { timeout, polling: 25 }
-    );
-  } catch {
-    // A blocked direction is valid physical feedback. Release the keys and let
-    // the next pulse choose a new direction from the observed position.
-  } finally {
-    for (const key of keys) await page.keyboard.up(key);
-    await releaseMovementKeys(page);
-  }
-  await waitForPositionSettled(page);
+  await page.keyboard.press(key, { delay: 120 });
+  const after = await playerPosition(page);
+  return after.x !== before.x || after.y !== before.y;
 }
 
 export async function moveTowardInteraction(
@@ -241,11 +210,16 @@ export async function moveTowardInteraction(
 
     const dx = targetX - snapshot.position.x;
     const dy = targetY - snapshot.position.y;
-    const keys: MovementKey[] = [];
-    if (Math.abs(dx) > coordinateTolerance) keys.push(dx > 0 ? "d" : "a");
-    if (Math.abs(dy) > coordinateTolerance) keys.push(dy > 0 ? "s" : "w");
+    const candidates: Array<{ key: MovementKey; error: number }> = [];
+    if (Math.abs(dx) > coordinateTolerance) {
+      candidates.push({ key: dx > 0 ? "d" : "a", error: Math.abs(dx) });
+    }
+    if (Math.abs(dy) > coordinateTolerance) {
+      candidates.push({ key: dy > 0 ? "s" : "w", error: Math.abs(dy) });
+    }
+    candidates.sort((left, right) => right.error - left.error);
 
-    if (keys.length === 0) {
+    if (candidates.length === 0) {
       await releaseMovementKeys(page);
       await page.waitForTimeout(700);
       snapshot = await interactionSnapshot(page, targetX, targetY, hintText, stableInteractionRadius);
@@ -253,8 +227,14 @@ export async function moveTowardInteraction(
       break;
     }
 
-    await feedbackPulse(page, keys, hintText, Math.min(1_000, Math.max(100, timeout - (Date.now() - started))));
-    snapshot = await interactionSnapshot(page, targetX, targetY, hintText, stableInteractionRadius);
+    let moved = false;
+    for (const candidate of candidates) {
+      moved = await tapMovementKey(page, candidate.key);
+      snapshot = await interactionSnapshot(page, targetX, targetY, hintText, stableInteractionRadius);
+      if (snapshot.ready) return;
+      if (moved) break;
+    }
+    if (!moved) await page.waitForTimeout(50);
   }
 
   snapshot = await interactionSnapshot(page, targetX, targetY, hintText, stableInteractionRadius);
