@@ -227,11 +227,10 @@ function bindWorldPulse(state: ClientState, streamMode: boolean): void {
       const snapshot = await state.refresh();
       if (input.action_type === "WAIT") {
         captureTelemetry("wait_used", { location_id: snapshot.world.location_id });
+      } else if (input.action_type === "MOVE") {
+        captureTelemetryOnce("first_move", { location_id: snapshot.world.location_id });
       } else {
         captureTelemetryOnce("first_interaction", { location_id: snapshot.world.location_id });
-      }
-      if (input.action_type === "MOVE") {
-        captureTelemetryOnce("first_move", { location_id: snapshot.world.location_id });
       }
       if (
         streamMode
