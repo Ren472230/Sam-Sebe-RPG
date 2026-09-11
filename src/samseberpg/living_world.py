@@ -13,6 +13,7 @@ _ALLOWED_EVENT_TYPES = {
     "NPC_MOVED",
     "NPC_COLLECTED_RESOURCE",
     "NPC_DELIVERED_RESOURCE",
+    "WAYFARER_ARRIVED",
 }
 
 
@@ -44,6 +45,14 @@ class LivingWorldService:
             if kaspar_event is not None:
                 events.append(kaspar_event)
 
+            wayfarer_event = self._advance_wayfarer(conn, tick)
+            if wayfarer_event is not None:
+                events.append(wayfarer_event)
+
+            hospitality_event = self._advance_oren_hospitality(conn, tick)
+            if hospitality_event is not None:
+                events.append(hospitality_event)
+
         return events
 
     def give_resource(
@@ -54,6 +63,15 @@ class LivingWorldService:
         entity_id: str,
         recipient_id: str,
     ) -> tuple[bool, str, str]:
+        if recipient_id == "npc_oren":
+            if entity_id != "bread_loaf_1":
+                return False, "UNSUPPORTED_RESOURCE", "Oren needs bread for the guest."
+            return self._give_bread_to_oren(
+                conn,
+                player_id=player_id,
+                entity_id=entity_id,
+            )
+
         if recipient_id != "npc_mira":
             return False, "UNSUPPORTED_RECIPIENT", "This resource request belongs to Mira."
         if entity_id != "driftwood_1":
@@ -113,6 +131,51 @@ class LivingWorldService:
             tick=tick,
         )
         return True, "OK", "Gave driftwood_1 to Mira and satisfied her wood request."
+
+    def _give_bread_to_oren(
+        self,
+        conn: sqlite3.Connection,
+        *,
+        player_id: str,
+        entity_id: str,
+    ) -> tuple[bool, str, str]:
+        entity = conn.execute(
+            "SELECT owner_actor_id FROM entities WHERE id = ?",
+            (entity_id,),
+        ).fetchone()
+        if entity is None or entity["owner_actor_id"] != player_id:
+            return False, "ITEM_NOT_OWNED", "Item is not owned by this player."
+
+        override_active, oren_state = self._load_runtime(conn, "npc_oren")
+        if not bool(oren_state.get("bread_requested", False)):
+            return False, "RESOURCE_NOT_NEEDED", "Oren is not requesting bread right now."
+
+        tick_row = conn.execute(
+            "SELECT tick FROM world_runtime WHERE world_id = ?",
+            (DEFAULT_WORLD_ID,),
+        ).fetchone()
+        if tick_row is None:
+            raise RuntimeError(f"missing world runtime for {DEFAULT_WORLD_ID}")
+        tick = int(tick_row[0])
+
+        consumed = conn.execute(
+            "UPDATE entities SET location_id = NULL, owner_actor_id = NULL "
+            "WHERE id = ? AND owner_actor_id = ?",
+            (entity_id, player_id),
+        )
+        if consumed.rowcount != 1:
+            return False, "ITEM_NOT_OWNED", "Item is not owned by this player."
+
+        oren_state["bread_requested"] = False
+        oren_state["bread_received"] = True
+        self._save_runtime(
+            conn,
+            "npc_oren",
+            override_active=override_active,
+            state=oren_state,
+            tick=tick,
+        )
+        return True, "OK", "Gave bread_loaf_1 to Oren for the guest."
 
     def _advance_mira(
         self, conn: sqlite3.Connection, tick: int
@@ -369,6 +432,76 @@ class LivingWorldService:
             summary="Kaspar delivered one unit of useful wood to Mira.",
         )
 
+    def _advance_wayfarer(
+        self, conn: sqlite3.Connection, tick: int
+    ) -> dict[str, object] | None:
+        if tick < 10:
+            return None
+        override_active, state = self._load_runtime(conn, "npc_wayfarer_1")
+        if bool(state.get("arrived", False)):
+            return None
+
+        conn.execute(
+            "UPDATE actors SET location_id = 'tavern_interior' WHERE id = 'npc_wayfarer_1'"
+        )
+        conn.execute(
+            "UPDATE npcs SET current_activity = 'resting at the inn after the road' "
+            "WHERE actor_id = 'npc_wayfarer_1'"
+        )
+        state["arrived"] = True
+        self._save_runtime(
+            conn,
+            "npc_wayfarer_1",
+            override_active=override_active,
+            state=state,
+            tick=tick,
+        )
+        return self._record_event(
+            conn,
+            tick=tick,
+            actor_id="npc_wayfarer_1",
+            event_type="WAYFARER_ARRIVED",
+            target_id="npc_oren",
+            location_id="tavern_interior",
+            data={"route": "eastern_road"},
+            summary="Talen arrived at The Wayfarer's Hearth with news from the eastern road.",
+        )
+
+    def _advance_oren_hospitality(
+        self, conn: sqlite3.Connection, tick: int
+    ) -> dict[str, object] | None:
+        location_row = conn.execute(
+            "SELECT location_id FROM actors WHERE id = 'npc_wayfarer_1'"
+        ).fetchone()
+        if location_row is None or location_row["location_id"] != "tavern_interior":
+            return None
+
+        override_active, state = self._load_runtime(conn, "npc_oren")
+        if bool(state.get("bread_received", False)) or bool(
+            state.get("bread_requested", False)
+        ):
+            return None
+
+        state["bread_requested"] = True
+        state["bread_received"] = False
+        self._save_runtime(
+            conn,
+            "npc_oren",
+            override_active=override_active,
+            state=state,
+            tick=tick,
+        )
+        return self._record_event(
+            conn,
+            tick=tick,
+            actor_id="npc_oren",
+            event_type="NPC_REQUESTED_RESOURCE",
+            target_id="bread_loaf_1",
+            location_id="tavern_interior",
+            data={"resource_kind": "bread", "for_actor_id": "npc_wayfarer_1"},
+            summary="Oren is looking for bread for the newly arrived guest.",
+        )
+
     @staticmethod
     def _load_runtime(
         conn: sqlite3.Connection, npc_actor_id: str
@@ -484,6 +617,7 @@ class LivingWorldService:
         event_id = int(cursor.lastrowid)
         return {
             "id": event_id,
+            "world_event_id": event_id,
             "world_id": DEFAULT_WORLD_ID,
             "tick": tick,
             "actor_id": actor_id,

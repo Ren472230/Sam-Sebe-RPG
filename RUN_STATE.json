@@ -1,0 +1,58 @@
+{
+  "run_id": "2026-09-08-world-ready-autonomous",
+  "working_branch": "autotest/world-ready-2026-09-08",
+  "run_cycle": 12,
+  "historical_pr_cycle_marker": 6,
+  "current_champion": "2f663f298ffaf05f7182a2bddee079c4c4dc9bdf",
+  "current_challenger": null,
+  "phase": "stabilizing_fresh_zip_launch",
+  "last_accepted_cycle": "real-human-control-stabilization",
+  "presentation_context": "Desktop playability and audience readability are the primary experience target; mobile remains a supported fallback target.",
+  "blockers": [
+    "Local container cannot clone github.com because DNS/network access is blocked; connected GitHub plus repository CI and browser checks are used as the execution and evidence path.",
+    "Successful browser runs currently retain no downloadable artifacts after artifact-retention reductions; workflow/check evidence remains available and failure artifacts are kept where configured."
+  ],
+  "recovered_history": [
+    {
+      "cycle": 5,
+      "feature_commit": "7b44d169bcd806da8563e1957da2dfc88a29941b",
+      "summary": "Removed prototype-only dialogue provenance chrome while preserving Living NPC and Social World behavior through follow-up regression tests."
+    },
+    {
+      "cycle": 6,
+      "feature_commit": "184a8f7f88185f51121c18d793df95dc1e8270bc",
+      "summary": "Kept distinct meaningful Living World events visible by de-duplicating public labels before applying the visible event cap."
+    },
+    {
+      "cycle": 7,
+      "feature_commit": "cf37f1f720c80c661bd3d3ec1131af5a87d44b9c",
+      "summary": "Presented quest outcomes as player-facing quest status instead of generic system chrome."
+    },
+    {
+      "cycle": 8,
+      "feature_commit": "8ad75843708512459eb19292441a3fa5850badce",
+      "summary": "Guided the player toward waiting after quest completion so the Living World demonstration is discoverable without test-only sequence knowledge."
+    },
+    {
+      "cycle": 9,
+      "feature_commit": null,
+      "summary": "Rejected activation of incomplete partial-production Village layers after confirming the coherent prototype fallback is an intentional visual-integrity rule; test-only hypothesis was reverted by 2a4a570c3482aff744759aff6a04624ff31625ca."
+    },
+    {
+      "cycle": 10,
+      "feature_commit": "9e6a611c1d1b6ea876607078394da90cdec43255",
+      "summary": "Added one-click Markdown export of the current playtest session report from normal game mode using the existing canonical server report."
+    },
+    {
+      "cycle": 11,
+      "feature_commit": "f2a5db77bf89b1bd4f9709fd71b95e4a493fab80",
+      "summary": "Added a Windows double-click human-playtest launcher that resets the isolated demo database, waits for the local server, and opens normal player mode with report export available."
+    },
+    {
+      "cycle": 12,
+      "feature_commit": "2f663f298ffaf05f7182a2bddee079c4c4dc9bdf",
+      "summary": "Used the first real human FAIL report to fix text-entry key capture, repeated/missed E interactions, Oren auto-submit, ghost NPC talk controls, visible NPC materialization, canonical visual re-anchoring, and misleading untested-reload report semantics. All six mandatory gates passed on the stabilized head."
+    }
+  ],
+  "next_main_constraint": "A fresh downloaded ZIP is not truly one-click yet: the first human run hit ModuleNotFoundError for samseberpg and required manual pip/npm installation. Make PLAY_SAM_SEBE_RPG bootstrap missing local dependencies idempotently and keep startup failures visible."
+}

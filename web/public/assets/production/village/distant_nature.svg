@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="540" viewBox="0 0 960 540" role="img" aria-label="Start Village distant nature layer">
+  <defs>
+    <linearGradient id="mountGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#2C3440" stop-opacity="0.55"/>
+      <stop offset="100%" stop-color="#1E232B" stop-opacity="0.85"/>
+    </linearGradient>
+    <linearGradient id="forestGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#70826E" stop-opacity="0.45"/>
+      <stop offset="100%" stop-color="#596A58" stop-opacity="0.7"/>
+    </linearGradient>
+  </defs>
+  <rect width="960" height="540" fill="none"/>
+  <path d="M0 313L84 264l70 28 83-70 57 36 90-74 76 52 94-73 61 38 82-54 73 43 90 74v224H0z" fill="url(#mountGrad)"/>
+  <path d="M0 356c50-21 104-42 157-38 72 5 102 28 165 28 58 0 98-19 150-19 71 0 116 35 181 35 49 0 99-16 146-31 56-17 105-15 161 25v184H0z" fill="url(#forestGrad)"/>
+  <g fill="#F4F1E8" opacity="0.20">
+    <rect x="0" y="333" width="960" height="30"/>
+  </g>
+</svg>
