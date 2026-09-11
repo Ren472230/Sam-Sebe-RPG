@@ -3,6 +3,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { installBrowserDiagnostics } from "../tests/helpers/browser-diagnostics";
 import {
   moveTowardInteraction,
+  moveUntilInteraction,
   playerPosition,
   releaseMovementKeys
 } from "../tests/helpers/spatial-navigation";
@@ -111,7 +112,7 @@ async function approachAndTalk(
 
 async function enterTavernSpatially(page: Page): Promise<void> {
   await moveAxisTo(page, "x", 825, 9, 20_000);
-  await moveTowardInteraction(page, 825, 330, "войти в таверну", 20_000);
+  await moveUntilInteraction(page, "w", "войти в таверну", 20_000);
   await page.keyboard.press("e");
   await expect(page.locator("body")).toHaveAttribute("data-scene", "tavern", { timeout: 10_000 });
   await expect(page.locator("body")).toHaveAttribute("data-rendered-tavern-npc-ids", /npc_oren/, { timeout: 10_000 });
