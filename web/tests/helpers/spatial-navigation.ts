@@ -27,6 +27,41 @@ async function settleMovementFrames(page: Page): Promise<void> {
   }));
 }
 
+export async function moveUntilInteraction(
+  page: Page,
+  key: "w" | "a" | "s" | "d",
+  hintText: string,
+  timeout = 12_000
+): Promise<void> {
+  const started = Date.now();
+  const hint = page.locator("#interaction-hint");
+  let held = false;
+  await releaseMovementKeys(page);
+
+  try {
+    await page.keyboard.down(key);
+    held = true;
+    while (Date.now() - started < timeout) {
+      await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => resolve())));
+      if (!(await hint.textContent())?.includes(hintText)) continue;
+
+      await page.keyboard.up(key);
+      held = false;
+      await settleMovementFrames(page);
+      if ((await hint.textContent())?.includes(hintText)) return;
+
+      await page.keyboard.down(key);
+      held = true;
+    }
+  } finally {
+    if (held) await page.keyboard.up(key);
+  }
+
+  throw new Error(
+    `player did not reach interaction ${JSON.stringify(hintText)} while holding ${key}; last=${JSON.stringify(await playerPosition(page))}`
+  );
+}
+
 export async function moveTowardInteraction(
   page: Page,
   targetX: number,
