@@ -237,13 +237,19 @@ export async function moveTowardInteraction(
   await installNavigationDiagnostics(page);
   const hint = page.locator("#interaction-hint");
   const stableInteractionRadius = 60;
-  const standoffX = Math.min(865, targetX + 45);
+  const start = await playerPosition(page);
+  const standoffX = Math.max(
+    95,
+    Math.min(865, targetX + (start.x <= targetX ? -45 : 45))
+  );
 
   await releaseMovementKeys(page);
+  // Canonical village anchors sit on the clear lower path. Move horizontally first so
+  // the automation routes around the central well before approaching an NPC vertically.
   let ready = await moveAxisTowardInteraction(
     page,
-    "y",
-    targetY,
+    "x",
+    standoffX,
     targetX,
     targetY,
     hintText,
@@ -253,8 +259,8 @@ export async function moveTowardInteraction(
   if (!ready) {
     ready = await moveAxisTowardInteraction(
       page,
-      "x",
-      standoffX,
+      "y",
+      targetY,
       targetX,
       targetY,
       hintText,
