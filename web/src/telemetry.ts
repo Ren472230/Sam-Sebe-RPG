@@ -34,6 +34,7 @@ export type TelemetrySender = (
 
 export type TelemetryConfig = {
   enabled?: boolean;
+  privacyConfirmed?: boolean;
   apiKey?: string;
   host?: string;
   sessionId?: string;
@@ -122,6 +123,7 @@ let currentTelemetry: Telemetry = createTelemetry();
 
 function resolveSender(config: TelemetryConfig): TelemetrySender | null {
   if (config.send) return config.send;
+  if (!config.privacyConfirmed) return null;
   const apiKey = config.apiKey?.trim();
   const host = config.host?.trim();
   const fetchImpl = config.fetchImpl ?? globalThis.fetch;
