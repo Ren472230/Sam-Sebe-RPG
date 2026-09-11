@@ -1,62 +1,99 @@
 {
-  "run_id": "2026-09-11-release-reproducibility",
-  "working_branch": "agent/release-reproducibility-v1",
-  "release_base_sha": "7d7ec138cb15c253f22435f8d5c2983a2e1d1cd8",
+  "protocol_version": 1,
+  "project": "Ren472230/Sam-Sebe-RPG",
+  "run_id": "2026-09-11-pilot-cycle-1-tavern-entry",
+  "authoritative_branch": "integration/audit-results-v1",
+  "authoritative_head": "5f5695f5918ed5dbc4fefea5e6483795a00260d5",
+  "working_branch": "agent/autonomy-pilot-v0.1",
   "integration_candidate": {
-    "pr": 49,
-    "branch": "integration/world-ready-svg-v1",
-    "head_sha": "7d7ec138cb15c253f22435f8d5c2983a2e1d1cd8",
+    "pr": 53,
+    "branch": "integration/audit-results-v1",
+    "head_sha": "5f5695f5918ed5dbc4fefea5e6483795a00260d5",
     "base_branch": "main",
     "base_sha": "813ac7beb233645546fcc1e7bda3827efe63dcdc",
     "state": "open",
     "draft": true,
     "merged": false
   },
-  "phase": "release_reproducibility_with_parallel_e2e_stabilization",
-  "presentation_context": "Desktop playability and audience readability remain the primary experience target; mobile remains a supported fallback target.",
-  "verified_gates_at_candidate_head": {
-    "prototype_web_ci": {
-      "run_id": 34473124187,
+  "phase": "integrated_release_candidate_stabilization",
+  "current_objective": "Prove the targeted tavern-entry navigation fix on one exact pilot SHA.",
+  "next_action": "Complete the exact-SHA validation of 980a82f57fbd6d41d3d1e9f928ffdd925ed54c47 and reconcile every required workflow result before changing code again.",
+  "blockers": [
+    "Source PR #53 Stream Slice Gate run 34586828765 fails at Chromium tavern-entry navigation.",
+    "Source PR #53 Playable Candidate Gate run 34586828698 is red; its browser route also contains tavern-entry failures.",
+    "Source PR #53 Prototype Web CI run 34586828701 is red and still requires factual reconciliation.",
+    "Source PR #53 Living World Integration Gate run 34586828703 is red and still requires factual reconciliation."
+  ],
+  "active_run": {
+    "run_id": "2026-09-11-pilot-cycle-1-tavern-entry",
+    "status": "running",
+    "started_at_utc": "2026-09-11T11:10:35Z",
+    "lease_expires_at_utc": "2026-09-11T12:40:35Z",
+    "base_sha": "3db28e86dc8a03db72c8d8dd192dd11cdbf661c3",
+    "working_branch": "agent/autonomy-pilot-v0.1"
+  },
+  "last_handoff": {
+    "completed_at_utc": "2026-09-11T11:06:15Z",
+    "result": "Autonomous Project Development v0.1 control layer installed and stale PR #49 state reconciled to factual PR #53 state.",
+    "head_sha": "b85fbd348b7d653a8714d0425c9535caeaedbd98",
+    "verification": [
+      "Source system package 607aef5cb7f376e6c77b0855c1501d1f52d89b35: contract tests passed and package validator passed.",
+      "PR #53 factual HEAD verified as 5f5695f5918ed5dbc4fefea5e6483795a00260d5.",
+      "Visual Forge Gate 34586828719: success.",
+      "Release Reproducibility Gate 34586828692: success.",
+      "Windows Compatibility Gate 34586828693: success.",
+      "Stream Slice Gate 34586828765: failure at Chromium acceptance; 22 Python tests, preflight, 45 web contracts and production build passed before the failure."
+    ],
+    "next_action": "Fix the reproducible tavern-entry spatial navigation failure at web/tests/helpers/spatial-navigation.ts:316 with RED-to-GREEN evidence on agent/autonomy-pilot-v0.1."
+  },
+  "human_gate": {
+    "required": false,
+    "reason": null
+  },
+  "verified_gates_at_authoritative_head": {
+    "visual_forge_gate": {
+      "run_id": 34586828719,
+      "status": "success"
+    },
+    "release_reproducibility_gate": {
+      "run_id": 34586828692,
       "status": "success"
     },
     "windows_compatibility_gate": {
-      "run_id": 34473124237,
+      "run_id": 34586828693,
       "status": "success"
-    },
-    "visual_forge_gate": {
-      "run_id": 34473124446,
-      "status": "success"
-    },
-    "playable_candidate_gate": {
-      "run_id": 34473124248,
-      "status": "failure",
-      "failure_scope": "browser integrated route; backend, dependency install, web contracts and production build passed"
-    },
-    "living_world_integration_gate": {
-      "run_id": 34473124220,
-      "status": "failure",
-      "failure_scope": "real browser critical route; latest inspected failure did not reach the tavern entry band"
     },
     "stream_slice_gate": {
-      "run_id": 34473124246,
+      "run_id": 34586828765,
       "status": "failure",
-      "failure_scope": "Stream Slice Chromium acceptance; Python tests, preflight, dependency install, web contracts and production build passed"
+      "failure_scope": "Chromium tavern-entry navigation"
+    },
+    "playable_candidate_gate": {
+      "run_id": 34586828698,
+      "status": "failure"
+    },
+    "prototype_web_ci": {
+      "run_id": 34586828701,
+      "status": "failure"
+    },
+    "living_world_integration_gate": {
+      "run_id": 34586828703,
+      "status": "failure"
     }
   },
   "release_reproducibility_work": {
     "web_lockfile": "web/package-lock.json committed with lockfileVersion 3",
     "python_constraints": "constraints/python-3.12.txt",
     "ci_install_policy": "current release/browser workflows use npm ci and constrained pip installs",
-    "windows_launcher": "uses constrained pip and npm ci when the lockfile exists; npm install is a local fallback only when the lockfile is missing",
+    "windows_launcher": "uses constrained pip and npm ci when the lockfile exists; npm install is a local fallback only if the lockfile is missing",
     "repository_hygiene": "root .gitignore covers generated caches, environments, browser reports, local SQLite state, environment files, secrets and editor/OS debris",
-    "github_releases": "none; PR #49 is still draft and unmerged"
+    "github_releases": "none"
   },
   "known_limitations": [
-    "Browser-bearing candidate gates are not release-green at the current PR #49 HEAD; E2E stabilization is running in parallel.",
-    "CI runtime selectors remain on the Python 3.12 and Node.js 22 families rather than exact patch-level pins.",
-    "The isolated Python build backend remains lower-bounded by setuptools>=75 in pyproject.toml; application runtime/test dependencies are constrained separately.",
-    "The active visual pack is a temporary complete SVG Stream Slice pack, not the final production-art pass.",
-    "Successful browser screenshot artifacts are not retained for download because repository evidence storage is intentionally minimized."
+    "The first pilot code change was committed before the lease write. The cycle now records an active lease, and this ordering defect must be added to autonomous learning and strengthened in the source protocol before hourly scheduling.",
+    "Four required browser-bearing workflows are red at the source PR #53 authoritative HEAD.",
+    "The active visual pack is a temporary complete SVG Stream Slice pack rather than final production art.",
+    "A real human experience gate remains pending after technical stabilization."
   ],
-  "current_blocker": "Complete and integrate E2E stabilization, then rerun the browser-bearing gates on the resulting exact candidate HEAD before any merge or release decision."
+  "current_blocker": "Complete exact-SHA validation of the targeted tavern-entry fix before any further code change."
 }
