@@ -3,6 +3,7 @@ import { expect, test, type Page } from "@playwright/test";
 import {
   approachAndTalk,
   enterTavernSpatially,
+  moveTowardInteraction,
   releaseMovementKeys
 } from "./helpers/spatial-navigation";
 
@@ -35,6 +36,31 @@ test("spatial tavern entry survives a slower browser", async ({ page, context })
   } finally {
     await releaseMovementKeys(page);
     await cdp.send("Emulation.setCPUThrottlingRate", { rate: 1 }).catch(() => undefined);
+  }
+});
+
+test("target-aware interaction recovers after the controller misses a crossing", async ({ page }) => {
+  test.setTimeout(45_000);
+  await useIsolatedPlayer(page, "e2e-nav-controller-stall-player");
+  await page.goto("/");
+  await expect(page.locator("body")).toHaveAttribute("data-scene", "village");
+
+  const movement = moveTowardInteraction(page, 825, 330, "войти в таверну", 20_000);
+  await page.waitForFunction(() => {
+    const debugWindow = window as Window & { __navKeyTrace?: string[] };
+    return (debugWindow.__navKeyTrace ?? []).some((entry) => entry.startsWith("down:"));
+  });
+
+  const blockedUntil = Date.now() + 700;
+  while (Date.now() < blockedUntil) {
+    // Deliberately block the Playwright controller while the browser keeps held movement keys active.
+  }
+
+  try {
+    await movement;
+    await expect(page.locator("#interaction-hint")).toContainText("войти в таверну");
+  } finally {
+    await releaseMovementKeys(page);
   }
 });
 
