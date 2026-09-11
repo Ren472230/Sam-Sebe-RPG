@@ -12,26 +12,9 @@ export async function playerPosition(page: Page): Promise<PlayerPosition> {
 
 export async function releaseMovementKeys(page: Page): Promise<void> {
   for (const key of ["w", "a", "s", "d"] as const) await page.keyboard.up(key);
-}
-
-async function syncHeldMovementKeys(
-  page: Page,
-  held: Set<MovementKey>,
-  desiredKeys: MovementKey[]
-): Promise<void> {
-  const desired = new Set(desiredKeys);
-
-  for (const key of [...held]) {
-    if (desired.has(key)) continue;
-    await page.keyboard.up(key);
-    held.delete(key);
-  }
-
-  for (const key of desiredKeys) {
-    if (held.has(key)) continue;
-    await page.keyboard.down(key);
-    held.add(key);
-  }
+  // Match the canonical acceptance helper: give Phaser one short window to
+  // observe key-up before the next axis is pressed.
+  await page.waitForTimeout(50);
 }
 
 async function moveAxisIntoBand(
@@ -81,30 +64,31 @@ export async function moveAxisTo(
   page: Page,
   axis: "x" | "y",
   target: number,
-  tolerance = 12,
-  timeout = 12_000
+  tolerance = 8,
+  timeout = 10_000
 ): Promise<void> {
   const started = Date.now();
-  const held = new Set<MovementKey>();
+  let heldKey: MovementKey | null = null;
   await releaseMovementKeys(page);
-
   try {
     while (Date.now() - started < timeout) {
       const position = await playerPosition(page);
       const value = position[axis];
       if (Number.isFinite(value) && Math.abs(value - target) <= tolerance) return;
-
       const key: MovementKey = axis === "x"
         ? (value < target ? "d" : "a")
         : (value < target ? "s" : "w");
-      await syncHeldMovementKeys(page, held, [key]);
-      await page.waitForTimeout(75);
+      if (heldKey !== key) {
+        if (heldKey) await page.keyboard.up(heldKey);
+        await page.keyboard.down(key);
+        heldKey = key;
+      }
+      await page.waitForTimeout(50);
     }
   } finally {
-    await syncHeldMovementKeys(page, held, []);
+    if (heldKey) await page.keyboard.up(heldKey);
     await releaseMovementKeys(page);
   }
-
   throw new Error(`player did not reach ${axis}=${target}; last=${JSON.stringify(await playerPosition(page))}`);
 }
 
@@ -117,9 +101,9 @@ export async function moveTowardInteraction(
 ): Promise<void> {
   const hint = page.locator("#interaction-hint");
   const stableInteractionRadius = 60;
-  // The canonical Mira acceptance already proves that moving vertically first and
-  // horizontally second is stable on this collision map. Keep a small right-side
-  // standoff so Mira stays clear of firewood and Talen stays clear of the well.
+  // Canonical acceptance proves Y-then-X on this map. The 45px right-side
+  // standoff keeps Mira clear of firewood and Talen clear of the well while
+  // remaining comfortably inside every NPC interaction radius.
   const standoffX = Math.min(865, targetX + 45);
 
   await releaseMovementKeys(page);
