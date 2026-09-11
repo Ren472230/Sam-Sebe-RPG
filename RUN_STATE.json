@@ -1,0 +1,79 @@
+{
+  "protocol_version": 1,
+  "project": "Ren472230/Sam-Sebe-RPG",
+  "run_id": "2026-09-11-pilot-cycle-2-talen-approach",
+  "authoritative_branch": "integration/audit-results-v1",
+  "authoritative_head": "5f5695f5918ed5dbc4fefea5e6483795a00260d5",
+  "working_branch": "agent/autonomy-pilot-v0.1",
+  "integration_candidate": {
+    "pr": 53,
+    "branch": "integration/audit-results-v1",
+    "head_sha": "5f5695f5918ed5dbc4fefea5e6483795a00260d5",
+    "base_branch": "main",
+    "base_sha": "813ac7beb233645546fcc1e7bda3827efe63dcdc",
+    "state": "open",
+    "draft": true,
+    "merged": false
+  },
+  "phase": "browser_spatial_stabilization",
+  "current_objective": "Isolate and fix the reproducible Stream Slice Talen interaction approach failure after successful tavern entry.",
+  "next_action": "Trace the Talen interaction target, tavern collision geometry and moveTowardInteraction behavior from failing run 34592686361 before proposing a fix.",
+  "blockers": [
+    "Stream Slice validation run 34592686361 passes tavern entry but fails while approaching Talen at target (500,385): last position (556,315), distance 90, generic interaction hint, no browser console or page errors."
+  ],
+  "active_run": {
+    "run_id": "2026-09-11-pilot-cycle-2-talen-approach",
+    "status": "running",
+    "started_at_utc": "2026-09-11T11:46:30Z",
+    "lease_expires_at_utc": "2026-09-11T13:16:30Z",
+    "base_sha": "5cca15bcbd4a0127724f6945b2f7e615f34ff174",
+    "working_branch": "agent/autonomy-pilot-v0.1"
+  },
+  "last_handoff": {
+    "completed_at_utc": "2026-09-11T11:48:00Z",
+    "result": "Verified autonomy core ae96395a1be90204283fd6b17407d574a1839442 was installed into the pilot. AUTONOMY_SYSTEM now pins the verified source workflow, and Sam-Sebe-RPG AGENTS/RUNBOOK now enforce a read-only pre-lease phase, post-write lease ownership confirmation, and non-self-referential work_head_sha handoff semantics while preserving project-specific architecture and gate rules.",
+    "head_sha": "a39a0f46c8b07421ad9572208d864e78e8e330f3",
+    "work_head_sha": "a39a0f46c8b07421ad9572208d864e78e8e330f3",
+    "verification": [
+      "Universal source ae96395a1be90204283fd6b17407d574a1839442: workflow 34593421620 succeeded.",
+      "Universal source workflow 34593421620: contract tests succeeded and package validator succeeded.",
+      "Pilot AUTONOMY_SYSTEM.json pins source SHA ae96395a1be90204283fd6b17407d574a1839442 and source verification run 34593421620.",
+      "Pilot AGENTS.md and docs/autonomy/RUNBOOK.md contain the hard pre-mutation lease barrier and work_head_sha semantics."
+    ],
+    "next_action": "Start a new leased cycle from factual pilot branch HEAD and isolate why approachAndTalk cannot reach Talen interaction near target (500,385)."
+  },
+  "human_gate": {
+    "required": false,
+    "reason": null
+  },
+  "verified_gates_at_authoritative_head": {
+    "visual_forge_gate": {"run_id": 34586828719, "status": "success"},
+    "release_reproducibility_gate": {"run_id": 34586828692, "status": "success"},
+    "windows_compatibility_gate": {"run_id": 34586828693, "status": "success"},
+    "stream_slice_gate": {"run_id": 34586828765, "status": "failure", "failure_scope": "Chromium tavern-entry navigation"},
+    "playable_candidate_gate": {"run_id": 34586828698, "status": "failure"},
+    "prototype_web_ci": {"run_id": 34586828701, "status": "failure"},
+    "living_world_integration_gate": {"run_id": 34586828703, "status": "failure"}
+  },
+  "pilot_validation_at_work_head": {
+    "work_head_sha": "980a82f57fbd6d41d3d1e9f928ffdd925ed54c47",
+    "visual_forge_gate": {"run_id": 34592686436, "status": "success"},
+    "release_reproducibility_gate": {"run_id": 34592686330, "status": "success"},
+    "windows_compatibility_gate": {"run_id": 34592686460, "status": "success"},
+    "stream_slice_gate": {"run_id": 34592686361, "status": "failure", "failure_scope": "later Talen approach after successful tavern entry"}
+  },
+  "release_reproducibility_work": {
+    "web_lockfile": "web/package-lock.json committed with lockfileVersion 3",
+    "python_constraints": "constraints/python-3.12.txt",
+    "ci_install_policy": "current release/browser workflows use npm ci and constrained pip installs",
+    "windows_launcher": "uses constrained pip and npm ci when the lockfile exists; npm install is a local fallback only when the lockfile is missing",
+    "repository_hygiene": "root .gitignore covers generated caches, environments, browser reports, local SQLite state, environment files, secrets and editor/OS debris",
+    "github_releases": "none"
+  },
+  "known_limitations": [
+    "The current gameplay work SHA still has a Stream Slice browser failure while approaching Talen.",
+    "The active visual pack is a temporary complete SVG Stream Slice pack rather than final production art.",
+    "A real human experience gate remains pending after technical stabilization."
+  ],
+  "current_blocker": "Reproducible Talen interaction approach failure inside the tavern."
+}

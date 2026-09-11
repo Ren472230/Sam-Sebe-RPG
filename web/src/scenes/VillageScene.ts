@@ -1,6 +1,7 @@
 import Phaser from "phaser";
 
-import { requestId } from "../api";
+import { requestId, type VisibleActor } from "../api";
+import { actionControlHint, movementControlHint } from "../controlHints";
 import {
   createProductionFirewood,
   createProductionPlayer,
@@ -12,7 +13,23 @@ import { getRuntime } from "../runtime";
 
 type Hotspot = { id: string; x: number; y: number; view: any };
 type Rect = { x: number; y: number; w: number; h: number };
-type VillageInteraction = { kind: "firewood"; item: Hotspot } | { kind: "tavern" };
+type VillageInteraction =
+  | { kind: "firewood"; item: Hotspot }
+  | { kind: "tavern" }
+  | { kind: "npc"; actorId: string; name: string };
+
+const CANONICAL_LOCATION_ANCHORS: Record<string, { x: number; y: number }> = {
+  workshop_yard: { x: 330, y: 455 },
+  village_square: { x: 500, y: 455 },
+  river_edge: { x: 640, y: 455 }
+};
+
+const NPC_ANCHORS: Record<string, { x: number; y: number }> = {
+  npc_mira: { x: 250, y: 365 },
+  npc_kaspar: { x: 610, y: 410 },
+  npc_wayfarer_1: { x: 545, y: 400 },
+  npc_oren: { x: 790, y: 365 }
+};
 
 export class VillageScene extends Phaser.Scene {
   private player: any;
@@ -23,6 +40,10 @@ export class VillageScene extends Phaser.Scene {
   private interactionExpiresAt = 0;
   private readonly interactionGraceMs = 600;
   private readonly tavern = { x: 825, y: 250 };
+  private readonly renderedNpcs = new Map<string, Phaser.GameObjects.Container>();
+  private renderedNpcIds = new Set<string>();
+  private unsubscribeState: (() => void) | null = null;
+  private canonicalLocationId: string | null = null;
   private readonly obstacles: Rect[] = [
     { x: 115, y: 205, w: 230, h: 120 },
     { x: 690, y: 165, w: 220, h: 135 },
@@ -46,18 +67,32 @@ export class VillageScene extends Phaser.Scene {
       ?? this.add.rectangle(430, 455, 24, 42, 0xe03a3e).setStrokeStyle(4, 0x111315).setDepth(20);
     renderVillageProductionForeground(this);
     this.publishPlayerPosition();
+
+    const runtime = getRuntime();
+    this.unsubscribeState = runtime.state.subscribe((snapshot) => {
+      this.syncCanonicalLocation(snapshot.world.location_id);
+      this.renderNearbyNpcs(snapshot.world.visible_actors);
+    });
+
     const keyboard = this.input.keyboard;
     if (!keyboard) throw new Error("Keyboard input unavailable");
-    this.keys = keyboard.addKeys("W,A,S,D,E");
-    keyboard.on("keydown-E", () => void this.interact());
+    this.keys = keyboard.addKeys("W,A,S,D,E", false);
+    keyboard.on("keydown-E", (event: KeyboardEvent) => {
+      if (event.repeat || isTextEntryActive()) return;
+      void this.interact();
+    });
     this.events.once("shutdown", () => {
-      keyboard.removeAllListeners("keydown-E");
+      this.unsubscribeState?.();
+      this.unsubscribeState = null;
+      this.destroyRenderedNpcs();
       this.clearInteraction();
       this.hint.textContent = "";
     });
   }
 
   update(_time: number, delta: number): void {
+    if (isTextEntryActive()) return;
+
     // A long browser frame must not teleport the player through narrow collision/interaction bands.
     const speed = 0.22 * Math.min(delta, 50);
     let dx = 0;
@@ -69,6 +104,58 @@ export class VillageScene extends Phaser.Scene {
     this.movePlayer(dx, dy);
     this.publishPlayerPosition();
     this.updateHint();
+  }
+
+  private syncCanonicalLocation(locationId: string): void {
+    if (this.canonicalLocationId === locationId) return;
+    this.clearInteraction();
+    this.hint.textContent = movementControlHint();
+    this.canonicalLocationId = locationId;
+    document.body.dataset.canonicalLocation = locationId;
+    const anchor = CANONICAL_LOCATION_ANCHORS[locationId];
+    if (!anchor || !this.player) return;
+    this.player.x = anchor.x;
+    this.player.y = anchor.y;
+    this.publishPlayerPosition();
+  }
+
+  private renderNearbyNpcs(visible_actors: VisibleActor[]): void {
+    const nearby = visible_actors.filter((actor) => actor.actor_type === "npc");
+    const nextIds = new Set(nearby.map((actor) => actor.actor_id));
+
+    for (const [actorId, view] of this.renderedNpcs) {
+      if (nextIds.has(actorId)) continue;
+      view.destroy(true);
+      this.renderedNpcs.delete(actorId);
+    }
+
+    nearby.forEach((actor, index) => {
+      if (this.renderedNpcs.has(actor.actor_id)) return;
+      const fallback = { x: 420 + index * 70, y: 400 };
+      const anchor = NPC_ANCHORS[actor.actor_id] ?? fallback;
+      const body = this.add.rectangle(0, 0, 30, 48, 0xe9e4d7)
+        .setStrokeStyle(4, 0x24272a);
+      const accent = this.add.rectangle(0, -19, 30, 7, 0x60d5d8);
+      const label = this.add.text(-34, 31, npcName(actor.actor_id, actor.name), {
+        color: "#f1eee4",
+        backgroundColor: "#24272a",
+        fontSize: "14px",
+        fontFamily: "sans-serif",
+        padding: { x: 4, y: 2 }
+      });
+      const view = this.add.container(anchor.x, anchor.y, [body, accent, label]).setDepth(19);
+      this.renderedNpcs.set(actor.actor_id, view);
+    });
+
+    this.renderedNpcIds = nextIds;
+    document.body.dataset.renderedNpcIds = [...this.renderedNpcIds].sort().join(",");
+  }
+
+  private destroyRenderedNpcs(): void {
+    for (const view of this.renderedNpcs.values()) view.destroy(true);
+    this.renderedNpcs.clear();
+    this.renderedNpcIds.clear();
+    delete document.body.dataset.renderedNpcIds;
   }
 
   private publishPlayerPosition(): void {
@@ -143,16 +230,27 @@ export class VillageScene extends Phaser.Scene {
   private updateHint(): void {
     const wood = this.nearestFirewood();
     if (wood) {
-      this.offerInteraction({ kind: "firewood", item: wood }, "E — подобрать дрова");
+      this.offerInteraction({ kind: "firewood", item: wood }, actionControlHint("подобрать дрова"));
       return;
     }
+
+    const npc = this.nearestNpc();
+    if (npc) {
+      const name = npcName(npc.actor_id, npc.name);
+      this.offerInteraction(
+        { kind: "npc", actorId: npc.actor_id, name },
+        actionControlHint(`поговорить с ${npcInstrumentalName(npc.actor_id, npc.name)}`)
+      );
+      return;
+    }
+
     if (distance(this.player.x, this.player.y, this.tavern.x, this.tavern.y) < 85) {
-      this.offerInteraction({ kind: "tavern" }, "E — войти в таверну");
+      this.offerInteraction({ kind: "tavern" }, actionControlHint("войти в таверну"));
       return;
     }
     if (this.interaction && this.time.now <= this.interactionExpiresAt) return;
     this.clearInteraction();
-    this.hint.textContent = "WASD — движение · E — взаимодействие";
+    this.hint.textContent = movementControlHint();
   }
 
   private offerInteraction(interaction: VillageInteraction, text: string): void {
@@ -177,11 +275,29 @@ export class VillageScene extends Phaser.Scene {
       await this.pickupFirewood(interaction.item);
       return;
     }
+    if (interaction.kind === "npc") {
+      await getRuntime().dialogue.openNpc(interaction.actorId);
+      return;
+    }
     await this.enterTavern();
   }
 
   private nearestFirewood(): Hotspot | null {
     return this.firewood.find((item) => distance(this.player.x, this.player.y, item.x, item.y) < 52) ?? null;
+  }
+
+  private nearestNpc(): VisibleActor | null {
+    const visibleActors = getRuntime().state.snapshot?.world.visible_actors ?? [];
+    let best: { actor: VisibleActor; distance: number } | null = null;
+    for (const actor of visibleActors) {
+      if (actor.actor_type !== "npc") continue;
+      const view = this.renderedNpcs.get(actor.actor_id);
+      if (!view) continue;
+      const gap = distance(this.player.x, this.player.y, view.x, view.y);
+      if (gap >= 72 || (best && best.distance <= gap)) continue;
+      best = { actor, distance: gap };
+    }
+    return best?.actor ?? null;
   }
 
   private async pickupFirewood(item: Hotspot): Promise<void> {
@@ -249,6 +365,31 @@ export class VillageScene extends Phaser.Scene {
     if (!result.success) throw new Error(result.summary);
     await runtime.state.refresh();
   }
+}
+
+function npcName(actorId: string, fallback: string): string {
+  if (actorId === "npc_mira") return "Мира";
+  if (actorId === "npc_kaspar") return "Каспар";
+  if (actorId === "npc_wayfarer_1") return "Тален";
+  if (actorId === "npc_oren") return "Орен";
+  return fallback;
+}
+
+function npcInstrumentalName(actorId: string, fallback: string): string {
+  if (actorId === "npc_mira") return "Мирой";
+  if (actorId === "npc_kaspar") return "Каспаром";
+  if (actorId === "npc_wayfarer_1") return "Таленом";
+  if (actorId === "npc_oren") return "Ореном";
+  return fallback;
+}
+
+function isTextEntryActive(): boolean {
+  const dialogue = document.getElementById("dialogue");
+  if (dialogue && !dialogue.hidden) return true;
+  const active = document.activeElement;
+  return active instanceof HTMLInputElement
+    || active instanceof HTMLTextAreaElement
+    || (active instanceof HTMLElement && active.isContentEditable);
 }
 
 function distance(ax: number, ay: number, bx: number, by: number): number {

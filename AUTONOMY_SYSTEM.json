@@ -1,0 +1,15 @@
+{
+  "system": "Autonomous Project Development",
+  "installed_version": "0.1.0",
+  "protocol_version": 1,
+  "source_repository": "Persona-Ren/Autonomous-Project-Development",
+  "source_sha": "ae96395a1be90204283fd6b17407d574a1839442",
+  "source_verification": {
+    "workflow": "Validate autonomous development package",
+    "run_id": 34593421620,
+    "contract_tests": "success",
+    "package_validator": "success"
+  },
+  "installed_at_utc": "2026-09-11T11:02:55Z",
+  "upgraded_at_utc": "2026-09-11T11:43:29Z"
+}

@@ -25,7 +25,7 @@ jobs:
           python-version: "3.12"
           cache: pip
       - name: Install backend
-        run: python -m pip install -e ".[dev]"
+        run: python -m pip install -c constraints/python-3.12.txt -e ".[dev]"
       - name: Full Python suite
         run: python -m pytest -q tests
       - name: Vertical slice smoke
@@ -34,11 +34,15 @@ jobs:
         run: PYTHONPATH=src python scripts/smoke_vertical_slice.py
       - name: Living World acceptance smoke
         run: PYTHONPATH=src python scripts/smoke_living_world_acceptance.py
+      - name: Stream Slice preflight
+        env:
+          OPENAI_API_KEY: ""
+        run: python scripts/stream_preflight.py
 
   browser:
     name: Web contract + build + real browser
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -46,13 +50,13 @@ jobs:
           python-version: "3.12"
           cache: pip
       - name: Install backend for browser server
-        run: python -m pip install -e ".[dev]"
+        run: python -m pip install -c constraints/python-3.12.txt -e ".[dev]"
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
       - name: Install web dependencies
         working-directory: web
-        run: npm install --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
       - name: Web contract tests
         working-directory: web
         run: npm run test:contract
@@ -69,13 +73,46 @@ jobs:
         env:
           OPENAI_API_KEY: ""
         run: npm run test:e2e
-      - name: Upload browser evidence
+      - name: Living NPC browser acceptance
+        working-directory: web
+        env:
+          OPENAI_API_KEY: ""
+        run: npm run test:e2e:living-npc
+      - name: Social World browser acceptance
+        working-directory: web
+        env:
+          OPENAI_API_KEY: ""
+        run: npm run test:e2e:social-world
+      - name: Stream Slice browser acceptance
+        working-directory: web
+        env:
+          OPENAI_API_KEY: ""
+        run: npm run test:e2e:stream-slice
+      - name: Upload compact review screenshots
         if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: candidate-review-screenshots
+          path: |
+            web/test-results/01-village.png
+            web/test-results/02-oren-offer.png
+            web/test-results/07-reloaded.png
+            web/test-results/08-living-world.png
+          if-no-files-found: ignore
+          retention-days: 3
+      - name: Upload browser evidence
+        if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: playable-candidate-browser-evidence
           path: |
             web/test-results
+            web/test-results-living-npc
+            web/test-results-social-world
+            web/test-results-stream-slice
             web/playwright-report
+            web/playwright-report-living-npc
+            web/playwright-report-social-world
+            web/playwright-report-stream-slice
           if-no-files-found: ignore
-          retention-days: 14
+          retention-days: 1
