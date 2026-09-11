@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Visual v5 — Digit Renderer Lab</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="lab-shell">
+    <header class="lab-header">
+      <div>
+        <p class="eyebrow">SAM-SEBE-RPG / VISUAL R&amp;D</p>
+        <h1>Digit Renderer Lab</h1>
+        <p class="lede">A real-text image surface built only from <code>0–9 . : -</code> glyphs.</p>
+      </div>
+      <div class="status-strip" aria-live="polite">
+        <span><b id="status-columns">240</b> cols</span>
+        <span><b id="status-rows">—</b> rows</span>
+        <span>aspect <b id="status-aspect">—</b></span>
+        <span>font <b id="status-font">—</b></span>
+        <span><b id="status-duration">—</b> ms</span>
+      </div>
+    </header>
+
+    <section class="lab-grid">
+      <section class="stage-card" aria-label="Digit render output">
+        <div class="stage-toolbar">
+          <span id="render-status">Loading benchmark…</span>
+          <span class="glyph-contract">glyphs: 0 1 2 3 4 5 6 7 8 9 . : -</span>
+        </div>
+        <div class="stage-scroll" id="stage-scroll">
+          <div id="digit-output" aria-label="Rendered digit image"></div>
+        </div>
+      </section>
+
+      <aside class="control-card">
+        <form id="controls">
+          <fieldset>
+            <legend>Source</legend>
+            <label class="file-label">Upload image
+              <input id="source-file" name="sourceFile" type="file" accept="image/png,image/jpeg,image/webp">
+            </label>
+            <label class="check-row"><input id="show-source" name="showSource" type="checkbox"> Show source debug panel</label>
+            <label class="check-row"><input id="show-marker" name="showMarker" type="checkbox" checked> Show <code>@</code> player marker</label>
+          </fieldset>
+
+          <fieldset>
+            <legend>Grid</legend>
+            <label>Columns <output id="columns-value">240</output>
+              <input id="columns" name="columns" type="range" min="80" max="320" step="10" value="240">
+            </label>
+            <label>Zoom <output id="zoom-value">100%</output>
+              <input id="zoom" name="zoom" type="range" min="20" max="300" step="1" value="100">
+            </label>
+            <label>Font size <output id="font-size-value">8</output>
+              <input id="font-size" name="fontSize" type="range" min="6" max="12" step="0.5" value="8">
+            </label>
+            <label>Line height <output id="line-height-value">8</output>
+              <input id="line-height" name="lineHeight" type="range" min="6" max="14" step="0.5" value="8">
+            </label>
+          </fieldset>
+
+          <fieldset>
+            <legend>Glyph mapping</legend>
+            <label>Density <output id="density-value">0.40</output>
+              <input id="density" name="density" type="range" min="0" max="1" step="0.01" value="0.40">
+            </label>
+            <label>Shape <output id="shape-value">0.35</output>
+              <input id="shape" name="shape" type="range" min="0" max="1" step="0.01" value="0.35">
+            </label>
+            <label>Edge <output id="edge-value">0.20</output>
+              <input id="edge" name="edge" type="range" min="0" max="1" step="0.01" value="0.20">
+            </label>
+            <label>Continuity <output id="continuity-value">0.05</output>
+              <input id="continuity" name="continuity" type="range" min="0" max="0.25" step="0.01" value="0.05">
+            </label>
+          </fieldset>
+
+          <fieldset>
+            <legend>Foreground color</legend>
+            <label>Saturation <output id="saturation-value">1.35</output>
+              <input id="saturation" name="saturation" type="range" min="0" max="2" step="0.05" value="1.35">
+            </label>
+            <label>Contrast <output id="contrast-value">1.08</output>
+              <input id="contrast" name="contrast" type="range" min="0.7" max="1.6" step="0.02" value="1.08">
+            </label>
+            <label>Gamma <output id="gamma-value">1.00</output>
+              <input id="gamma" name="gamma" type="range" min="0.6" max="1.6" step="0.02" value="1.00">
+            </label>
+            <label>Min brightness <output id="min-brightness-value">0.20</output>
+              <input id="min-brightness" name="minBrightness" type="range" min="0" max="0.45" step="0.01" value="0.20">
+            </label>
+          </fieldset>
+
+          <div class="button-row">
+            <button id="render-now" type="button">Render now</button>
+            <button id="reset" type="reset">Reset</button>
+          </div>
+        </form>
+
+        <section id="source-debug-panel" class="source-debug" hidden>
+          <div class="source-debug-head">
+            <b>Source debug</b>
+            <span>input only — never overlaid</span>
+          </div>
+          <img id="source-preview" src="assets/benchmark-day.png" alt="Daytime village benchmark source">
+        </section>
+      </aside>
+    </section>
+  </main>
+
+  <script src="glyph-profiler.js"></script>
+  <script src="image-sampler.js"></script>
+  <script src="glyph-mapper.js"></script>
+  <script src="text-renderer.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
