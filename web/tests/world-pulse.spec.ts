@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 test("time controls wait for initial state before accepting a single WAIT action", async ({ page }) => {
+  let holdingStartupState = true;
   let releaseInitialState!: () => void;
   const initialStateGate = new Promise<void>((resolve) => { releaseInitialState = resolve; });
   let reportInitialTick!: (tick: number) => void;
@@ -12,14 +13,19 @@ test("time controls wait for initial state before accepting a single WAIT action
     }
   });
 
-  // Hold the real response so bootstrap cannot bind controls before the loading assertions.
+  // Both the game and playtest recorder fetch initial state. Hold every startup
+  // response so their request order cannot let bootstrap bypass the loading gate.
   await page.route("**/api/state/*", async (route) => {
+    if (!holdingStartupState) {
+      await route.continue();
+      return;
+    }
     const response = await route.fetch();
     const snapshot = await response.json();
     reportInitialTick(snapshot.world_pulse.tick);
     await initialStateGate;
     await route.fulfill({ response });
-  }, { times: 1 });
+  });
 
   try {
     await page.goto("/", { waitUntil: "domcontentloaded" });
@@ -32,15 +38,18 @@ test("time controls wait for initial state before accepting a single WAIT action
     await expect(waitFive).toBeDisabled();
     expect(actions).toHaveLength(0);
 
+    holdingStartupState = false;
     releaseInitialState();
     await expect(waitOne).toBeEnabled();
     await expect(waitFive).toBeEnabled();
     const actionResponseReady = page.waitForResponse((response) =>
       response.request().method() === "POST" && new URL(response.url()).pathname === "/api/action"
     );
-    const updatedStateReady = page.waitForResponse((response) =>
-      response.request().method() === "GET" && new URL(response.url()).pathname.startsWith("/api/state/")
-    );
+    const updatedStateReady = page.waitForResponse(async (response) => {
+      if (response.request().method() !== "GET"
+        || !new URL(response.url()).pathname.startsWith("/api/state/")) return false;
+      return response.ok() && (await response.json()).world_pulse.tick === initialTick + 5;
+    });
     await waitFive.click();
 
     const actionResponse = await actionResponseReady;
@@ -60,6 +69,7 @@ test("time controls wait for initial state before accepting a single WAIT action
       player_id: expect.any(String)
     });
   } finally {
+    holdingStartupState = false;
     releaseInitialState();
   }
 });
