@@ -52,12 +52,15 @@
 
 Для PostHog используется прямой HTTPS capture endpoint с отдельным случайным session ID. События отправляются с `$process_person_profile: false`, чтобы не создавать person profile. Cookies и браузерные credentials этим адаптером не отправляются.
 
+Реальный PostHog transport дополнительно требует явного `privacyConfirmed=true`. Это отдельный fail-closed gate: наличие project token и host само по себе не включает сетевую отправку.
+
 ## Конфигурация
 
 Телеметрия включается только когда в Vite-конфигурации одновременно заданы:
 
 - `VITE_POSTHOG_KEY` – project token PostHog;
-- `VITE_POSTHOG_HOST` – HTTPS ingestion host PostHog.
+- `VITE_POSTHOG_HOST` – HTTPS ingestion host PostHog;
+- `VITE_POSTHOG_PRIVACY_CONFIRMED=true` – явное подтверждение, что IP data capture отключён в используемом PostHog-проекте.
 
 Опционально:
 
@@ -66,7 +69,7 @@
 
 Никогда не помещать в Vite-переменные `OPENAI_API_KEY`, personal API keys или серверные secrets: значения `VITE_*` попадают во frontend bundle.
 
-Перед первой человеческой сессией в текущем PostHog-проекте требуется отключить IP data capture на уровне проекта: Settings > Project > Privacy > IP data capture. На момент подготовки v1 проект сообщал `anonymize_ips: false`, поэтому production ingestion пока считается privacy-blocked.
+Перед первой человеческой сессией в текущем PostHog-проекте требуется отключить IP data capture на уровне проекта: Data Pipeline > Data collection > IP data capture. На момент подготовки v1 проект сообщал `anonymize_ips: false`, поэтому production ingestion пока считается privacy-blocked. После отключения IP data capture можно выставить `VITE_POSTHOG_PRIVACY_CONFIRMED=true` в окружении конкретного deployment.
 
 ## Первая аналитика после подтверждённого ingestion
 
