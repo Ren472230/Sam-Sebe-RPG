@@ -12,20 +12,53 @@ import {
   streamEventLabel,
   streamPhaseLabel
 } from "./streamMode";
+import {
+  captureTelemetry,
+  captureTelemetryOnce,
+  configureTelemetry
+} from "./telemetry";
 import { DialoguePanel } from "./ui/DialoguePanel";
 import "./styles.css";
 
 async function bootstrap(): Promise<void> {
+  const streamMode = isStreamMode(window.location.search);
+  const telemetryEnv = (import.meta as ImportMeta & {
+    env?: Record<string, string | undefined>;
+  }).env ?? {};
+  configureTelemetry({
+    enabled: Boolean(telemetryEnv.VITE_POSTHOG_KEY && telemetryEnv.VITE_POSTHOG_HOST),
+    apiKey: telemetryEnv.VITE_POSTHOG_KEY,
+    host: telemetryEnv.VITE_POSTHOG_HOST,
+    baseProperties: {
+      app_version: telemetryEnv.VITE_APP_VERSION,
+      commit_sha: telemetryEnv.VITE_COMMIT_SHA,
+      mode: streamMode ? "stream" : "normal",
+      viewport_class: window.innerWidth < 768
+        ? "mobile"
+        : window.innerWidth < 1200
+          ? "tablet"
+          : "desktop"
+    }
+  });
+  window.addEventListener("error", () => {
+    captureTelemetry("client_error");
+  });
+  window.addEventListener("unhandledrejection", () => {
+    captureTelemetry("client_error");
+  });
+
   const artManifest = await loadProductionManifest();
   setProductionManifest(artManifest);
 
-  const streamMode = isStreamMode(window.location.search);
   document.body.classList.toggle("stream-mode", streamMode);
 
   const api = new GameApi();
   const playerId = await api.createSession("Ren");
   const state = new ClientState(api, playerId);
-  await state.refresh();
+  const initialSnapshot = await state.refresh();
+  captureTelemetryOnce("game_started", {
+    location_id: initialSnapshot.world.location_id
+  });
   const dialogue = new DialoguePanel(state);
   setRuntime({ api, state, dialogue });
   bindHud(state, streamMode);
@@ -166,6 +199,7 @@ function bindWorldPulse(state: ClientState, streamMode: boolean): void {
   livingActions.className = "living-npc-actions";
   livingActions.setAttribute("aria-label", "Действия живого мира");
   root.append(livingActions);
+  const seenTelemetryEvents = new Set<string>();
   let busy = false;
 
   const setBusy = (value: boolean): void => {
@@ -190,8 +224,29 @@ function bindWorldPulse(state: ClientState, streamMode: boolean): void {
     try {
       const result = await state.api.action(input);
       if (!result.success) throw new Error(result.summary);
-      await state.refresh();
+      const snapshot = await state.refresh();
+      if (input.action_type === "WAIT") {
+        captureTelemetry("wait_used", { location_id: snapshot.world.location_id });
+      } else {
+        captureTelemetryOnce("first_interaction", { location_id: snapshot.world.location_id });
+      }
+      if (input.action_type === "MOVE") {
+        captureTelemetryOnce("first_move", { location_id: snapshot.world.location_id });
+      }
+      if (
+        streamMode
+        && input.action_type === "GIVE"
+        && input.target_id === "bread_loaf_1"
+        && input.recipient_id === "npc_oren"
+      ) {
+        captureTelemetryOnce("stream_slice_completed", {
+          location_id: snapshot.world.location_id
+        });
+      }
     } catch (error) {
+      captureTelemetry("client_error", {
+        location_id: state.snapshot?.world.location_id
+      });
       showError(error);
     } finally {
       setBusy(false);
@@ -223,6 +278,13 @@ function bindWorldPulse(state: ClientState, streamMode: boolean): void {
       events.append(item);
     } else {
       for (const event of recent) {
+        const telemetryKey = `${event.tick}:${event.actor_id}:${event.event_type}:${event.summary}`;
+        if (!seenTelemetryEvents.has(telemetryKey)) {
+          seenTelemetryEvents.add(telemetryKey);
+          captureTelemetry("living_world_event_seen", {
+            location_id: snapshot.world.location_id
+          });
+        }
         const item = document.createElement("li");
         item.textContent = streamMode ? streamEventLabel(event) : eventText(event);
         events.append(item);
@@ -349,6 +411,7 @@ function eventText(event: WorldPulseEvent): string {
 }
 
 bootstrap().catch((error) => {
+  captureTelemetry("client_error");
   const root = document.getElementById("game");
   if (root) {
     root.textContent = `Не удалось запустить игру: ${error instanceof Error ? error.message : "неизвестная ошибка"}`;
