@@ -119,17 +119,16 @@ export async function moveTowardInteraction(
   const hint = page.locator("#interaction-hint");
   const stableInteractionRadius = 60;
   const lowerLaneY = 455;
-  const standoffY = Math.min(465, targetY + 50);
+  // Approach NPCs from the right. For Mira this avoids the firewood cluster below
+  // her; for Kaspar/Talen it avoids the well collision rectangle. 45px plus the
+  // movement tolerance stays safely inside the 72–85px interaction radii.
+  const standoffX = Math.min(865, targetX + 45);
   const remaining = (): number => Math.max(500, timeout - (Date.now() - started));
 
   await releaseMovementKeys(page);
-
-  // Village collision geometry has a clear lower lane beneath the workshop and well.
-  // Route there first, then align horizontally, then step up to a stable interaction
-  // standoff. The same route is harmless inside the obstacle-free tavern.
   await moveAxisTo(page, "y", lowerLaneY, 12, remaining());
-  await moveAxisTo(page, "x", targetX, 18, remaining());
-  await moveAxisTo(page, "y", standoffY, 12, remaining());
+  await moveAxisTo(page, "x", standoffX, 12, remaining());
+  await moveAxisTo(page, "y", targetY, 12, remaining());
   await releaseMovementKeys(page);
   await page.waitForTimeout(120);
 
@@ -141,15 +140,16 @@ export async function moveTowardInteraction(
   const settledHint = await hint.textContent();
   if (settledDistance <= stableInteractionRadius && settledHint?.includes(hintText)) return;
 
+  const diagnostics = await page.evaluate(() => ({
+    canonicalLocation: document.body.dataset.canonicalLocation ?? null,
+    renderedNpcIds: document.body.dataset.renderedNpcIds ?? null,
+    renderedTavernNpcIds: document.body.dataset.renderedTavernNpcIds ?? null
+  }));
   throw new Error(
     `player did not reach stable interaction ${JSON.stringify(hintText)} near (${targetX}, ${targetY}); `
       + `last=${JSON.stringify(settledPosition)} distance=${Math.round(settledDistance)} `
-      + `hint=${JSON.stringify(settledHint)} rendered=${JSON.stringify(documentRenderedNpcIds())}`
+      + `hint=${JSON.stringify(settledHint)} diagnostics=${JSON.stringify(diagnostics)}`
   );
-
-  function documentRenderedNpcIds(): string {
-    return "browser state available in failure screenshot/trace";
-  }
 }
 
 export async function enterTavernSpatially(page: Page): Promise<void> {
