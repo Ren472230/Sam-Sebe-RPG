@@ -9,6 +9,12 @@ type AxisTrace = {
   released: PlayerPosition;
 };
 
+type InteractionSnapshot = {
+  position: PlayerPosition;
+  hint: string;
+  ready: boolean;
+};
+
 export async function playerPosition(page: Page): Promise<PlayerPosition> {
   return page.evaluate(() => ({
     x: Number(document.body.dataset.playerX),
@@ -66,49 +72,6 @@ async function recordAxisTrace(page: Page, trace: AxisTrace): Promise<void> {
   }, trace);
 }
 
-async function moveAxisIntoBand(
-  page: Page,
-  axis: "x" | "y",
-  min: number,
-  max: number,
-  timeout = 12_000
-): Promise<void> {
-  const start = await playerPosition(page);
-  const value = start[axis];
-  if (Number.isFinite(value) && value >= min && value <= max) return;
-
-  const key: MovementKey = axis === "x"
-    ? (value < min ? "d" : "a")
-    : (value < min ? "s" : "w");
-  const movingPositive = key === "d" || key === "s";
-  const threshold = movingPositive ? min : max;
-
-  await releaseMovementKeys(page);
-  await page.keyboard.down(key);
-  try {
-    await page.waitForFunction(
-      ({ watchedAxis, target, positive }) => {
-        const current = Number(
-          watchedAxis === "x" ? document.body.dataset.playerX : document.body.dataset.playerY
-        );
-        return Number.isFinite(current) && (positive ? current >= target : current <= target);
-      },
-      { watchedAxis: axis, target: threshold, positive: movingPositive },
-      { timeout, polling: "raf" }
-    );
-  } finally {
-    await page.keyboard.up(key);
-    await releaseMovementKeys(page);
-  }
-
-  const end = await playerPosition(page);
-  if (end[axis] < min || end[axis] > max) {
-    throw new Error(
-      `player crossed ${axis} band [${min}, ${max}] before input could stop; last=${JSON.stringify(end)}`
-    );
-  }
-}
-
 export async function moveAxisTo(
   page: Page,
   axis: "x" | "y",
@@ -151,80 +114,50 @@ export async function moveAxisTo(
   throw new Error(`player did not reach ${axis}=${target}; last=${JSON.stringify(released)}`);
 }
 
-async function interactionIsReady(
+async function interactionSnapshot(
   page: Page,
   targetX: number,
   targetY: number,
   hintText: string,
   radius: number
-): Promise<boolean> {
-  const position = await playerPosition(page);
-  const hint = await page.locator("#interaction-hint").textContent();
-  return Number.isFinite(position.x)
-    && Number.isFinite(position.y)
-    && Math.hypot(targetX - position.x, targetY - position.y) <= radius
-    && Boolean(hint?.includes(hintText));
+): Promise<InteractionSnapshot> {
+  return page.evaluate(({ targetX, targetY, hintText, radius }) => {
+    const position = {
+      x: Number(document.body.dataset.playerX),
+      y: Number(document.body.dataset.playerY)
+    };
+    const hint = document.getElementById("interaction-hint")?.textContent ?? "";
+    return {
+      position,
+      hint,
+      ready: Number.isFinite(position.x)
+        && Number.isFinite(position.y)
+        && Math.hypot(targetX - position.x, targetY - position.y) <= radius
+        && hint.includes(hintText)
+    };
+  }, { targetX, targetY, hintText, radius });
 }
 
-async function moveAxisTowardInteraction(
-  page: Page,
-  axis: "x" | "y",
-  axisTarget: number,
-  targetX: number,
-  targetY: number,
-  hintText: string,
-  stableInteractionRadius: number,
-  timeout: number
-): Promise<boolean> {
-  if (await interactionIsReady(page, targetX, targetY, hintText, stableInteractionRadius)) return true;
+function movementKeyForBand(
+  value: number,
+  min: number,
+  max: number,
+  negative: MovementKey,
+  positive: MovementKey
+): MovementKey | null {
+  if (value < min) return positive;
+  if (value > max) return negative;
+  return null;
+}
 
-  const start = await playerPosition(page);
-  const value = start[axis];
-  if (!Number.isFinite(value)) throw new Error(`player ${axis} position is unavailable`);
-
-  const key: MovementKey = axis === "x"
-    ? (value < axisTarget ? "d" : "a")
-    : (value < axisTarget ? "s" : "w");
-  const movingPositive = key === "d" || key === "s";
-  let reached = start;
-
-  await releaseMovementKeys(page);
-  await page.keyboard.down(key);
-  try {
-    await page.waitForFunction(
-      ({ watchedAxis, axisTarget, positive, targetX, targetY, hintText, radius }) => {
-        const x = Number(document.body.dataset.playerX);
-        const y = Number(document.body.dataset.playerY);
-        const current = watchedAxis === "x" ? x : y;
-        const hint = document.getElementById("interaction-hint")?.textContent ?? "";
-        const ready = Number.isFinite(x)
-          && Number.isFinite(y)
-          && Math.hypot(targetX - x, targetY - y) <= radius
-          && hint.includes(hintText);
-        const crossedAxisTarget = Number.isFinite(current)
-          && (positive ? current >= axisTarget : current <= axisTarget);
-        return ready || crossedAxisTarget;
-      },
-      {
-        watchedAxis: axis,
-        axisTarget,
-        positive: movingPositive,
-        targetX,
-        targetY,
-        hintText,
-        radius: stableInteractionRadius
-      },
-      { timeout, polling: "raf" }
-    );
-    reached = await playerPosition(page);
-  } finally {
-    await page.keyboard.up(key);
-    await releaseMovementKeys(page);
-  }
-
-  const released = await playerPosition(page);
-  await recordAxisTrace(page, { axis, target: axisTarget, reached, released });
-  return interactionIsReady(page, targetX, targetY, hintText, stableInteractionRadius);
+function crossedBand(
+  key: MovementKey,
+  value: number,
+  min: number,
+  max: number
+): boolean {
+  if (key === "d" || key === "s") return value >= min;
+  return value <= max;
 }
 
 export async function moveTowardInteraction(
@@ -235,46 +168,51 @@ export async function moveTowardInteraction(
   timeout = 12_000
 ): Promise<void> {
   await installNavigationDiagnostics(page);
-  const hint = page.locator("#interaction-hint");
-  const stableInteractionRadius = 60;
-  const start = await playerPosition(page);
-  const standoffX = Math.max(
-    95,
-    Math.min(865, targetX + (start.x <= targetX ? -45 : 45))
-  );
+  const stableInteractionRadius = 68;
+  const axisMargin = 44;
+  const started = Date.now();
+  let snapshot = await interactionSnapshot(page, targetX, targetY, hintText, stableInteractionRadius);
+  if (snapshot.ready) return;
+
+  const xMin = targetX - axisMargin;
+  const xMax = targetX + axisMargin;
+  const yMin = targetY - axisMargin;
+  const yMax = targetY + axisMargin;
+  let xKey = movementKeyForBand(snapshot.position.x, xMin, xMax, "a", "d");
+  let yKey = movementKeyForBand(snapshot.position.y, yMin, yMax, "w", "s");
 
   await releaseMovementKeys(page);
-  // Canonical village anchors sit on the clear lower path. Move horizontally first so
-  // the automation routes around the central well before approaching an NPC vertically.
-  let ready = await moveAxisTowardInteraction(
-    page,
-    "x",
-    standoffX,
-    targetX,
-    targetY,
-    hintText,
-    stableInteractionRadius,
-    timeout
-  );
-  if (!ready) {
-    ready = await moveAxisTowardInteraction(
-      page,
-      "y",
-      targetY,
-      targetX,
-      targetY,
-      hintText,
-      stableInteractionRadius,
-      timeout
-    );
+  if (xKey) await page.keyboard.down(xKey);
+  if (yKey) await page.keyboard.down(yKey);
+
+  try {
+    while (Date.now() - started < timeout) {
+      snapshot = await interactionSnapshot(page, targetX, targetY, hintText, stableInteractionRadius);
+      if (snapshot.ready) break;
+
+      if (xKey && crossedBand(xKey, snapshot.position.x, xMin, xMax)) {
+        await page.keyboard.up(xKey);
+        xKey = null;
+      }
+      if (yKey && crossedBand(yKey, snapshot.position.y, yMin, yMax)) {
+        await page.keyboard.up(yKey);
+        yKey = null;
+      }
+      if (!xKey && !yKey) {
+        await page.waitForTimeout(50);
+        snapshot = await interactionSnapshot(page, targetX, targetY, hintText, stableInteractionRadius);
+        break;
+      }
+      await page.waitForTimeout(25);
+    }
+  } finally {
+    if (xKey) await page.keyboard.up(xKey);
+    if (yKey) await page.keyboard.up(yKey);
+    await releaseMovementKeys(page);
   }
-  await releaseMovementKeys(page);
-  await page.waitForTimeout(120);
 
-  const settledPosition = await playerPosition(page);
-  const settledDistance = Math.hypot(targetX - settledPosition.x, targetY - settledPosition.y);
-  const settledHint = await hint.textContent();
-  if (ready && settledDistance <= stableInteractionRadius && settledHint?.includes(hintText)) return;
+  snapshot = await interactionSnapshot(page, targetX, targetY, hintText, stableInteractionRadius);
+  if (snapshot.ready) return;
 
   const diagnostics = await page.evaluate(() => {
     const debugWindow = window as Window & {
@@ -290,36 +228,46 @@ export async function moveTowardInteraction(
       canonicalMutations: debugWindow.__navCanonicalMutations ?? 0
     };
   });
+  const gap = Math.hypot(targetX - snapshot.position.x, targetY - snapshot.position.y);
   throw new Error(
     `player did not reach stable interaction ${JSON.stringify(hintText)} near (${targetX}, ${targetY}); `
-      + `last=${JSON.stringify(settledPosition)} distance=${Math.round(settledDistance)} `
-      + `hint=${JSON.stringify(settledHint)} diagnostics=${JSON.stringify(diagnostics)}`
+      + `last=${JSON.stringify(snapshot.position)} distance=${Math.round(gap)} `
+      + `hint=${JSON.stringify(snapshot.hint)} diagnostics=${JSON.stringify(diagnostics)}`
   );
+}
+
+async function moveWithConcurrentKeysUntilHint(
+  page: Page,
+  keys: MovementKey[],
+  hintText: string,
+  timeout: number
+): Promise<void> {
+  await installNavigationDiagnostics(page);
+  const hint = page.locator("#interaction-hint");
+  if ((await hint.textContent())?.includes(hintText)) return;
+
+  await releaseMovementKeys(page);
+  for (const key of keys) await page.keyboard.down(key);
+  try {
+    await expect(hint).toContainText(hintText, { timeout });
+  } finally {
+    for (const key of keys) await page.keyboard.up(key);
+    await releaseMovementKeys(page);
+  }
 }
 
 export async function enterTavernSpatially(page: Page): Promise<void> {
   const hint = page.locator("#interaction-hint");
-  await moveAxisIntoBand(page, "x", 790, 860, 20_000);
-
-  if (!(await hint.textContent())?.includes("войти в таверну")) {
-    await page.keyboard.down("w");
-    try {
-      await expect(hint).toContainText("войти в таверну", { timeout: 20_000 });
-    } finally {
-      await page.keyboard.up("w");
-      await releaseMovementKeys(page);
-    }
-  }
-
+  await moveWithConcurrentKeysUntilHint(page, ["d", "w"], "войти в таверну", 20_000);
   await expect(hint).toContainText("войти в таверну", { timeout: 3_000 });
   await page.keyboard.press("e");
   await expect(page.locator("body")).toHaveAttribute("data-scene", "tavern", { timeout: 10_000 });
 }
 
 export async function exitTavernSpatially(page: Page): Promise<void> {
-  await moveAxisTo(page, "x", 110, 12, 12_000);
-  await moveAxisTo(page, "y", 420, 12, 12_000);
-  await expect(page.locator("#interaction-hint")).toContainText("выйти в деревню", { timeout: 3_000 });
+  const hint = page.locator("#interaction-hint");
+  await moveWithConcurrentKeysUntilHint(page, ["a", "s"], "выйти в деревню", 20_000);
+  await expect(hint).toContainText("выйти в деревню", { timeout: 3_000 });
   await page.keyboard.press("e");
   await expect(page.locator("body")).toHaveAttribute("data-scene", "village", { timeout: 10_000 });
 }
