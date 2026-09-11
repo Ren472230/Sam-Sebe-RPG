@@ -2,7 +2,18 @@
 
 **Sam-Sebe-RPG / Emergent RPG / Living World** is a playable browser vertical slice about a small persistent village where NPCs have schedules, needs, memories, relationships and causally limited knowledge.
 
-The current candidate combines a deterministic authoritative world with **Living World**, **Living NPC**, **Social World** and **Living Conversation** layers. The goal of this repository is to prove a compact world that keeps living, remembers what happened and gives the player room to intervene.
+The current integration candidate combines a deterministic authoritative world with **Living World**, **Living NPC**, **Social World**, **Living Conversation** and a temporary complete SVG stream visual pack. The goal of this repository is to prove a compact world that keeps living, remembers what happened and gives the player room to intervene.
+
+## Current integration candidate
+
+- PR: **#49 – Integration: world-ready candidate + stream SVG pack**
+- branch: `integration/world-ready-svg-v1`
+- exact candidate HEAD: `7d7ec138cb15c253f22435f8d5c2983a2e1d1cd8`
+- base `main`: `813ac7beb233645546fcc1e7bda3827efe63dcdc`
+- state: **OPEN / DRAFT / UNMERGED**
+- release/reproducibility work branch: `agent/release-reproducibility-v1`
+
+At that exact candidate HEAD, Prototype Web CI, Windows Compatibility and Visual Forge passed. The backend, dependency installation, web contract and production-build stages in the browser-bearing gates also passed. Playable Candidate, Living World Integration and Stream Slice still have browser acceptance failures and are awaiting the parallel E2E stabilization work. No future browser PASS is claimed here.
 
 ## What is playable now
 
@@ -22,9 +33,18 @@ The current candidate combines a deterministic authoritative world with **Living
 
 ### Visual status
 
-The current checked-in production art manifest is partial. Approved production Village layers are already integrated, while the runtime keeps the coherent prototype scene until all required layers for a scene are ready. When a production scene becomes complete it receives priority automatically, while missing individual production sprites can safely use their prototype versions.
+`web/public/assets/production/manifest.json` is currently version 2 with `status: "ready"`. The checked-in runtime uses a **temporary complete all-SVG Stream Slice pack** with the locked Start Village palette: six Village layers, two Tavern layers, player/Oren character SVGs, the firewood prop and dialogue frame are materialized.
 
-This keeps the playable candidate visually coherent without claiming unfinished art as final production art.
+This pack is suitable for the current playable/integration candidate and automated checks. It is still temporary production-facing art rather than the final art pass. Prototype assets remain available as runtime fallback paths where the existing asset policy requires them.
+
+## Reproducible dependency policy
+
+The repository now has two explicit dependency snapshots for release work:
+
+- `web/package-lock.json` (`lockfileVersion: 3`) is the committed npm dependency lock. CI uses `npm ci` so package resolution must match it exactly.
+- `constraints/python-3.12.txt` snapshots the Python 3.12 runtime/test dependency set used by release CI and the Windows launcher. `pyproject.toml` keeps lower-bound package metadata so the project is still installable as a normal Python package.
+
+CI stays on the Python 3.12 and Node.js 22 runtime families. Exact runtime patch versions and the isolated `setuptools>=75` build backend are intentionally not hard-locked yet; see `docs/release/REPRODUCIBILITY_AUDIT.md` for the remaining reproducibility boundary.
 
 ## Quick start on Windows
 
@@ -39,7 +59,7 @@ On a freshly downloaded ZIP, double-click:
 
 `PLAY_SAM_SEBE_RPG.bat`
 
-The launcher now bootstraps missing local project dependencies automatically: it installs the editable Python package only when `samseberpg` is not importable, and runs `npm install` only when `web/node_modules` is absent. It then resets only the isolated Stream Slice database, runs the existing preflight, waits for the local web server, and opens the normal player-facing game at:
+The launcher bootstraps missing local project dependencies automatically. Python installation uses `constraints/python-3.12.txt`. When `web/package-lock.json` is present, web installation uses `npm ci`; the launcher falls back to `npm install` only for a local checkout that is missing the lockfile. It then resets only the isolated Stream Slice database, runs the existing preflight, waits for the local web server, and opens the normal player-facing game at:
 
 `http://127.0.0.1:5173/`
 
@@ -49,18 +69,18 @@ If `OPENAI_API_KEY` is not already present in the process, the playtest launcher
 
 Play naturally. At the end, press **Скачать отчёт теста** in the game and share the downloaded `.md` file for analysis.
 
-Manual dependency installation remains available for development/debugging:
+Manual deterministic dependency installation remains available for development/debugging:
 
 ```powershell
-python -m pip install -e ".[dev]"
+python -m pip install -c constraints/python-3.12.txt -e ".[dev]"
 cd web
-npm install
+npm ci --no-audit --no-fund
 cd ..
 ```
 
 ### Reproducible public demo
 
-For a clean reproducible audience-oriented demo:
+For a clean audience-oriented demo:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\RUN_STREAM_SLICE.ps1 -Reset
@@ -127,27 +147,33 @@ Key boundary: SQLite + deterministic Python services own canonical facts, invent
 
 ## Verification
 
-The playable candidate is continuously checked through independent GitHub Actions gates covering:
+The candidate is checked through independent GitHub Actions gates covering Python tests, Stream Slice preflight, SQLite persistence, web contracts, production build, Chromium gameplay, Living NPC/Social World/Stream Slice browser acceptance and Windows compatibility.
 
-- full Python test suite;
-- Stream Slice focused tests and preflight;
-- SQLite integrity and reopen persistence;
-- web contract tests;
-- production TypeScript/Vite build;
-- Chromium end-to-end gameplay;
-- Living NPC, Social World and Stream Slice browser acceptance;
-- Windows compatibility and backend boot.
+Evidence for exact candidate HEAD `7d7ec138cb15c253f22435f8d5c2983a2e1d1cd8`:
 
-Current autonomous validation evidence is tracked in draft PR #47. `main` remains the protected control until a separate integration decision is made.
+| Gate | Run | Current result |
+| --- | ---: | --- |
+| Prototype Web CI | `34473124187` | PASS |
+| Windows Compatibility Gate | `34473124237` | PASS |
+| Visual Forge Gate | `34473124446` | PASS |
+| Playable Candidate Gate | `34473124248` | FAIL at browser integrated route; backend/install/contracts/build passed |
+| Living World Integration Gate | `34473124220` | FAIL at real-browser critical route; dependency/build stages passed |
+| Stream Slice Gate | `34473124246` | FAIL at Chromium acceptance; Python/preflight/install/contracts/build passed |
+
+The release branch also has `.github/workflows/release-reproducibility.yml`, a cross-platform clean-checkout gate that validates constrained Python installation, `npm ci`, the full Python suite, Stream Slice preflight, web contracts, production build, Playwright package resolution and a Windows backend boot without changing browser-game test semantics.
+
+The current release blocker is **browser E2E stabilization**. PR #49 remains draft and unmerged. No GitHub Release has been published for this candidate.
 
 ## Repository map
 
 - `src/samseberpg/` – authoritative game, world, dialogue, memory and social systems;
-- `web/` – Phaser browser client and browser acceptance tests;
+- `web/` – Phaser browser client, `package-lock.json` and browser acceptance tests;
+- `constraints/python-3.12.txt` – reproducible Python 3.12 dependency snapshot for release CI/launcher;
 - `scripts/` – launchers, preflight, reset and smoke checks;
 - `PLAY_SAM_SEBE_RPG.bat` – one-click clean human playtest launcher for Windows;
 - `RUN_STREAM_SLICE.ps1` – Windows demo launcher;
 - `docs/release/STREAM_SLICE_V1.md` – detailed demo runbook;
+- `docs/release/REPRODUCIBILITY_AUDIT.md` – dependency/repository/CI reproducibility audit;
 - `docs/superpowers/` – approved design and implementation plans;
 - `tests/` – backend, persistence, Living World and conversation acceptance tests.
 

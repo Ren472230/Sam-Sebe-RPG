@@ -1,67 +1,87 @@
 {
   "champion_sha": "2f663f298ffaf05f7182a2bddee079c4c4dc9bdf",
-  "run_cycle": 12,
-  "decision": "ACCEPT",
-  "accepted_feature": "real-human-control-stabilization",
-  "technical_status": "green_retest_required",
+  "champion_status": "historical last accepted all-six-gates-green stabilization point",
+  "candidate_sha": "7d7ec138cb15c253f22435f8d5c2983a2e1d1cd8",
+  "candidate_branch": "integration/world-ready-svg-v1",
+  "candidate_pr": 49,
+  "candidate_pr_state": "open_draft_unmerged",
+  "decision": "HOLD",
+  "technical_status": "release_reproducibility_improved_e2e_stabilization_required",
   "p0": [],
   "p1": [
-    "Fresh ZIP first launch still requires local dependency bootstrap; the first human run hit ModuleNotFoundError before manual installation."
+    "Browser E2E stabilization must be completed and rerun on the exact integrated candidate before merge or release.",
+    "A second human experience gate remains appropriate after technical E2E stabilization."
   ],
-  "mandatory_gates": {
-    "visual_forge_gate": { "run_id": 34315291975, "status": "success" },
-    "stream_slice_gate": { "run_id": 34315291968, "status": "success" },
-    "prototype_web_ci": { "run_id": 34315291950, "status": "success" },
-    "playable_candidate_gate": { "run_id": 34315292044, "status": "success" },
-    "windows_compatibility_gate": { "run_id": 34315292222, "status": "success" },
-    "living_world_integration_gate": { "run_id": 34315292052, "status": "success" }
+  "mandatory_gates_at_candidate_sha": {
+    "visual_forge_gate": {
+      "run_id": 34473124446,
+      "status": "success"
+    },
+    "prototype_web_ci": {
+      "run_id": 34473124187,
+      "status": "success"
+    },
+    "windows_compatibility_gate": {
+      "run_id": 34473124237,
+      "status": "success"
+    },
+    "playable_candidate_gate": {
+      "run_id": 34473124248,
+      "status": "failure",
+      "failure_stage": "Real browser integrated route"
+    },
+    "living_world_integration_gate": {
+      "run_id": 34473124220,
+      "status": "failure",
+      "failure_stage": "Real browser critical route"
+    },
+    "stream_slice_gate": {
+      "run_id": 34473124246,
+      "status": "failure",
+      "failure_stage": "Stream Slice Chromium acceptance"
+    }
   },
   "browser_evidence": {
-    "canonical_route": "success",
-    "living_npc": "success",
-    "social_world": "success",
-    "stream_slice": "success",
-    "human_report_session": "playtest-5c32db7c-4ca1-4204-8370-11cb77aae24b",
-    "human_report_result_before_fix": "FAIL",
-    "human_control_fixes": [
-      "text entry no longer loses physical S/ы to Phaser gameplay capture",
-      "dialogue open no longer auto-submits Oren text",
-      "E interaction ignores OS key repeat without losing quick presses",
-      "Village visible NPCs are materialized from authoritative visible_actors",
-      "talk controls are derived from authoritative visibility",
-      "unattempted reload is no longer mislabeled as persistence failure"
-    ]
+    "latest_inspected_failure": "player did not reach tavern entry band; last={\"x\":739,\"y\":455}",
+    "ownership": "parallel E2E stabilization work",
+    "release_branch_policy": "do not change spatial navigation, browser spec semantics, retries or browser timeouts"
   },
-  "test_evidence": {
-    "python_suite": "203 passed on final report-semantics stabilization run",
-    "vertical_slice_smoke": "success",
-    "living_world_acceptance": "success",
-    "stream_slice_preflight": "success",
-    "windows_clean_boot": "success"
+  "test_evidence_at_candidate_sha": {
+    "windows_python_suite": "205 passed in run 34473124237",
+    "windows_stream_slice_preflight": "success",
+    "windows_web_contracts": "45 passed",
+    "windows_production_build": "success",
+    "windows_backend_boot": "success",
+    "playable_backend_job": "success",
+    "living_world_backend_job": "success",
+    "browser_dependency_install_and_build_before_failure": "success"
   },
   "performance": {
     "bundle_budget_bytes": 1200000,
     "bundle_budget_status": "pass",
-    "current_bundle_bytes": null
+    "observed_candidate_bundle_bytes": 1148205
   },
-  "experience_scores": {
-    "first_minutes_clarity": "human_retest_required",
-    "controls": "human_retest_required_after_P0_fix",
-    "player_agency": "human_retest_required",
-    "living_world_feel": "human_retest_required",
-    "character_liveliness": "human_retest_required",
-    "causality": "technically_green_human_retest_required",
-    "pacing": "human_retest_required",
-    "visual_coherence": "human_retest_required_after_NPC_visibility_fix",
-    "technical_reliability": "green_in_CI_fresh_ZIP_bootstrap_pending",
-    "desire_to_continue": "unknown",
-    "ready_to_show": "no_second_human_gate_yet"
+  "visual_status": {
+    "production_manifest_version": 2,
+    "production_manifest_status": "ready",
+    "runtime_note": "Temporary all-SVG stream pack with locked Start Village palette.",
+    "final_art": false
+  },
+  "reproducibility": {
+    "release_work_branch": "agent/release-reproducibility-v1",
+    "web_lockfile": "web/package-lock.json",
+    "python_constraints": "constraints/python-3.12.txt",
+    "ci_web_install": "npm ci",
+    "windows_launcher_web_install": "npm ci when lockfile exists; npm install fallback only if missing",
+    "gitignore": "present",
+    "github_release": "none"
   },
   "known_limitations": [
-    "The first real human session failed the experience gate even though the quest and Living World completed; the P0 control fixes now need a second human verification.",
-    "Fresh ZIP startup still requires dependency bootstrap work before the launcher is honestly one-click.",
-    "The canonical browser route still uses coherent prototype art because the checked-in production scene is incomplete.",
+    "The current integration candidate has three browser-bearing gate failures and therefore is not release-green.",
+    "The complete SVG stream pack is temporary production-facing art rather than final production art.",
+    "Python 3.12 and Node.js 22 are family-pinned in CI rather than exact patch-pinned.",
+    "setuptools build isolation is still lower-bounded instead of locked.",
     "Successful browser screenshot artifacts are not retained for download because repository evidence storage is intentionally minimized."
   ],
-  "next_main_constraint": "Make the fresh-ZIP Windows launcher self-bootstrap missing Python/web dependencies without persisting secrets, then verify it through the existing Windows gate before the next human session."
+  "next_main_constraint": "Integrate the E2E stabilization result into the current candidate, rerun all browser-bearing gates on the exact resulting HEAD, then perform the next human experience gate before any release decision."
 }
