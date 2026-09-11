@@ -17,6 +17,15 @@ type StreamState = {
 
 type PlayerPosition = { x: number; y: number };
 
+async function measuredStep<T>(title: string, body: () => Promise<T>): Promise<T> {
+  const started = Date.now();
+  try {
+    return await test.step(title, body);
+  } finally {
+    console.log(`[stream-step] ${title}: ${Date.now() - started}ms`);
+  }
+}
+
 async function currentPlayerId(page: Page): Promise<string> {
   const response = await page.request.post("/api/session", {
     data: { external_id: "local-player", name: "Ren" }
@@ -208,78 +217,92 @@ test("Stream Slice shows one causal evening, hospitality loop and persistence wi
   const diagnostics = installBrowserDiagnostics(page);
 
   try {
-    await page.goto("/?stream=1");
-    await expect(page.locator("body")).toHaveClass(/stream-mode/);
-    await expect(page.locator("#stream-status")).toBeVisible();
-    await expect(page.locator("#stream-status")).toContainText(/Сейчас в деревне/i);
-    await expect(page.locator("#stream-status")).toContainText("Место: Мастерская");
-    await expect(page.locator("#stream-status")).not.toContainText(/npc_|source_knowledge_id|trust/i);
-    await page.screenshot({ path: "test-results-stream-slice/stream-01-opening.png", fullPage: true });
+    const playerId = await measuredStep("boot, world advance and Mira commitment", async () => {
+      await page.goto("/?stream=1");
+      await expect(page.locator("body")).toHaveClass(/stream-mode/);
+      await expect(page.locator("#stream-status")).toBeVisible();
+      await expect(page.locator("#stream-status")).toContainText(/Сейчас в деревне/i);
+      await expect(page.locator("#stream-status")).toContainText("Место: Мастерская");
+      await expect(page.locator("#stream-status")).not.toContainText(/npc_|source_knowledge_id|trust/i);
+      await page.screenshot({ path: "test-results-stream-slice/stream-01-opening.png", fullPage: true });
 
-    const playerId = await currentPlayerId(page);
-    await page.getByRole("button", { name: "Подождать 5 шагов", exact: true }).click();
-    await expect(page.locator("#world-pulse-tick")).toContainText("Шаг 5", { timeout: 10_000 });
-    await expect(page.locator("#stream-status")).toContainText(/Мира просит древесину/i);
+      const id = await currentPlayerId(page);
+      await page.getByRole("button", { name: "Подождать 5 шагов", exact: true }).click();
+      await expect(page.locator("#world-pulse-tick")).toContainText("Шаг 5", { timeout: 10_000 });
+      await expect(page.locator("#stream-status")).toContainText(/Мира просит древесину/i);
 
-    await approachAndTalk(page, 250, 365, "поговорить с Мирой", "Мира");
-    await sendDialogue(page, "Я принесу тебе древесину.", /Договорились/i);
-    await closeDialogue(page);
+      await approachAndTalk(page, 250, 365, "поговорить с Мирой", "Мира");
+      await sendDialogue(page, "Я принесу тебе древесину.", /Договорились/i);
+      await closeDialogue(page);
+      return id;
+    });
 
-    await clickLivingAction(page, "Идти: площадь", "Площадь");
-    await clickLivingAction(page, "Идти: река", "Берег реки");
-    await approachAndTalk(page, 610, 410, "поговорить с Каспаром", "Каспар");
-    await sendDialogue(page, "Что ты обо мне слышал?");
-    await expect(page.locator("#dialogue")).not.toContainText("Мира говорила");
-    await closeDialogue(page);
+    await measuredStep("Kaspar before social contact", async () => {
+      await clickLivingAction(page, "Идти: площадь", "Площадь");
+      await clickLivingAction(page, "Идти: река", "Берег реки");
+      await approachAndTalk(page, 610, 410, "поговорить с Каспаром", "Каспар");
+      await sendDialogue(page, "Что ты обо мне слышал?");
+      await expect(page.locator("#dialogue")).not.toContainText("Мира говорила");
+      await closeDialogue(page);
+    });
 
-    for (let step = 0; step < 4; step += 1) {
+    await measuredStep("advance to real contact and verify propagated knowledge", async () => {
+      for (let step = 0; step < 4; step += 1) {
+        await waitOneTick(page, playerId);
+      }
+      expect((await state(page, playerId)).living_npc.tick).toBe(9);
+      await clickLivingAction(page, "Идти: площадь", "Площадь");
+      await approachAndTalk(page, 610, 410, "поговорить с Каспаром", "Каспар");
+      await sendDialogue(page, "Что ты обо мне слышал?", /Мира говорила.*обещал.*древесин/i);
+      await page.screenshot({ path: "test-results-stream-slice/stream-02-kaspar-after-contact.png", fullPage: true });
+      await closeDialogue(page);
+    });
+
+    await measuredStep("hospitality arrival, tavern entry and conversations", async () => {
       await waitOneTick(page, playerId);
-    }
-    expect((await state(page, playerId)).living_npc.tick).toBe(9);
-    await clickLivingAction(page, "Идти: площадь", "Площадь");
-    await approachAndTalk(page, 610, 410, "поговорить с Каспаром", "Каспар");
-    await sendDialogue(page, "Что ты обо мне слышал?", /Мира говорила.*обещал.*древесин/i);
-    await page.screenshot({ path: "test-results-stream-slice/stream-02-kaspar-after-contact.png", fullPage: true });
-    await closeDialogue(page);
+      expect((await state(page, playerId)).living_npc.tick).toBe(10);
+      await expect(page.locator("#stream-status")).toContainText(/Тален.*таверн|гост/i);
+      await expect(page.locator("#stream-status")).toContainText(/Орен.*хлеб/i);
 
-    await waitOneTick(page, playerId);
-    expect((await state(page, playerId)).living_npc.tick).toBe(10);
-    await expect(page.locator("#stream-status")).toContainText(/Тален.*таверн|гост/i);
-    await expect(page.locator("#stream-status")).toContainText(/Орен.*хлеб/i);
+      await enterTavernSpatially(page);
+      await expect(page.locator("body")).toHaveAttribute("data-rendered-tavern-npc-ids", /npc_wayfarer_1/);
+      await approachAndTalk(page, 500, 385, "поговорить с Таленом", "Тален");
+      await sendDialogue(page, "Что случилось в дороге?", /восточн.*караван/i);
+      await expect(page.locator("#dialogue")).not.toContainText(/локальная реплика|AI-реплика|социальная память/i);
+      await page.screenshot({ path: "test-results-stream-slice/stream-03-wayfarer.png", fullPage: true });
+      await closeDialogue(page);
 
-    await enterTavernSpatially(page);
-    await expect(page.locator("body")).toHaveAttribute("data-rendered-tavern-npc-ids", /npc_wayfarer_1/);
-    await approachAndTalk(page, 500, 385, "поговорить с Таленом", "Тален");
-    await sendDialogue(page, "Что случилось в дороге?", /восточн.*караван/i);
-    await expect(page.locator("#dialogue")).not.toContainText(/локальная реплика|AI-реплика|социальная память/i);
-    await page.screenshot({ path: "test-results-stream-slice/stream-03-wayfarer.png", fullPage: true });
-    await closeDialogue(page);
+      await approachAndTalk(page, 650, 325, "поговорить с Ореном", "Орен");
+      await sendDialogue(page, "Что рассказал Тален?", /Тален.*восточн.*караван/i);
+      await sendDialogue(page, "Нужна помощь с гостем?", /хлеб/i);
+      await page.screenshot({ path: "test-results-stream-slice/stream-04-oren-bread.png", fullPage: true });
+      await closeDialogue(page);
+    });
 
-    await approachAndTalk(page, 650, 325, "поговорить с Ореном", "Орен");
-    await sendDialogue(page, "Что рассказал Тален?", /Тален.*восточн.*караван/i);
-    await sendDialogue(page, "Нужна помощь с гостем?", /хлеб/i);
-    await page.screenshot({ path: "test-results-stream-slice/stream-04-oren-bread.png", fullPage: true });
-    await closeDialogue(page);
+    await measuredStep("bread pickup and delivery", async () => {
+      await exitTavernSpatially(page);
+      await clickLivingAction(page, "Идти: площадь", "Площадь");
+      await page.getByRole("button", { name: "Подобрать хлеб", exact: true }).click();
+      await enterTavernSpatially(page);
+      await page.getByRole("button", { name: "Отдать хлеб Орену", exact: true }).click();
 
-    await exitTavernSpatially(page);
-    await clickLivingAction(page, "Идти: площадь", "Площадь");
-    await page.getByRole("button", { name: "Подобрать хлеб", exact: true }).click();
-    await enterTavernSpatially(page);
-    await page.getByRole("button", { name: "Отдать хлеб Орену", exact: true }).click();
+      await approachAndTalk(page, 650, 325, "поговорить с Ореном", "Орен");
+      await sendDialogue(page, "Хлеб подошёл?", /спасибо|хлеб|гост/i);
+      await closeDialogue(page);
+    });
 
-    await approachAndTalk(page, 650, 325, "поговорить с Ореном", "Орен");
-    await sendDialogue(page, "Хлеб подошёл?", /спасибо|хлеб|гост/i);
-    await closeDialogue(page);
+    await measuredStep("reload and persistence verification", async () => {
+      await page.reload();
+      await expect(page.locator("body")).toHaveClass(/stream-mode/);
+      expect(await currentPlayerId(page)).toBe(playerId);
+      await expect(page.locator("body")).toHaveAttribute("data-scene", "tavern");
+      await approachAndTalk(page, 650, 325, "поговорить с Ореном", "Орен");
+      await sendDialogue(page, "Что рассказал Тален?", /Тален.*караван/i);
+      await page.screenshot({ path: "test-results-stream-slice/stream-05-reloaded.png", fullPage: true });
 
-    await page.reload();
-    await expect(page.locator("body")).toHaveClass(/stream-mode/);
-    expect(await currentPlayerId(page)).toBe(playerId);
-    await expect(page.locator("body")).toHaveAttribute("data-scene", "tavern");
-    await approachAndTalk(page, 650, 325, "поговорить с Ореном", "Орен");
-    await sendDialogue(page, "Что рассказал Тален?", /Тален.*караван/i);
-    await page.screenshot({ path: "test-results-stream-slice/stream-05-reloaded.png", fullPage: true });
+      await expect(page.locator("#stream-status")).not.toContainText(/npc_|source_knowledge_id|trust\s*:/i);
+    });
 
-    await expect(page.locator("#stream-status")).not.toContainText(/npc_|source_knowledge_id|trust\s*:/i);
     diagnostics.assertClean();
   } finally {
     await diagnostics.attach(testInfo);
