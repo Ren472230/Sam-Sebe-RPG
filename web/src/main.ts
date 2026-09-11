@@ -25,8 +25,14 @@ async function bootstrap(): Promise<void> {
   const telemetryEnv = (import.meta as ImportMeta & {
     env?: Record<string, string | undefined>;
   }).env ?? {};
+  const telemetryPrivacyConfirmed = telemetryEnv.VITE_POSTHOG_PRIVACY_CONFIRMED === "true";
   configureTelemetry({
-    enabled: Boolean(telemetryEnv.VITE_POSTHOG_KEY && telemetryEnv.VITE_POSTHOG_HOST),
+    enabled: Boolean(
+      telemetryPrivacyConfirmed
+      && telemetryEnv.VITE_POSTHOG_KEY
+      && telemetryEnv.VITE_POSTHOG_HOST
+    ),
+    privacyConfirmed: telemetryPrivacyConfirmed,
     apiKey: telemetryEnv.VITE_POSTHOG_KEY,
     host: telemetryEnv.VITE_POSTHOG_HOST,
     baseProperties: {
