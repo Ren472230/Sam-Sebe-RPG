@@ -10,6 +10,7 @@ import {
   renderTavernProductionForeground
 } from "../productionArt";
 import { getRuntime } from "../runtime";
+import { captureTelemetry, captureTelemetryOnce } from "../telemetry";
 
 type TavernInteraction =
   | { kind: "npc"; actorId: string; name: string }
@@ -88,9 +89,16 @@ export class TavernScene extends Phaser.Scene {
     if (this.keys.D.isDown) dx += speed;
     if (this.keys.W.isDown) dy -= speed;
     if (this.keys.S.isDown) dy += speed;
+    const beforeX = this.player.x;
+    const beforeY = this.player.y;
     this.player.x = Phaser.Math.Clamp(this.player.x + dx, 80, 880);
     this.player.y = Phaser.Math.Clamp(this.player.y + dy, 315, 470);
     this.publishPlayerPosition();
+    if (this.player.x !== beforeX || this.player.y !== beforeY) {
+      captureTelemetryOnce("first_move", {
+        location_id: getRuntime().state.snapshot?.world.location_id
+      });
+    }
 
     const visitor = this.nearestVisitor();
     if (visitor) {
@@ -203,6 +211,10 @@ export class TavernScene extends Phaser.Scene {
       return;
     }
     this.clearInteraction();
+    captureTelemetryOnce("first_interaction", {
+      location_id: getRuntime().state.snapshot?.world.location_id,
+      ...(interaction.kind === "npc" ? { npc_id: interaction.actorId } : {})
+    });
     if (interaction.kind === "npc") {
       await getRuntime().dialogue.openNpc(interaction.actorId);
       return;
@@ -218,6 +230,9 @@ export class TavernScene extends Phaser.Scene {
       runtime.dialogue.close();
       this.scene.start("VillageScene");
     } catch (error) {
+      captureTelemetry("client_error", {
+        location_id: runtime.state.snapshot?.world.location_id
+      });
       this.hint.textContent = error instanceof Error ? error.message : "Не удалось выйти";
     }
   }

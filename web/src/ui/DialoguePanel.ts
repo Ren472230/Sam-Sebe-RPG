@@ -1,6 +1,7 @@
 import type { QuestResult } from "../api";
 import { dialogueResultEvidence } from "../playtestClient";
 import type { ClientState } from "../state";
+import { captureTelemetry } from "../telemetry";
 
 type TranscriptLine = { speaker: "player" | "npc" | "quest" | "system"; text: string };
 
@@ -9,6 +10,7 @@ export class DialoguePanel {
   private npcId = "npc_oren";
   private transcript: TranscriptLine[] = [];
   private sending = false;
+  private dialogueTracked = false;
 
   constructor(private readonly state: ClientState) {
     const root = document.getElementById("dialogue");
@@ -19,6 +21,7 @@ export class DialoguePanel {
   async openNpc(npcId: string, initialText?: string): Promise<void> {
     this.npcId = npcId;
     this.transcript = [];
+    this.dialogueTracked = false;
     this.root.hidden = false;
     this.render();
     if (initialText?.trim()) await this.send(initialText.trim());
@@ -46,12 +49,24 @@ export class DialoguePanel {
         this.npcId,
         clean
       );
+      if (!this.dialogueTracked) {
+        captureTelemetry("npc_dialogue_started", {
+          location_id: this.state.snapshot?.world.location_id,
+          npc_id: this.npcId,
+          dialogue_provider: decision.used_fallback ? "fallback" : "openai"
+        });
+        this.dialogueTracked = true;
+      }
       document.dispatchEvent(new CustomEvent("samseberpg:dialogue-result", {
         detail: dialogueResultEvidence(this.npcId, decision.used_fallback)
       }));
       await this.state.refresh();
       this.transcript.push({ speaker: "npc", text: decision.text });
     } catch (error) {
+      captureTelemetry("client_error", {
+        location_id: this.state.snapshot?.world.location_id,
+        npc_id: this.npcId
+      });
       this.transcript.push({ speaker: "system", text: readableError(error) });
     } finally {
       this.sending = false;
@@ -132,8 +147,17 @@ export class DialoguePanel {
       const result = await this.state.api.acceptQuest(this.state.playerId);
       await this.state.refresh();
       if (!result.success) return this.showResult(result);
+      captureTelemetry("quest_accepted", {
+        location_id: this.state.snapshot?.world.location_id,
+        npc_id: this.npcId,
+        quest_id: result.state.quest_type
+      });
       await this.send("Я возьмусь. Напомни, сколько нужно?");
     } catch (error) {
+      captureTelemetry("client_error", {
+        location_id: this.state.snapshot?.world.location_id,
+        npc_id: this.npcId
+      });
       this.transcript.push({ speaker: "system", text: readableError(error) });
       this.render();
     }
@@ -144,8 +168,17 @@ export class DialoguePanel {
       const result = await this.state.api.turnInQuest(this.state.playerId);
       await this.state.refresh();
       if (!result.success) return this.showResult(result);
+      captureTelemetry("quest_completed", {
+        location_id: this.state.snapshot?.world.location_id,
+        npc_id: this.npcId,
+        quest_id: result.state.quest_type
+      });
       await this.send("Вот дрова.");
     } catch (error) {
+      captureTelemetry("client_error", {
+        location_id: this.state.snapshot?.world.location_id,
+        npc_id: this.npcId
+      });
       this.transcript.push({ speaker: "system", text: readableError(error) });
       this.render();
     }

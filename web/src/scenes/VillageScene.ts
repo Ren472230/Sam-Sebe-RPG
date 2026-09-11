@@ -10,6 +10,7 @@ import {
   renderVillageProductionForeground
 } from "../productionArt";
 import { getRuntime } from "../runtime";
+import { captureTelemetry, captureTelemetryOnce } from "../telemetry";
 
 type Hotspot = { id: string; x: number; y: number; view: any };
 type Rect = { x: number; y: number; w: number; h: number };
@@ -101,8 +102,15 @@ export class VillageScene extends Phaser.Scene {
     if (this.keys.D.isDown) dx += speed;
     if (this.keys.W.isDown) dy -= speed;
     if (this.keys.S.isDown) dy += speed;
+    const beforeX = this.player.x;
+    const beforeY = this.player.y;
     this.movePlayer(dx, dy);
     this.publishPlayerPosition();
+    if (this.player.x !== beforeX || this.player.y !== beforeY) {
+      captureTelemetryOnce("first_move", {
+        location_id: getRuntime().state.snapshot?.world.location_id
+      });
+    }
     this.updateHint();
   }
 
@@ -269,6 +277,10 @@ export class VillageScene extends Phaser.Scene {
       return;
     }
     this.clearInteraction();
+    captureTelemetryOnce("first_interaction", {
+      location_id: getRuntime().state.snapshot?.world.location_id,
+      ...(interaction.kind === "npc" ? { npc_id: interaction.actorId } : {})
+    });
     if (interaction.kind === "firewood") {
       await this.pickupFirewood(interaction.item);
       return;
@@ -317,6 +329,9 @@ export class VillageScene extends Phaser.Scene {
       await runtime.state.refresh();
       this.hint.textContent = "Дрова добавлены в канонический инвентарь";
     } catch (error) {
+      captureTelemetry("client_error", {
+        location_id: runtime.state.snapshot?.world.location_id
+      });
       this.hint.textContent = error instanceof Error ? error.message : "Ошибка взаимодействия";
     }
   }
@@ -338,6 +353,9 @@ export class VillageScene extends Phaser.Scene {
       }
       this.scene.start("TavernScene");
     } catch (error) {
+      captureTelemetry("client_error", {
+        location_id: runtime.state.snapshot?.world.location_id
+      });
       this.hint.textContent = error instanceof Error ? error.message : "Таверна недоступна";
     }
   }
