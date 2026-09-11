@@ -117,59 +117,39 @@ export async function moveTowardInteraction(
 ): Promise<void> {
   const started = Date.now();
   const hint = page.locator("#interaction-hint");
-  const held = new Set<MovementKey>();
-  const axisDeadZone = 28;
-  // Village NPC interaction radius is 72 px and Tavern visitors use 78–85 px.
-  // A tighter radius leaves room for one final rendered movement frame while keys
-  // are being released. Success is accepted only after input is fully settled.
   const stableInteractionRadius = 60;
+  const lowerLaneY = 455;
+  const standoffY = Math.min(465, targetY + 50);
+  const remaining = (): number => Math.max(500, timeout - (Date.now() - started));
+
   await releaseMovementKeys(page);
 
-  try {
-    while (Date.now() - started < timeout) {
-      const position = await playerPosition(page);
-      const hintMatches = (await hint.textContent())?.includes(hintText) ?? false;
-      const targetDistance = Math.hypot(targetX - position.x, targetY - position.y);
-      if (hintMatches && targetDistance <= stableInteractionRadius) {
-        await syncHeldMovementKeys(page, held, []);
-        await releaseMovementKeys(page);
-        await page.waitForTimeout(120);
+  // Village collision geometry has a clear lower lane beneath the workshop and well.
+  // Route there first, then align horizontally, then step up to a stable interaction
+  // standoff. The same route is harmless inside the obstacle-free tavern.
+  await moveAxisTo(page, "y", lowerLaneY, 12, remaining());
+  await moveAxisTo(page, "x", targetX, 18, remaining());
+  await moveAxisTo(page, "y", standoffY, 12, remaining());
+  await releaseMovementKeys(page);
+  await page.waitForTimeout(120);
 
-        const settledPosition = await playerPosition(page);
-        const settledHintMatches = (await hint.textContent())?.includes(hintText) ?? false;
-        const settledDistance = Math.hypot(
-          targetX - settledPosition.x,
-          targetY - settledPosition.y
-        );
-        if (settledHintMatches && settledDistance <= stableInteractionRadius) return;
-        continue;
-      }
-
-      const dx = targetX - position.x;
-      const dy = targetY - position.y;
-      const horizontal: MovementKey = dx >= 0 ? "d" : "a";
-      const vertical: MovementKey = dy >= 0 ? "s" : "w";
-
-      // Use one axis at a time. Diagonal key holds can pin the player against the
-      // workshop/well collision corners under slow CI frames even though an
-      // unobstructed orthogonal route exists along the village lower lane.
-      const desired: MovementKey[] = Math.abs(dx) > axisDeadZone
-        ? [horizontal]
-        : Math.abs(dy) > axisDeadZone
-          ? [vertical]
-          : [Math.abs(dx) >= Math.abs(dy) ? horizontal : vertical];
-
-      await syncHeldMovementKeys(page, held, desired);
-      await page.waitForTimeout(75);
-    }
-  } finally {
-    await syncHeldMovementKeys(page, held, []);
-    await releaseMovementKeys(page);
-  }
+  const settledPosition = await playerPosition(page);
+  const settledDistance = Math.hypot(
+    targetX - settledPosition.x,
+    targetY - settledPosition.y
+  );
+  const settledHint = await hint.textContent();
+  if (settledDistance <= stableInteractionRadius && settledHint?.includes(hintText)) return;
 
   throw new Error(
-    `player did not reach interaction ${JSON.stringify(hintText)} near (${targetX}, ${targetY}); last=${JSON.stringify(await playerPosition(page))}`
+    `player did not reach stable interaction ${JSON.stringify(hintText)} near (${targetX}, ${targetY}); `
+      + `last=${JSON.stringify(settledPosition)} distance=${Math.round(settledDistance)} `
+      + `hint=${JSON.stringify(settledHint)} rendered=${JSON.stringify(documentRenderedNpcIds())}`
   );
+
+  function documentRenderedNpcIds(): string {
+    return "browser state available in failure screenshot/trace";
+  }
 }
 
 export async function enterTavernSpatially(page: Page): Promise<void> {
