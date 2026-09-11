@@ -23,27 +23,39 @@ export async function moveTowardInteraction(
 ): Promise<void> {
   const started = Date.now();
   const hint = page.locator("#interaction-hint");
+  const axisDeadZone = 20;
+  let heldKeys = new Set<string>();
   await releaseMovementKeys(page);
 
-  while (Date.now() - started < timeout) {
-    if ((await hint.textContent())?.includes(hintText)) return;
-
-    const position = await playerPosition(page);
-    const dx = targetX - position.x;
-    const dy = targetY - position.y;
-    const horizontal = dx >= 0 ? "d" : "a";
-    const vertical = dy >= 0 ? "s" : "w";
-    const keys = Math.abs(dx) >= Math.abs(dy)
-      ? [horizontal, vertical]
-      : [vertical, horizontal];
-
-    for (const key of keys) {
-      await page.keyboard.down(key);
-      await page.waitForTimeout(70);
-      await page.keyboard.up(key);
-      await page.waitForTimeout(35);
+  try {
+    while (Date.now() - started < timeout) {
       if ((await hint.textContent())?.includes(hintText)) return;
+
+      const position = await playerPosition(page);
+      const dx = targetX - position.x;
+      const dy = targetY - position.y;
+      const horizontal = dx >= 0 ? "d" : "a";
+      const vertical = dy >= 0 ? "s" : "w";
+      const desiredKeys = new Set<string>();
+
+      if (Math.abs(dx) > axisDeadZone) desiredKeys.add(horizontal);
+      if (Math.abs(dy) > axisDeadZone) desiredKeys.add(vertical);
+      if (desiredKeys.size === 0) {
+        desiredKeys.add(Math.abs(dx) >= Math.abs(dy) ? horizontal : vertical);
+      }
+
+      for (const key of heldKeys) {
+        if (!desiredKeys.has(key)) await page.keyboard.up(key);
+      }
+      for (const key of desiredKeys) {
+        if (!heldKeys.has(key)) await page.keyboard.down(key);
+      }
+      heldKeys = desiredKeys;
+      await page.waitForTimeout(25);
     }
+  } finally {
+    for (const key of heldKeys) await page.keyboard.up(key);
+    await releaseMovementKeys(page);
   }
 
   throw new Error(
