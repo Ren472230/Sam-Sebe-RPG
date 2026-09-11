@@ -246,10 +246,32 @@ async function moveWithConcurrentKeysUntilHint(
   const hint = page.locator("#interaction-hint");
   if ((await hint.textContent())?.includes(hintText)) return;
 
+  const startedAt = await playerPosition(page);
   await releaseMovementKeys(page);
   for (const key of keys) await page.keyboard.down(key);
   try {
     await expect(hint).toContainText(hintText, { timeout });
+  } catch (error) {
+    const endedAt = await playerPosition(page);
+    const diagnostics = await page.evaluate(() => {
+      const debugWindow = window as Window & {
+        __navKeyTrace?: string[];
+        __navCanonicalMutations?: number;
+      };
+      return {
+        scene: document.body.dataset.scene ?? null,
+        canonicalLocation: document.body.dataset.canonicalLocation ?? null,
+        movementTrace: document.body.dataset.movementTrace ?? null,
+        keyTrace: debugWindow.__navKeyTrace ?? [],
+        canonicalMutations: debugWindow.__navCanonicalMutations ?? 0,
+        hint: document.getElementById("interaction-hint")?.textContent ?? ""
+      };
+    });
+    throw new Error(
+      `movement ${keys.join("+")} did not reach ${JSON.stringify(hintText)}; `
+        + `start=${JSON.stringify(startedAt)} end=${JSON.stringify(endedAt)} `
+        + `diagnostics=${JSON.stringify(diagnostics)} cause=${error instanceof Error ? error.message : String(error)}`
+    );
   } finally {
     for (const key of keys) await page.keyboard.up(key);
     await releaseMovementKeys(page);
