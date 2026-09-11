@@ -15,31 +15,32 @@
     "draft": true,
     "merged": false
   },
-  "phase": "autonomy_protocol_upgrade",
-  "current_objective": "Install verified Autonomous Project Development core ae96395a1be90204283fd6b17407d574a1839442 before any further gameplay mutation.",
-  "next_action": "Synchronize AUTONOMY_SYSTEM.json, AGENTS.md and docs/autonomy/RUNBOOK.md to verified core ae96395a1be90204283fd6b17407d574a1839442 while preserving Sam-Sebe-RPG-specific rules.",
+  "phase": "browser_spatial_stabilization",
+  "current_objective": "Debug the reproducible Stream Slice Talen approach failure after successful tavern entry.",
+  "next_action": "Start a new leased cycle from factual pilot branch HEAD and isolate why approachAndTalk cannot reach Talen interaction near target (500,385).",
   "blockers": [
     "Stream Slice validation run 34592686361 passes tavern entry but fails later while approaching Talen at target (500,385): last position (556,315), distance 90, generic interaction hint, no browser console or page errors."
   ],
   "active_run": {
-    "run_id": "2026-09-11-pilot-protocol-sync-ae96395a",
-    "status": "running",
-    "started_at_utc": "2026-09-11T11:43:29Z",
-    "lease_expires_at_utc": "2026-09-11T13:13:29Z",
-    "base_sha": "03f51ffd58e5af1ceae03ebd7168635b91907168",
-    "working_branch": "agent/autonomy-pilot-v0.1"
+    "run_id": null,
+    "status": "idle",
+    "started_at_utc": null,
+    "lease_expires_at_utc": null,
+    "base_sha": null,
+    "working_branch": null
   },
   "last_handoff": {
-    "completed_at_utc": "2026-09-11T11:16:55Z",
-    "result": "Cycle 1 replaced the open-loop tavern-entry D+W movement with the existing target-aware interaction controller at reachable point (825,330). Exact validation progressed through tavern entry and exposed the next independent Talen approach failure. The pilot also exposed that lease acquisition needs a hard pre-mutation barrier in the universal protocol.",
-    "head_sha": "980a82f57fbd6d41d3d1e9f928ffdd925ed54c47",
-    "work_head_sha": "980a82f57fbd6d41d3d1e9f928ffdd925ed54c47",
+    "completed_at_utc": "2026-09-11T11:48:00Z",
+    "result": "Verified autonomy core ae96395a1be90204283fd6b17407d574a1839442 was installed into the pilot. AUTONOMY_SYSTEM now pins the verified source workflow, and Sam-Sebe-RPG AGENTS/RUNBOOK now enforce a read-only pre-lease phase, post-write lease ownership confirmation, and non-self-referential work_head_sha handoff semantics while preserving project-specific architecture and gate rules.",
+    "head_sha": "a39a0f46c8b07421ad9572208d864e78e8e330f3",
+    "work_head_sha": "a39a0f46c8b07421ad9572208d864e78e8e330f3",
     "verification": [
-      "RED source evidence: Stream Slice Gate 34586828765 on PR #53 HEAD 5f5695f5918ed5dbc4fefea5e6483795a00260d5 failed before tavern entry after open-loop D+W movement ended at (936,315).",
-      "Pilot validation: Stream Slice Gate 34592686361 on work SHA 980a82f57fbd6d41d3d1e9f928ffdd925ed54c47 reached and completed tavern entry, then failed later on approach to Talen.",
-      "At work SHA 980a82f57fbd6d41d3d1e9f928ffdd925ed54c47: 22 Stream Slice Python tests passed, preflight passed, 45 web contract tests passed, production build and bundle budget passed, Visual Forge Gate 34592686436 passed, Windows Compatibility Gate 34592686460 passed, Release Reproducibility Gate 34592686330 passed."
+      "Universal source ae96395a1be90204283fd6b17407d574a1839442: workflow 34593421620 succeeded.",
+      "Universal source workflow 34593421620: contract tests succeeded and package validator succeeded.",
+      "Pilot AUTONOMY_SYSTEM.json pins source SHA ae96395a1be90204283fd6b17407d574a1839442 and source verification run 34593421620.",
+      "Pilot AGENTS.md and docs/autonomy/RUNBOOK.md contain the hard pre-mutation lease barrier and work_head_sha semantics."
     ],
-    "next_action": "Install verified autonomy core ae96395a1be90204283fd6b17407d574a1839442, then start a new leased cycle for the Talen approach failure."
+    "next_action": "Start a new leased cycle from factual pilot branch HEAD and isolate why approachAndTalk cannot reach Talen interaction near target (500,385)."
   },
   "human_gate": {
     "required": false,
@@ -70,9 +71,9 @@
     "github_releases": "none"
   },
   "known_limitations": [
-    "The current pilot work SHA still has a later Stream Slice browser failure while approaching Talen.",
+    "The current gameplay work SHA still has a Stream Slice browser failure while approaching Talen.",
     "The active visual pack is a temporary complete SVG Stream Slice pack rather than final production art.",
     "A real human experience gate remains pending after technical stabilization."
   ],
-  "current_blocker": "Synchronize the verified autonomy protocol under this lease, release it cleanly, then start a separate leased gameplay cycle for the Talen approach failure."
+  "current_blocker": "The next independent browser blocker is the reproducible Talen interaction approach failure inside the tavern."
 }
