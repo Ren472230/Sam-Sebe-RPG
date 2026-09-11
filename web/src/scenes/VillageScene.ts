@@ -108,6 +108,8 @@ export class VillageScene extends Phaser.Scene {
 
   private syncCanonicalLocation(locationId: string): void {
     if (this.canonicalLocationId === locationId) return;
+    this.clearInteraction();
+    this.hint.textContent = movementControlHint();
     this.canonicalLocationId = locationId;
     document.body.dataset.canonicalLocation = locationId;
     const anchor = CANONICAL_LOCATION_ANCHORS[locationId];
