@@ -114,6 +114,52 @@ export async function moveAxisTo(
   throw new Error(`player did not reach ${axis}=${target}; last=${JSON.stringify(released)}`);
 }
 
+async function moveAxisOneWayTo(
+  page: Page,
+  axis: "x" | "y",
+  target: number,
+  timeout = 8_000
+): Promise<void> {
+  await installNavigationDiagnostics(page);
+  let position = await playerPosition(page);
+  const start = position;
+  const value = position[axis];
+  if (!Number.isFinite(value) || value === target) return;
+
+  const key: MovementKey = axis === "x"
+    ? (value < target ? "d" : "a")
+    : (value < target ? "s" : "w");
+  const started = Date.now();
+  let reached: PlayerPosition | null = null;
+
+  await releaseMovementKeys(page);
+  await page.keyboard.down(key);
+  try {
+    while (Date.now() - started < timeout) {
+      position = await playerPosition(page);
+      const current = position[axis];
+      const crossed = key === "d" || key === "s" ? current >= target : current <= target;
+      if (crossed) {
+        reached = position;
+        break;
+      }
+      await page.waitForTimeout(25);
+    }
+  } finally {
+    await page.keyboard.up(key);
+    await releaseMovementKeys(page);
+  }
+
+  const released = await playerPosition(page);
+  if (!reached) {
+    throw new Error(
+      `one-way ${key} movement did not reach ${axis}=${target}; `
+        + `start=${JSON.stringify(start)} end=${JSON.stringify(released)}`
+    );
+  }
+  await recordAxisTrace(page, { axis, target, reached, released });
+}
+
 async function interactionSnapshot(
   page: Page,
   targetX: number,
@@ -280,6 +326,7 @@ async function moveWithConcurrentKeysUntilHint(
 
 export async function enterTavernSpatially(page: Page): Promise<void> {
   const hint = page.locator("#interaction-hint");
+  await moveAxisOneWayTo(page, "y", 455);
   await moveWithConcurrentKeysUntilHint(page, ["d", "w"], "войти в таверну", 20_000);
   await expect(hint).toContainText("войти в таверну", { timeout: 3_000 });
   await page.keyboard.press("e");
