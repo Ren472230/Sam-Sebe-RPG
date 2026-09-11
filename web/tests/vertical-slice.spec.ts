@@ -3,6 +3,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { expect, test, type Page } from "@playwright/test";
 
 import { installBrowserDiagnostics } from "./helpers/browser-diagnostics";
+import { moveTowardInteraction } from "./helpers/spatial-navigation";
 
 type PlayerPosition = { x: number; y: number };
 type ActionPayload = {
@@ -91,19 +92,8 @@ async function moveAndInteractWhenHint(
 }
 
 async function enterTavernFromVillage(page: Page): Promise<void> {
-  const hint = page.locator("#interaction-hint");
-  await moveAxisTo(page, "x", 825, 35, 20_000);
-
-  if (!(await hint.textContent())?.includes("войти в таверну")) {
-    await page.keyboard.down("w");
-    try {
-      await expect(hint).toContainText("войти в таверну", { timeout: 20_000 });
-    } finally {
-      await page.keyboard.up("w");
-      await releaseMovementKeys(page);
-    }
-  }
-
+  await moveAxisTo(page, "x", 825, 12, 20_000);
+  await moveTowardInteraction(page, 825, 330, "войти в таверну", 20_000);
   await page.keyboard.press("e");
   await expect(page.locator("body")).toHaveAttribute("data-scene", "tavern", { timeout: 10_000 });
 }
