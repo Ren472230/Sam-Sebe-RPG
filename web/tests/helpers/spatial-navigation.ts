@@ -169,7 +169,7 @@ export async function moveTowardInteraction(
 ): Promise<void> {
   await installNavigationDiagnostics(page);
   const stableInteractionRadius = 68;
-  const axisMargin = 44;
+  const axisMargin = 0;
   const started = Date.now();
   let snapshot = await interactionSnapshot(page, targetX, targetY, hintText, stableInteractionRadius);
   if (snapshot.ready) return;
