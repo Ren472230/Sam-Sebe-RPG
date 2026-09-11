@@ -135,6 +135,7 @@ test("configured PostHog transport sends an anonymous minimal payload", async ()
   };
   const telemetry = createTelemetry({
     enabled: true,
+    privacyConfirmed: true,
     apiKey: "test-project-token",
     host: "https://eu.i.posthog.com",
     sessionId: "dev-test-session",
@@ -164,6 +165,7 @@ test("non-HTTPS PostHog hosts are rejected without making a request", () => {
   let attempted = 0;
   const telemetry = createTelemetry({
     enabled: true,
+    privacyConfirmed: true,
     apiKey: "test-project-token",
     host: "http://analytics.example.test",
     fetchImpl: async () => {
@@ -189,4 +191,20 @@ test("network failure is swallowed and cannot reject gameplay code", async () =>
   assert.doesNotThrow(() => telemetry.capture("wait_used", { location_id: "village_square" }));
   await new Promise((resolve) => setTimeout(resolve, 0));
   assert.equal(attempted, 1);
+});
+
+test("real PostHog transport stays disabled until privacy is explicitly confirmed", () => {
+  let attempted = 0;
+  const telemetry = createTelemetry({
+    enabled: true,
+    apiKey: "test-project-token",
+    host: "https://eu.i.posthog.com",
+    fetchImpl: async () => {
+      attempted += 1;
+      return new Response(null, { status: 200 });
+    }
+  });
+
+  assert.equal(telemetry.capture("game_started"), false);
+  assert.equal(attempted, 0);
 });
