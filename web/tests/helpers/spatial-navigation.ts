@@ -151,6 +151,82 @@ export async function moveAxisTo(
   throw new Error(`player did not reach ${axis}=${target}; last=${JSON.stringify(released)}`);
 }
 
+async function interactionIsReady(
+  page: Page,
+  targetX: number,
+  targetY: number,
+  hintText: string,
+  radius: number
+): Promise<boolean> {
+  const position = await playerPosition(page);
+  const hint = await page.locator("#interaction-hint").textContent();
+  return Number.isFinite(position.x)
+    && Number.isFinite(position.y)
+    && Math.hypot(targetX - position.x, targetY - position.y) <= radius
+    && Boolean(hint?.includes(hintText));
+}
+
+async function moveAxisTowardInteraction(
+  page: Page,
+  axis: "x" | "y",
+  axisTarget: number,
+  targetX: number,
+  targetY: number,
+  hintText: string,
+  stableInteractionRadius: number,
+  timeout: number
+): Promise<boolean> {
+  if (await interactionIsReady(page, targetX, targetY, hintText, stableInteractionRadius)) return true;
+
+  const start = await playerPosition(page);
+  const value = start[axis];
+  if (!Number.isFinite(value)) throw new Error(`player ${axis} position is unavailable`);
+
+  const key: MovementKey = axis === "x"
+    ? (value < axisTarget ? "d" : "a")
+    : (value < axisTarget ? "s" : "w");
+  const movingPositive = key === "d" || key === "s";
+  let reached = start;
+
+  await releaseMovementKeys(page);
+  await page.keyboard.down(key);
+  try {
+    await page.waitForFunction(
+      ({ watchedAxis, axisTarget, positive, targetX, targetY, hintText, radius }) => {
+        const x = Number(document.body.dataset.playerX);
+        const y = Number(document.body.dataset.playerY);
+        const current = watchedAxis === "x" ? x : y;
+        const hint = document.getElementById("interaction-hint")?.textContent ?? "";
+        const ready = Number.isFinite(x)
+          && Number.isFinite(y)
+          && Math.hypot(targetX - x, targetY - y) <= radius
+          && hint.includes(hintText);
+        const crossedAxisTarget = Number.isFinite(current)
+          && (positive ? current >= axisTarget : current <= axisTarget);
+        return ready || crossedAxisTarget;
+      },
+      {
+        watchedAxis: axis,
+        axisTarget,
+        positive: movingPositive,
+        targetX,
+        targetY,
+        hintText,
+        radius: stableInteractionRadius
+      },
+      { timeout, polling: "raf" }
+    );
+    reached = await playerPosition(page);
+  } finally {
+    await page.keyboard.up(key);
+    await releaseMovementKeys(page);
+  }
+
+  const released = await playerPosition(page);
+  await recordAxisTrace(page, { axis, target: axisTarget, reached, released });
+  return interactionIsReady(page, targetX, targetY, hintText, stableInteractionRadius);
+}
+
 export async function moveTowardInteraction(
   page: Page,
   targetX: number,
@@ -164,15 +240,35 @@ export async function moveTowardInteraction(
   const standoffX = Math.min(865, targetX + 45);
 
   await releaseMovementKeys(page);
-  await moveAxisTo(page, "y", targetY, 8, timeout);
-  await moveAxisTo(page, "x", standoffX, 8, timeout);
+  let ready = await moveAxisTowardInteraction(
+    page,
+    "y",
+    targetY,
+    targetX,
+    targetY,
+    hintText,
+    stableInteractionRadius,
+    timeout
+  );
+  if (!ready) {
+    ready = await moveAxisTowardInteraction(
+      page,
+      "x",
+      standoffX,
+      targetX,
+      targetY,
+      hintText,
+      stableInteractionRadius,
+      timeout
+    );
+  }
   await releaseMovementKeys(page);
   await page.waitForTimeout(120);
 
   const settledPosition = await playerPosition(page);
   const settledDistance = Math.hypot(targetX - settledPosition.x, targetY - settledPosition.y);
   const settledHint = await hint.textContent();
-  if (settledDistance <= stableInteractionRadius && settledHint?.includes(hintText)) return;
+  if (ready && settledDistance <= stableInteractionRadius && settledHint?.includes(hintText)) return;
 
   const diagnostics = await page.evaluate(() => {
     const debugWindow = window as Window & {
