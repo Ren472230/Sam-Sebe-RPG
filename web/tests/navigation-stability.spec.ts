@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { moveTowardInteraction, releaseMovementKeys } from "./helpers/spatial-navigation";
+import { moveTowardInteraction, playerPosition, releaseMovementKeys } from "./helpers/spatial-navigation";
 
 test("spatial navigation reaches the tavern interaction under a slower browser", async ({ page, context }) => {
   test.setTimeout(45_000);
@@ -12,6 +12,9 @@ test("spatial navigation reaches the tavern interaction under a slower browser",
     await expect(page.locator("body")).toHaveAttribute("data-scene", "village");
 
     await moveTowardInteraction(page, 825, 365, "войти в таверну", 12_000);
+    const position = await playerPosition(page);
+    expect(position.x).toBeGreaterThanOrEqual(790);
+    expect(position.x).toBeLessThanOrEqual(860);
     await expect(page.locator("#interaction-hint")).toContainText("войти в таверну");
 
     await page.keyboard.press("e");
