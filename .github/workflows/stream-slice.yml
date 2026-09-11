@@ -28,7 +28,7 @@ jobs:
           node-version: "22"
 
       - name: Install backend
-        run: python -m pip install -e ".[dev]"
+        run: python -m pip install -c constraints/python-3.12.txt -e ".[dev]"
 
       - name: Stream Slice Python tests
         env:
@@ -42,7 +42,7 @@ jobs:
 
       - name: Install web dependencies
         working-directory: web
-        run: npm install --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
 
       - name: Web contract tests
         working-directory: web

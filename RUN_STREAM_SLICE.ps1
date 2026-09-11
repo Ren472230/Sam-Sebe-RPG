@@ -11,10 +11,14 @@ if (-not (Get-Command python -ErrorAction SilentlyContinue)) {
     throw "Python 3.12+ was not found. Install Python, reopen this launcher, and try again."
 }
 
+$PythonConstraints = Join-Path $Root "constraints/python-3.12.txt"
 python -c "import samseberpg" 2>$null
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "Installing local Python package and test/runtime dependencies..."
-    python -m pip install -e ".[dev]"
+    if (-not (Test-Path $PythonConstraints)) {
+        throw "Python constraints file was not found: $PythonConstraints"
+    }
+    Write-Host "Installing local Python package and constrained test/runtime dependencies..."
+    python -m pip install -c $PythonConstraints -e ".[dev]"
     if ($LASTEXITCODE -ne 0) {
         throw "Python dependency installation failed. Review the pip output above."
     }
@@ -25,11 +29,18 @@ if (-not (Get-Command npm -ErrorAction SilentlyContinue)) {
 }
 
 $WebNodeModules = Join-Path $Root "web/node_modules"
-if (-not (Test-Path (Join-Path $Root "web/node_modules"))) {
+$WebLockfile = Join-Path $Root "web/package-lock.json"
+if (-not (Test-Path $WebNodeModules)) {
     Write-Host "Installing web dependencies..."
     Push-Location (Join-Path $Root "web")
     try {
-        npm install --no-audit --no-fund
+        if (Test-Path $WebLockfile) {
+            npm ci --no-audit --no-fund
+        }
+        else {
+            Write-Warning "web/package-lock.json is missing; falling back to npm install for this local checkout."
+            npm install --no-audit --no-fund
+        }
         if ($LASTEXITCODE -ne 0) {
             throw "Web dependency installation failed. Review the npm output above."
         }
