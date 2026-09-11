@@ -8,16 +8,19 @@ test("world pulse turns waiting into a visible world change", async ({ page }) =
   const tick = pulse.locator("#world-pulse-tick");
   const nearby = pulse.locator("#world-pulse-nearby");
   const events = pulse.locator("#world-pulse-events li");
+  const waitFive = pulse.getByRole("button", { name: "Подождать 5 шагов" });
 
   await expect(pulse).toBeVisible();
   await expect(pulse.getByRole("heading", { name: "Живой мир" })).toBeVisible();
   await expect(nearby).toContainText("Рядом:");
+  await expect(nearby).not.toHaveText("Рядом: —");
+  await expect(waitFive).toBeEnabled();
 
   const initialTickText = await tick.textContent();
   const initialTick = Number(initialTickText?.match(/\d+/)?.[0]);
   expect(Number.isInteger(initialTick)).toBeTruthy();
 
-  await pulse.getByRole("button", { name: "Подождать 5 шагов" }).click();
+  await waitFive.click();
 
   await expect(tick).toHaveText(`Шаг ${initialTick + 5}`);
   await expect(events.first()).toBeVisible();

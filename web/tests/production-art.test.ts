@@ -82,25 +82,34 @@ test("v2 reports exact partial Village layers without coupling them to absent co
   ]);
 });
 
-test("checked-in partial manifest activates only approved materialized L3 and L4 derivatives", () => {
+test("checked-in stream manifest activates the complete temporary SVG pack", () => {
   const raw = JSON.parse(readFileSync(new URL("../public/assets/production/manifest.json", import.meta.url), "utf8"));
   const manifest = normalizeProductionManifest(raw);
   const readiness = getProductionReadiness(manifest);
 
-  assert.equal(manifest.status, "partial");
-  assert.equal(manifest.village.layers.architecture, "village/L3_ARCHITECTURE_PARTIAL.webp");
-  assert.equal(manifest.village.layers.gameplay, "village/L4_GAMEPLAY_PARTIAL.webp");
-  assert.equal(manifest.village.layers.sky, "");
-  assert.equal(manifest.village.layers.distant_nature, "");
-  assert.equal(manifest.village.layers.mid_nature, "");
-  assert.equal(manifest.village.layers.foreground, "");
+  assert.equal(manifest.status, "ready");
+  assert.deepEqual(manifest.village.layers, {
+    sky: "village/sky.svg",
+    distant_nature: "village/distant_nature.svg",
+    mid_nature: "village/mid_nature.svg",
+    architecture: "village/architecture.svg",
+    gameplay: "village/gameplay.svg",
+    foreground: "village/foreground.svg"
+  });
   assert.equal(manifest.village.parallax.enabled, false);
-  assert.equal(readiness.village.partial, true);
-  assert.deepEqual(readiness.village.available, ["architecture", "gameplay"]);
-  assert.equal(manifest.tavern.layers.background, "");
-  assert.equal(manifest.characters.player, "");
-  assert.equal(manifest.characters.oren, "");
-  assert.equal(manifest.props.firewood, "");
+  assert.equal(readiness.village.ready, true);
+  assert.equal(readiness.village.partial, false);
+  assert.deepEqual(manifest.tavern.layers, {
+    background: "tavern/background.svg",
+    foreground: "tavern/foreground.svg"
+  });
+  assert.equal(readiness.tavern.ready, true);
+  assert.equal(manifest.characters.player, "characters/player.svg");
+  assert.equal(manifest.characters.oren, "characters/oren.svg");
+  assert.equal(manifest.props.firewood, "props/firewood.svg");
+  assert.equal(readiness.player, true);
+  assert.equal(readiness.oren, true);
+  assert.equal(readiness.firewood, true);
 });
 
 test("legacy v1 awaiting_assets paths remain disabled so placeholder paths are never fetched", () => {
@@ -163,4 +172,36 @@ test("malformed manifest becomes a safe empty fallback instead of throwing", () 
   assert.equal(readiness.village.ready, false);
   assert.equal(readiness.village.partial, false);
   assert.equal(readiness.village.present, 0);
+});
+
+test("runtime sprite policy prefers production, then prototype, then scene greybox", () => {
+  const source = readFileSync(new URL("../src/productionArt.ts", import.meta.url), "utf8");
+  const cases = [
+    ["createProductionPlayer", "createPrototypePlayer", "playerArt"],
+    ["createProductionOren", "createPrototypeOren", "orenArt"],
+    ["createProductionFirewood", "createPrototypeFirewood", "firewoodArt"]
+  ] as const;
+
+  for (const [functionName, prototypeFactory, datasetKey] of cases) {
+    const start = source.indexOf(`export function ${functionName}`);
+    const next = source.indexOf("\nexport function", start + 1);
+    const body = source.slice(start, next === -1 ? source.length : next);
+    const productionMarker = body.indexOf(`document.body.dataset.${datasetKey} = \"production\"`);
+    const prototypeMarker = body.indexOf(`const prototype = ${prototypeFactory}`);
+
+    assert.ok(start >= 0, `${functionName} must exist`);
+    assert.ok(productionMarker >= 0, `${functionName} must keep a production path`);
+    assert.ok(prototypeMarker > productionMarker, `${functionName} must try prototype only after production`);
+    assert.equal(
+      body.includes('document.body.dataset.artMode === "prototype"'),
+      false,
+      `${functionName} fallback must be independent from the scene-wide art mode`
+    );
+  }
+});
+
+test("production loader handles SVG assets through Phaser SVG loading", () => {
+  const source = readFileSync(new URL("../src/productionArt.ts", import.meta.url), "utf8");
+  assert.match(source, /path\.toLowerCase\(\)\.endsWith\("\.svg"\)/);
+  assert.match(source, /scene\.load\.svg\(key, assetUrl\(path\)\)/);
 });
