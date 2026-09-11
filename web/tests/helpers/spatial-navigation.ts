@@ -186,7 +186,6 @@ async function interactionSnapshot(
 
 async function tapMovementKey(page: Page, key: MovementKey): Promise<boolean> {
   const before = await playerPosition(page);
-  await releaseMovementKeys(page);
   await page.keyboard.press(key, { delay: 120 });
   const after = await playerPosition(page);
   return after.x !== before.x || after.y !== before.y;
@@ -204,6 +203,7 @@ export async function moveTowardInteraction(
   const coordinateTolerance = 3;
   const started = Date.now();
   let snapshot = await interactionSnapshot(page, targetX, targetY, hintText, stableInteractionRadius);
+  await releaseMovementKeys(page);
 
   while (Date.now() - started < timeout) {
     if (snapshot.ready) return;
@@ -237,6 +237,7 @@ export async function moveTowardInteraction(
     if (!moved) await page.waitForTimeout(50);
   }
 
+  await releaseMovementKeys(page);
   snapshot = await interactionSnapshot(page, targetX, targetY, hintText, stableInteractionRadius);
   if (snapshot.ready) return;
 
