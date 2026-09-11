@@ -184,8 +184,14 @@ async function interactionSnapshot(
   }, { targetX, targetY, hintText, radius });
 }
 
-async function tapMovementKey(page: Page, key: MovementKey): Promise<void> {
-  await page.keyboard.press(key, { delay: 120 });
+function movementTapDelay(error: number): number {
+  if (error > 60) return 300;
+  if (error > 30) return 200;
+  return 120;
+}
+
+async function tapMovementKey(page: Page, key: MovementKey, error: number): Promise<void> {
+  await page.keyboard.press(key, { delay: movementTapDelay(error) });
 }
 
 export async function moveTowardInteraction(
@@ -227,7 +233,7 @@ export async function moveTowardInteraction(
     let moved = false;
     for (const candidate of candidates) {
       const before = snapshot.position;
-      await tapMovementKey(page, candidate.key);
+      await tapMovementKey(page, candidate.key, candidate.error);
       snapshot = await interactionSnapshot(page, targetX, targetY, hintText, stableInteractionRadius);
       if (snapshot.ready) return;
       moved = snapshot.position.x !== before.x || snapshot.position.y !== before.y;
