@@ -46,19 +46,14 @@ test("canonical location change clears the previous NPC interaction immediately"
   const hint = page.locator("#interaction-hint");
 
   await expect(body).toHaveAttribute("data-canonical-location", "workshop_yard");
-  await page.getByRole("button", { name: "Идти: площадь", exact: true }).click();
-  await expect(body).toHaveAttribute("data-canonical-location", "village_square");
-  await page.getByRole("button", { name: "Идти: река", exact: true }).click();
-  await expect(body).toHaveAttribute("data-canonical-location", "river_edge");
-
-  await approachAndTalk(page, 610, 410, "поговорить с Каспаром", "Каспар");
+  await approachAndTalk(page, 250, 365, "поговорить с Мирой", "Мира");
   await page.getByRole("button", { name: "Закрыть", exact: true }).click();
-  await expect(hint).toContainText("поговорить с Каспаром", { timeout: 3_000 });
+  await expect(hint).toContainText("поговорить с Мирой", { timeout: 3_000 });
 
   await page.getByRole("button", { name: "Идти: площадь", exact: true }).click();
   await expect(body).toHaveAttribute("data-canonical-location", "village_square");
 
-  await expect(hint).not.toContainText("поговорить с Каспаром", { timeout: 150 });
+  await expect(hint).not.toContainText("поговорить с Мирой", { timeout: 150 });
   await page.keyboard.press("e");
   await expect(page.locator("#dialogue")).toBeHidden();
 });
