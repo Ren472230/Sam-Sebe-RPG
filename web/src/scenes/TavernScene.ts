@@ -81,7 +81,8 @@ export class TavernScene extends Phaser.Scene {
   update(_time: number, delta: number): void {
     if (isTextEntryActive()) return;
 
-    const speed = 0.22 * Math.min(delta, 50);
+    // The tavern has boundary clamps only; discard long suspension time.
+    const speed = 0.22 * Phaser.Math.Clamp(delta, 0, 250);
     let dx = 0;
     let dy = 0;
     if (this.keys.A.isDown) dx -= speed;

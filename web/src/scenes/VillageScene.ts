@@ -93,15 +93,20 @@ export class VillageScene extends Phaser.Scene {
   update(_time: number, delta: number): void {
     if (isTextEntryActive()) return;
 
-    // A long browser frame must not teleport the player through narrow collision/interaction bands.
-    const speed = 0.22 * Math.min(delta, 50);
+    // Preserve walking speed on slow frames. Check collisions every <= 11 px,
+    // and discard suspension time beyond 250 ms rather than accumulating debt.
     let dx = 0;
     let dy = 0;
-    if (this.keys.A.isDown) dx -= speed;
-    if (this.keys.D.isDown) dx += speed;
-    if (this.keys.W.isDown) dy -= speed;
-    if (this.keys.S.isDown) dy += speed;
-    this.movePlayer(dx, dy);
+    if (this.keys.A.isDown) dx -= 0.22;
+    if (this.keys.D.isDown) dx += 0.22;
+    if (this.keys.W.isDown) dy -= 0.22;
+    if (this.keys.S.isDown) dy += 0.22;
+    let remaining = Phaser.Math.Clamp(delta, 0, 250);
+    while (remaining > 0) {
+      const step = Math.min(remaining, 50);
+      this.movePlayer(dx * step, dy * step);
+      remaining -= step;
+    }
     this.publishPlayerPosition();
     this.updateHint();
   }

@@ -43,6 +43,8 @@ async function bootstrap(): Promise<void> {
     height: 540,
     backgroundColor: "#24272a",
     scene: initialScenes,
+    // Scene movement accounts for elapsed time and bounds long frames itself.
+    fps: { smoothStep: false },
     render: { antialias: true, roundPixels: true }
   });
 }
