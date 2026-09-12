@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="540" viewBox="0 0 960 540" role="img" aria-label="Start Village sky layer">
+  <defs>
+    <linearGradient id="skyGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#F4F1E8"/>
+      <stop offset="70%" stop-color="#E9E3D6"/>
+      <stop offset="100%" stop-color="#D8F2EF"/>
+    </linearGradient>
+    <linearGradient id="mistGrad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#8AF0EA" stop-opacity="0.05"/>
+      <stop offset="50%" stop-color="#3ED6D0" stop-opacity="0.18"/>
+      <stop offset="100%" stop-color="#8AF0EA" stop-opacity="0.05"/>
+    </linearGradient>
+  </defs>
+  <rect width="960" height="540" fill="url(#skyGrad)"/>
+  <ellipse cx="470" cy="132" rx="360" ry="66" fill="url(#mistGrad)"/>
+  <g opacity="0.8">
+    <path d="M90 120c44-18 95-18 142 0 16 6 33 9 50 8 15-1 25 20 10 29-18 10-36 8-55 3-28-7-54-8-84 0-27 7-58 9-85 0-20-7-18-31 2-34 7-1 14-3 20-6z" fill="#ffffff" fill-opacity="0.70"/>
+    <path d="M660 95c35-14 82-16 122-1 27 10 65 8 84 28 9 10 3 23-10 25-28 4-56 1-83-6-36-8-72-7-109 3-21 6-43 8-63 2-14-4-18-20-7-29 13-11 40-14 66-22z" fill="#ffffff" fill-opacity="0.62"/>
+  </g>
+</svg>

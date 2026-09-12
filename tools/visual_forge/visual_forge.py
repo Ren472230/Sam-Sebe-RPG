@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 import argparse
+import base64
 import hashlib
 import json
+import re
+import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -47,9 +50,61 @@ def _load_mask(path: str | Path) -> Image.Image:
     return image.convert("L")
 
 
+def _svg_length(value: str | None) -> float | None:
+    if not value:
+        return None
+    match = re.match(r"^\s*([0-9]+(?:\.[0-9]+)?)", value)
+    if not match:
+        return None
+    number = float(match.group(1))
+    return number if number > 0 else None
+
+
+def _svg_size(root: ET.Element) -> tuple[int, int]:
+    width = _svg_length(root.get("width"))
+    height = _svg_length(root.get("height"))
+    if width is None or height is None:
+        view_box = root.get("viewBox")
+        if view_box:
+            parts = [part for part in re.split(r"[\s,]+", view_box.strip()) if part]
+            if len(parts) == 4:
+                try:
+                    width = width or float(parts[2])
+                    height = height or float(parts[3])
+                except ValueError:
+                    pass
+    if width is None or height is None or width <= 0 or height <= 0:
+        raise ValueError("SVG must declare positive width/height or a valid viewBox")
+    return max(1, round(width)), max(1, round(height))
+
+
+def _inspect_svg(path: Path, raw: bytes) -> dict[str, Any]:
+    try:
+        root = ET.fromstring(raw)
+    except ET.ParseError as exc:
+        raise ValueError(f"invalid SVG XML: {exc}") from exc
+    if root.tag.rsplit("}", 1)[-1] != "svg":
+        raise ValueError("vector asset root element must be <svg>")
+    width, height = _svg_size(root)
+    return {
+        "path": str(path),
+        "format": "SVG",
+        "mode": "vector",
+        "size": [width, height],
+        "has_alpha": True,
+        "alpha_range": None,
+        "alpha_bbox": None,
+        "sha256": hashlib.sha256(raw).hexdigest(),
+        "byte_length": len(raw),
+    }
+
+
 def inspect_asset(path: str | Path) -> dict[str, Any]:
     path = Path(path)
     raw = path.read_bytes()
+    if path.suffix.lower() == ".svg":
+        return _inspect_svg(path, raw)
+
     with Image.open(path) as source:
         source.load()
         source_format = source.format
@@ -176,6 +231,85 @@ VILLAGE_LAYER_ORDER = (
 )
 
 
+def _production_layers(
+    production_dir: Path,
+    layers: dict[str, Any],
+) -> list[tuple[str, str, Path]]:
+    production_resolved = production_dir.resolve()
+    resolved: list[tuple[str, str, Path]] = []
+    for slot in VILLAGE_LAYER_ORDER:
+        relative = layers.get(slot, "")
+        if not isinstance(relative, str) or not relative:
+            continue
+        candidate = (production_dir / relative).resolve()
+        try:
+            candidate.relative_to(production_resolved)
+        except ValueError as exc:
+            raise ValueError(f"layer path escapes production directory: {relative}") from exc
+        if not candidate.is_file():
+            raise FileNotFoundError(f"materialized layer is missing: {relative}")
+        resolved.append((slot, relative, candidate))
+    return resolved
+
+
+def _asset_data_uri(path: Path) -> str:
+    mime_types = {
+        ".svg": "image/svg+xml",
+        ".png": "image/png",
+        ".webp": "image/webp",
+        ".jpg": "image/jpeg",
+        ".jpeg": "image/jpeg",
+    }
+    mime = mime_types.get(path.suffix.lower(), "application/octet-stream")
+    payload = base64.b64encode(path.read_bytes()).decode("ascii")
+    return f"data:{mime};base64,{payload}"
+
+
+def _compose_production_preview_svg(
+    output_path: Path,
+    width: int,
+    height: int,
+    materialized: list[tuple[str, str, Path]],
+) -> dict[str, Any]:
+    root = ET.Element(
+        "svg",
+        {
+            "xmlns": "http://www.w3.org/2000/svg",
+            "width": str(width),
+            "height": str(height),
+            "viewBox": f"0 0 {width} {height}",
+        },
+    )
+    used_slots: list[str] = []
+    used_paths: list[str] = []
+    for slot, relative, candidate in materialized:
+        ET.SubElement(
+            root,
+            "image",
+            {
+                "href": _asset_data_uri(candidate),
+                "x": "0",
+                "y": "0",
+                "width": str(width),
+                "height": str(height),
+                "preserveAspectRatio": "none",
+            },
+        )
+        used_slots.append(slot)
+        used_paths.append(relative)
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    ET.ElementTree(root).write(output_path, encoding="utf-8", xml_declaration=True)
+    return {
+        "output": str(output_path),
+        "size": [width, height],
+        "layer_count": len(used_slots),
+        "layer_slots": used_slots,
+        "layers": used_paths,
+        "sha256": hashlib.sha256(output_path.read_bytes()).hexdigest(),
+    }
+
+
 def compose_production_preview(
     repo_root: str | Path,
     output_path: str | Path,
@@ -188,29 +322,19 @@ def compose_production_preview(
     canvas = manifest.get("canvas", {})
     width = int(canvas["width"])
     height = int(canvas["height"])
-    scene = Image.new("RGBA", (width, height), (0, 0, 0, 0))
-
     layers = manifest.get("village", {}).get("layers", {})
     if not isinstance(layers, dict):
         raise ValueError("manifest.village.layers must be an object")
 
-    production_resolved = production_dir.resolve()
+    materialized = _production_layers(production_dir, layers)
+    output_path = Path(output_path)
+    if output_path.suffix.lower() == ".svg":
+        return _compose_production_preview_svg(output_path, width, height, materialized)
+
+    scene = Image.new("RGBA", (width, height), (0, 0, 0, 0))
     used_slots: list[str] = []
     used_paths: list[str] = []
-
-    for slot in VILLAGE_LAYER_ORDER:
-        relative = layers.get(slot, "")
-        if not isinstance(relative, str) or not relative:
-            continue
-
-        candidate = (production_dir / relative).resolve()
-        try:
-            candidate.relative_to(production_resolved)
-        except ValueError as exc:
-            raise ValueError(f"layer path escapes production directory: {relative}") from exc
-        if not candidate.is_file():
-            raise FileNotFoundError(f"materialized layer is missing: {relative}")
-
+    for slot, relative, candidate in materialized:
         image = _load_rgba(candidate)
         if image.size != (width, height):
             image = image.resize((width, height), Image.Resampling.BILINEAR)
@@ -218,7 +342,6 @@ def compose_production_preview(
         used_slots.append(slot)
         used_paths.append(relative)
 
-    output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     scene.save(output_path, format="PNG")
     return {

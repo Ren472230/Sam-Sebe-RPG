@@ -126,6 +126,17 @@ CREATE TABLE IF NOT EXISTS npc_memories (
     created_at TEXT NOT NULL,
     UNIQUE (npc_actor_id, subject_actor_id, fact)
 );
+CREATE TABLE IF NOT EXISTS dialogue_turns (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    world_id TEXT NOT NULL REFERENCES worlds(id) ON DELETE CASCADE,
+    npc_actor_id TEXT NOT NULL REFERENCES npcs(actor_id) ON DELETE CASCADE,
+    player_actor_id TEXT NOT NULL REFERENCES players(actor_id) ON DELETE CASCADE,
+    user_text TEXT NOT NULL,
+    npc_text TEXT NOT NULL,
+    proposal_json TEXT NOT NULL DEFAULT '{}',
+    used_fallback INTEGER NOT NULL DEFAULT 0 CHECK (used_fallback IN (0, 1)),
+    created_at TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS world_runtime (
     world_id TEXT PRIMARY KEY REFERENCES worlds(id) ON DELETE CASCADE,
     tick INTEGER NOT NULL DEFAULT 0 CHECK (tick >= 0)
@@ -147,12 +158,37 @@ CREATE TABLE IF NOT EXISTS world_events (
     data_json TEXT NOT NULL DEFAULT '{}',
     summary TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS npc_knowledge (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    world_id TEXT NOT NULL REFERENCES worlds(id) ON DELETE CASCADE,
+    knower_actor_id TEXT NOT NULL REFERENCES npcs(actor_id) ON DELETE CASCADE,
+    subject_actor_id TEXT REFERENCES actors(id) ON DELETE SET NULL,
+    fact_key TEXT NOT NULL,
+    fact_text TEXT NOT NULL,
+    source_kind TEXT NOT NULL CHECK (
+        source_kind IN ('direct_event', 'player_dialogue', 'npc_report')
+    ),
+    source_actor_id TEXT REFERENCES actors(id) ON DELETE SET NULL,
+    source_world_event_id INTEGER REFERENCES world_events(id) ON DELETE SET NULL,
+    source_knowledge_id INTEGER REFERENCES npc_knowledge(id) ON DELETE SET NULL,
+    confidence INTEGER NOT NULL DEFAULT 100 CHECK (confidence BETWEEN 0 AND 100),
+    shareable INTEGER NOT NULL DEFAULT 0 CHECK (shareable IN (0, 1)),
+    learned_tick INTEGER NOT NULL CHECK (learned_tick >= 0),
+    created_at TEXT NOT NULL,
+    UNIQUE (knower_actor_id, fact_key)
+);
+CREATE TABLE IF NOT EXISTS social_processed_events (
+    world_event_id INTEGER PRIMARY KEY REFERENCES world_events(id) ON DELETE CASCADE,
+    processed_at TEXT NOT NULL
+);
 CREATE INDEX IF NOT EXISTS idx_actors_location ON actors(location_id);
 CREATE INDEX IF NOT EXISTS idx_entities_location ON entities(location_id);
 CREATE INDEX IF NOT EXISTS idx_entities_owner ON entities(owner_actor_id);
 CREATE INDEX IF NOT EXISTS idx_events_world_time ON action_events(world_id, occurred_at);
 CREATE INDEX IF NOT EXISTS idx_schedule_npc ON npc_schedule(npc_actor_id, priority DESC);
 CREATE INDEX IF NOT EXISTS idx_world_events_world_tick ON world_events(world_id, tick, id);
+CREATE INDEX IF NOT EXISTS idx_dialogue_turns_pair ON dialogue_turns(npc_actor_id, player_actor_id, id DESC);
+CREATE INDEX IF NOT EXISTS idx_npc_knowledge_knower ON npc_knowledge(knower_actor_id, learned_tick DESC, id DESC);
 """
 
 
@@ -280,6 +316,16 @@ class GameDatabase:
                 "INSERT OR IGNORE INTO npcs (actor_id, role, current_activity) VALUES (?, ?, ?)",
                 (actor_id, role, activity),
             )
+        conn.execute(
+            "INSERT OR IGNORE INTO actors "
+            "(id, world_id, actor_type, name, location_id, created_at) "
+            "VALUES ('npc_wayfarer_1', ?, 'npc', 'Talen', NULL, ?)",
+            (DEFAULT_WORLD_ID, created_at),
+        )
+        conn.execute(
+            "INSERT OR IGNORE INTO npcs (actor_id, role, current_activity) "
+            "VALUES ('npc_wayfarer_1', 'wayfarer', 'travelling toward the village')"
+        )
         conn.executemany(
             "INSERT OR IGNORE INTO npc_schedule (npc_actor_id, start_minute_local, end_minute_local, location_id, activity, priority) VALUES (?, ?, ?, ?, ?, ?)",
             _SCHEDULE,
@@ -295,6 +341,8 @@ class GameDatabase:
         runtime_defaults = (
             ("npc_mira", {"wood_stock": 2, "work_cycles": 0, "requested_wood": False}),
             ("npc_kaspar", {"carrying_wood": 0, "goal": None}),
+            ("npc_oren", {"bread_requested": False, "bread_received": False}),
+            ("npc_wayfarer_1", {"arrived": False}),
         )
         conn.executemany(
             "INSERT OR IGNORE INTO npc_runtime_state "

@@ -1,0 +1,85 @@
+import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+import test from "node:test";
+
+import { clientErrorText, dialogueResultEvidence, postPlaytestEvent } from "../src/playtestClient.ts";
+
+
+test("postPlaytestEvent sends the narrow client event contract", async () => {
+  let capturedPath = "";
+  let capturedBody = "";
+  const transport: typeof fetch = async (input, init) => {
+    capturedPath = String(input);
+    capturedBody = String(init?.body ?? "");
+    return new Response(JSON.stringify({ event_id: 17 }), {
+      status: 200,
+      headers: { "content-type": "application/json" }
+    });
+  };
+
+  const eventId = await postPlaytestEvent({
+    session_id: "session-1",
+    player_id: "player-1",
+    event_type: "GAME_BOOT",
+    success: true,
+    summary: "Playable frame rendered",
+    evidence: { first_playable_frame: true }
+  }, transport);
+
+  assert.equal(eventId, 17);
+  assert.equal(capturedPath, "/api/playtest/event");
+  assert.deepEqual(JSON.parse(capturedBody), {
+    session_id: "session-1",
+    player_id: "player-1",
+    event_type: "GAME_BOOT",
+    success: true,
+    summary: "Playable frame rendered",
+    evidence: { first_playable_frame: true }
+  });
+});
+
+
+test("postPlaytestEvent rejects malformed server responses", async () => {
+  const transport: typeof fetch = async () => new Response(JSON.stringify({}), {
+    status: 200,
+    headers: { "content-type": "application/json" }
+  });
+
+  await assert.rejects(
+    () => postPlaytestEvent({
+      session_id: "session-1",
+      player_id: "player-1",
+      event_type: "SESSION_START",
+      success: true,
+      summary: "start"
+    }, transport),
+    /malformed/
+  );
+});
+
+
+test("dialogue result evidence exposes provider source without dialogue text", () => {
+  const evidence = dialogueResultEvidence("npc_mira", false);
+
+  assert.deepEqual(evidence, {
+    npc_id: "npc_mira",
+    used_fallback: false
+  });
+  assert.equal("text" in evidence, false);
+});
+
+
+test("playtest instrumentation records dialogue result metadata", async () => {
+  const source = await readFile(new URL("../src/playtest.ts", import.meta.url), "utf8");
+
+  assert.match(source, /addEventListener\("samseberpg:dialogue-result"/);
+  assert.match(source, /record\(\s*"DIALOGUE_RESULT"/);
+  assert.match(source, /used_fallback/);
+});
+
+
+test("clientErrorText produces stable readable diagnostics", () => {
+  assert.equal(clientErrorText(new TypeError("boom")), "TypeError: boom");
+  assert.equal(clientErrorText("plain failure"), "plain failure");
+  assert.equal(clientErrorText({ code: "E_TEST" }), '{"code":"E_TEST"}');
+});

@@ -1,0 +1,62 @@
+{
+  "run_id": "2026-09-11-release-reproducibility",
+  "working_branch": "agent/release-reproducibility-v1",
+  "release_base_sha": "7d7ec138cb15c253f22435f8d5c2983a2e1d1cd8",
+  "integration_candidate": {
+    "pr": 49,
+    "branch": "integration/world-ready-svg-v1",
+    "head_sha": "7d7ec138cb15c253f22435f8d5c2983a2e1d1cd8",
+    "base_branch": "main",
+    "base_sha": "813ac7beb233645546fcc1e7bda3827efe63dcdc",
+    "state": "open",
+    "draft": true,
+    "merged": false
+  },
+  "phase": "release_reproducibility_with_parallel_e2e_stabilization",
+  "presentation_context": "Desktop playability and audience readability remain the primary experience target; mobile remains a supported fallback target.",
+  "verified_gates_at_candidate_head": {
+    "prototype_web_ci": {
+      "run_id": 34473124187,
+      "status": "success"
+    },
+    "windows_compatibility_gate": {
+      "run_id": 34473124237,
+      "status": "success"
+    },
+    "visual_forge_gate": {
+      "run_id": 34473124446,
+      "status": "success"
+    },
+    "playable_candidate_gate": {
+      "run_id": 34473124248,
+      "status": "failure",
+      "failure_scope": "browser integrated route; backend, dependency install, web contracts and production build passed"
+    },
+    "living_world_integration_gate": {
+      "run_id": 34473124220,
+      "status": "failure",
+      "failure_scope": "real browser critical route; latest inspected failure did not reach the tavern entry band"
+    },
+    "stream_slice_gate": {
+      "run_id": 34473124246,
+      "status": "failure",
+      "failure_scope": "Stream Slice Chromium acceptance; Python tests, preflight, dependency install, web contracts and production build passed"
+    }
+  },
+  "release_reproducibility_work": {
+    "web_lockfile": "web/package-lock.json committed with lockfileVersion 3",
+    "python_constraints": "constraints/python-3.12.txt",
+    "ci_install_policy": "current release/browser workflows use npm ci and constrained pip installs",
+    "windows_launcher": "uses constrained pip and npm ci when the lockfile exists; npm install is a local fallback only when the lockfile is missing",
+    "repository_hygiene": "root .gitignore covers generated caches, environments, browser reports, local SQLite state, environment files, secrets and editor/OS debris",
+    "github_releases": "none; PR #49 is still draft and unmerged"
+  },
+  "known_limitations": [
+    "Browser-bearing candidate gates are not release-green at the current PR #49 HEAD; E2E stabilization is running in parallel.",
+    "CI runtime selectors remain on the Python 3.12 and Node.js 22 families rather than exact patch-level pins.",
+    "The isolated Python build backend remains lower-bounded by setuptools>=75 in pyproject.toml; application runtime/test dependencies are constrained separately.",
+    "The active visual pack is a temporary complete SVG Stream Slice pack, not the final production-art pass.",
+    "Successful browser screenshot artifacts are not retained for download because repository evidence storage is intentionally minimized."
+  ],
+  "current_blocker": "Complete and integrate E2E stabilization, then rerun the browser-bearing gates on the resulting exact candidate HEAD before any merge or release decision."
+}

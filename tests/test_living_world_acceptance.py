@@ -191,7 +191,12 @@ def test_missing_resource_never_fabricates_or_repeats_request_and_does_not_respa
         conn.execute("DELETE FROM entities WHERE id='driftwood_1'")
     assert wait(game, p, 20, "wait-missing").success is True
     assert resource(db) is None
-    assert count_event(db, "NPC_REQUESTED_RESOURCE") == 1
+    with db.connect() as conn:
+        assert conn.execute(
+            "SELECT COUNT(*) FROM world_events "
+            "WHERE event_type='NPC_REQUESTED_RESOURCE' "
+            "AND actor_id='npc_mira' AND target_id='driftwood_1'"
+        ).fetchone()[0] == 1
     assert count_event(db, "NPC_COLLECTED_RESOURCE") == 0
     assert count_event(db, "NPC_DELIVERED_RESOURCE") == 0
     db.initialize()
