@@ -1,7 +1,7 @@
 {
   "protocol_version": 1,
   "project": "Ren472230/Sam-Sebe-RPG",
-  "run_id": "2026-09-11-pilot-cycle-2-talen-approach",
+  "run_id": "2026-09-13-pilot-cycle-2-talen-recovery",
   "authoritative_branch": "integration/audit-results-v1",
   "authoritative_head": "5f5695f5918ed5dbc4fefea5e6483795a00260d5",
   "working_branch": "agent/autonomy-pilot-v0.1",
@@ -22,11 +22,11 @@
     "Stream Slice validation run 34592686361 passes tavern entry but fails while approaching Talen at target (500,385): last position (556,315), distance 90, generic interaction hint, no browser console or page errors."
   ],
   "active_run": {
-    "run_id": "2026-09-11-pilot-cycle-2-talen-approach",
+    "run_id": "2026-09-13-pilot-cycle-2-talen-recovery",
     "status": "running",
-    "started_at_utc": "2026-09-11T11:46:30Z",
-    "lease_expires_at_utc": "2026-09-11T13:16:30Z",
-    "base_sha": "5cca15bcbd4a0127724f6945b2f7e615f34ff174",
+    "started_at_utc": "2026-09-13T07:12:30Z",
+    "lease_expires_at_utc": "2026-09-13T08:42:30Z",
+    "base_sha": "1b4b42e5373beff9dd52ee96a9524c54ff62cce4",
     "working_branch": "agent/autonomy-pilot-v0.1"
   },
   "last_handoff": {
