@@ -21,6 +21,31 @@ async function useIsolatedPlayer(page: Page, externalId: string): Promise<void> 
   });
 }
 
+async function placePlayerInTavern(page: Page, externalId: string): Promise<void> {
+  const sessionResponse = await page.request.post("/api/session", {
+    data: { external_id: externalId, name: "Ren" }
+  });
+  expect(sessionResponse.ok()).toBeTruthy();
+  const session = await sessionResponse.json() as { player_id: string };
+
+  for (const destination of ["village_square", "tavern_interior"] as const) {
+    const actionResponse = await page.request.post("/api/action", {
+      data: {
+        player_id: session.player_id,
+        action_type: "MOVE",
+        target_id: null,
+        recipient_id: null,
+        destination_id: destination,
+        modifiers: null,
+        external_id: `${externalId}-${destination}`
+      }
+    });
+    expect(actionResponse.ok()).toBeTruthy();
+    const action = await actionResponse.json() as { success: boolean; summary: string };
+    expect(action.success, action.summary).toBe(true);
+  }
+}
+
 test("spatial tavern entry survives a slower browser", async ({ page, context }) => {
   test.setTimeout(45_000);
   await useIsolatedPlayer(page, "e2e-nav-slow-player");
@@ -66,10 +91,10 @@ test("target-aware interaction recovers after the controller misses a crossing",
 
 test("controller stall cannot leave runaway movement active in the collision-free tavern", async ({ page }) => {
   test.setTimeout(45_000);
-  await useIsolatedPlayer(page, "e2e-nav-tavern-stall-player");
+  const externalId = "e2e-nav-tavern-stall-player";
+  await useIsolatedPlayer(page, externalId);
+  await placePlayerInTavern(page, externalId);
   await page.goto("/");
-  await expect(page.locator("body")).toHaveAttribute("data-scene", "village");
-  await enterTavernSpatially(page);
   await expect(page.locator("body")).toHaveAttribute("data-scene", "tavern", { timeout: 10_000 });
 
   await page.evaluate(() => {
