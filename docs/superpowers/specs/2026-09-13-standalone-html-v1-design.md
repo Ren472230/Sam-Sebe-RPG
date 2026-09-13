@@ -1,6 +1,6 @@
 # Sam-Sebe-RPG Standalone HTML v1 – Design
 
-Status: approved in chat as an isolated autonomous experiment; written specification requires the standard review gate before implementation  
+Status: approved in chat as an isolated autonomous experiment; written specification awaits the standard review gate before implementation  
 Branch: `experiment/standalone-html-v1`  
 Base: `88d526d84d500231f4c8219a71214e6da2999329`  
 Source gameplay line: `agent/autonomy-pilot-v0.1` / PR #55, derived from PR #53  
@@ -14,7 +14,7 @@ The first result must be a single file:
 
 `standalone/dist/sam-sebe-rpg.html`
 
-A player must be able to copy that file to another computer, open it locally in a modern browser and play without running Python, FastAPI, SQLite, npm, a local server or any external account.
+A player must be able to copy that file to another computer, open it locally in a supported modern desktop browser and play without running Python, FastAPI, SQLite, npm, a local server or any external account.
 
 The experiment is successful if the one-file version preserves the recognizable product fantasy of the existing project: a small living village, visible world progression, persistent consequences, distinct NPC state and a short causal sequence that the player can influence.
 
@@ -354,6 +354,20 @@ Target `gameId`:
 
 V1 must include migration infrastructure even if the migration map is initially empty.
 
+### Supported browser and storage behavior
+
+The primary v1 acceptance environment is a current desktop Chromium-based browser opened directly through `file://`.
+
+Persistent browser storage is used when that environment permits it. If browser policy denies persistent local storage, the game must:
+
+- continue in an in-memory session rather than crash;
+- show a clear storage warning;
+- keep JSON export/import available as the explicit portability and recovery path.
+
+The technical success claim that progress survives reload applies to the supported Chromium acceptance environment where persistence has been verified on the exact build. Other browsers may be supported later after separate verification.
+
+Copying the HTML file to another computer does not automatically copy progress; portable progress is transferred through the exported save file.
+
 ## 11. Determinism
 
 Use seeded pseudo-random behavior only.
@@ -400,7 +414,7 @@ A fresh slot should support this readable sequence:
 8. wait or continue acting until Talen arrives;
 9. enter the tavern and see the new visitor;
 10. talk/interact and observe the road-news consequence;
-11. reload the HTML and confirm that progress remains;
+11. reload the HTML and confirm that progress remains in the supported persistence environment;
 12. optionally export the save.
 
 The first useful play session target is approximately 10–20 minutes.
@@ -448,7 +462,8 @@ Cover:
 - invalid JSON import;
 - wrong game identifier;
 - future schema rejection;
-- migration hook behavior.
+- migration hook behavior;
+- graceful in-memory fallback when persistent storage is unavailable.
 
 ### Build tests
 
@@ -462,7 +477,7 @@ Cover:
 
 ### Browser acceptance
 
-A local browser test must verify the complete v1 sequence from new game through Oren, firewood, world advancement, Talen and persistence.
+A desktop Chromium browser test opened through `file://` must verify the complete v1 sequence from new game through Oren, firewood, world advancement, Talen and persistence.
 
 The standalone acceptance suite is separate from the seven mandatory gates of the server-backed integration candidate.
 
@@ -481,7 +496,7 @@ If a reusable defect fix is discovered in the current canonical game while porti
 Standalone HTML v1 is technically successful when one exact commit proves all of the following:
 
 - `standalone/dist/sam-sebe-rpg.html` is produced;
-- opening the file locally requires no server;
+- opening the file locally in the supported desktop Chromium environment requires no server;
 - the file uses no runtime network dependency;
 - new game works;
 - player movement and interaction work;
@@ -489,10 +504,10 @@ Standalone HTML v1 is technically successful when one exact commit proves all of
 - Oren firewood loop works;
 - world-step progression works;
 - Talen arrival and causal road-news transfer work;
-- save slots persist progress;
+- save slots persist progress in the verified supported environment;
 - backup recovery works;
 - export/import works;
-- reload preserves the same world state;
+- reload preserves the same world state in the verified supported environment;
 - automated domain/save/build tests pass;
 - browser acceptance passes on the exact same commit.
 
