@@ -16,10 +16,10 @@
     "merged": false
   },
   "phase": "browser_spatial_stabilization",
-  "current_objective": "Isolate and fix the reproducible Stream Slice Talen interaction approach failure after successful tavern entry.",
-  "next_action": "Trace the Talen interaction target, tavern collision geometry and moveTowardInteraction behavior from failing run 34592686361 before proposing a fix.",
+  "current_objective": "Prove and fix collision-free tavern interaction navigation oscillation caused by controller stalls, then validate the full Talen approach.",
+  "next_action": "Add a focused red browser regression that repeatedly stalls the controller while approaching an interaction target in the collision-free tavern. Only after the expected failure, replace unbounded held-key actuation with bounded movement pulses and re-run the full gates.",
   "blockers": [
-    "Stream Slice validation run 34592686361 passes tavern entry but fails while approaching Talen at target (500,385): last position (556,315), distance 90, generic interaction hint, no browser console or page errors."
+    "Stream Slice validation run 34597172854 on work SHA 1b4b42e5373beff9dd52ee96a9524c54ff62cce4 passes Kaspar and tavern entry but fails approaching Talen at the correct tavern anchor (500,385): last position (589,436), distance 103, generic interaction hint. TavernScene has no collision obstacles, Talen is rendered, browser/page errors are absent, and the alternating a/d + w/s key trace is consistent with controller-stall overshoot oscillation."
   ],
   "active_run": {
     "run_id": "2026-09-13-pilot-cycle-2-talen-recovery",
@@ -56,11 +56,11 @@
     "living_world_integration_gate": {"run_id": 34586828703, "status": "failure"}
   },
   "pilot_validation_at_work_head": {
-    "work_head_sha": "980a82f57fbd6d41d3d1e9f928ffdd925ed54c47",
-    "visual_forge_gate": {"run_id": 34592686436, "status": "success"},
-    "release_reproducibility_gate": {"run_id": 34592686330, "status": "success"},
-    "windows_compatibility_gate": {"run_id": 34592686460, "status": "success"},
-    "stream_slice_gate": {"run_id": 34592686361, "status": "failure", "failure_scope": "later Talen approach after successful tavern entry"}
+    "work_head_sha": "1b4b42e5373beff9dd52ee96a9524c54ff62cce4",
+    "visual_forge_gate": {"run_id": 34597172845, "status": "success"},
+    "release_reproducibility_gate": {"run_id": 34597172890, "status": "success"},
+    "windows_compatibility_gate": {"run_id": 34597172932, "status": "success"},
+    "stream_slice_gate": {"run_id": 34597172854, "status": "failure", "failure_scope": "collision-free tavern Talen interaction navigation oscillation after successful earlier route"}
   },
   "release_reproducibility_work": {
     "web_lockfile": "web/package-lock.json committed with lockfileVersion 3",
@@ -71,9 +71,9 @@
     "github_releases": "none"
   },
   "known_limitations": [
-    "The current gameplay work SHA still has a Stream Slice browser failure while approaching Talen.",
+    "The current gameplay work SHA still has a Stream Slice browser failure caused by collision-free interaction navigation oscillation under controller stalls.",
     "The active visual pack is a temporary complete SVG Stream Slice pack rather than final production art.",
     "A real human experience gate remains pending after technical stabilization."
   ],
-  "current_blocker": "Reproducible Talen interaction approach failure inside the tavern."
+  "current_blocker": "Reproducible controller-stall overshoot oscillation in moveTowardInteraction while approaching Talen in the collision-free tavern."
 }
