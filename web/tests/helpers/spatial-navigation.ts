@@ -196,6 +196,59 @@ function movementKeyForBand(
   return null;
 }
 
+async function pulseMovementKeys(
+  page: Page,
+  keys: MovementKey[],
+  frameCount = 2
+): Promise<void> {
+  const uniqueKeys = [...new Set(keys)];
+  if (uniqueKeys.length === 0) {
+    await page.waitForTimeout(25);
+    return;
+  }
+
+  await page.evaluate(async ({ keys, frameCount }) => {
+    const specs: Record<string, { key: string; code: string; keyCode: number }> = {
+      w: { key: "w", code: "KeyW", keyCode: 87 },
+      a: { key: "a", code: "KeyA", keyCode: 65 },
+      s: { key: "s", code: "KeyS", keyCode: 83 },
+      d: { key: "d", code: "KeyD", keyCode: 68 }
+    };
+
+    const dispatch = (type: "keydown" | "keyup", key: string): void => {
+      const spec = specs[key];
+      const event = new KeyboardEvent(type, {
+        key: spec.key,
+        code: spec.code,
+        bubbles: true,
+        cancelable: true,
+        repeat: false
+      });
+      Object.defineProperty(event, "keyCode", { get: () => spec.keyCode });
+      Object.defineProperty(event, "which", { get: () => spec.keyCode });
+      window.dispatchEvent(event);
+    };
+
+    for (const key of keys) dispatch("keydown", key);
+    try {
+      await new Promise<void>((resolve) => {
+        let frames = Math.max(1, frameCount);
+        const step = (): void => {
+          frames -= 1;
+          if (frames <= 0) {
+            resolve();
+            return;
+          }
+          requestAnimationFrame(step);
+        };
+        requestAnimationFrame(step);
+      });
+    } finally {
+      for (const key of keys) dispatch("keyup", key);
+    }
+  }, { keys: uniqueKeys, frameCount });
+}
+
 export async function moveTowardInteraction(
   page: Page,
   targetX: number,
@@ -214,47 +267,23 @@ export async function moveTowardInteraction(
   const xMax = targetX + axisMargin;
   const yMin = targetY - axisMargin;
   const yMax = targetY + axisMargin;
-  let xKey: MovementKey | null = null;
-  let yKey: MovementKey | null = null;
 
   await releaseMovementKeys(page);
   try {
     while (Date.now() - started < timeout) {
       snapshot = await interactionSnapshot(page, targetX, targetY, hintText, stableInteractionRadius);
       if (snapshot.ready) {
-        if (xKey) {
-          await page.keyboard.up(xKey);
-          xKey = null;
-        }
-        if (yKey) {
-          await page.keyboard.up(yKey);
-          yKey = null;
-        }
         await page.waitForTimeout(50);
         snapshot = await interactionSnapshot(page, targetX, targetY, hintText, stableInteractionRadius);
         if (snapshot.ready) return;
         continue;
       }
 
-      const nextXKey = movementKeyForBand(snapshot.position.x, xMin, xMax, "a", "d");
-      const nextYKey = movementKeyForBand(snapshot.position.y, yMin, yMax, "w", "s");
-
-      if (xKey !== nextXKey) {
-        if (xKey) await page.keyboard.up(xKey);
-        if (nextXKey) await page.keyboard.down(nextXKey);
-        xKey = nextXKey;
-      }
-      if (yKey !== nextYKey) {
-        if (yKey) await page.keyboard.up(yKey);
-        if (nextYKey) await page.keyboard.down(nextYKey);
-        yKey = nextYKey;
-      }
-
-      await page.waitForTimeout(25);
+      const xKey = movementKeyForBand(snapshot.position.x, xMin, xMax, "a", "d");
+      const yKey = movementKeyForBand(snapshot.position.y, yMin, yMax, "w", "s");
+      await pulseMovementKeys(page, [xKey, yKey].filter((key): key is MovementKey => key !== null));
     }
   } finally {
-    if (xKey) await page.keyboard.up(xKey);
-    if (yKey) await page.keyboard.up(yKey);
     await releaseMovementKeys(page);
   }
 
