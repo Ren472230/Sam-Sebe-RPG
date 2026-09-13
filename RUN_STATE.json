@@ -22,11 +22,11 @@
     "Stream Slice validation run 34597172854 on work SHA 1b4b42e5373beff9dd52ee96a9524c54ff62cce4 passes Kaspar and tavern entry but fails approaching Talen at the correct tavern anchor (500,385): last position (589,436), distance 103, generic interaction hint. TavernScene has no collision obstacles, Talen is rendered, browser/page errors are absent, and the alternating a/d + w/s key trace is consistent with controller-stall overshoot oscillation."
   ],
   "active_run": {
-    "run_id": "2026-09-13-pilot-cycle-2-talen-recovery",
+    "run_id": "2026-09-13-standalone-html-design-1",
     "status": "running",
-    "started_at_utc": "2026-09-13T07:12:30Z",
-    "lease_expires_at_utc": "2026-09-13T08:42:30Z",
-    "base_sha": "1b4b42e5373beff9dd52ee96a9524c54ff62cce4",
+    "started_at_utc": "2026-09-13T13:28:22Z",
+    "lease_expires_at_utc": "2026-09-13T14:58:22Z",
+    "base_sha": "a4b37e43ac986ec2e92587b7cfbb8ab3d69726e5",
     "working_branch": "agent/autonomy-pilot-v0.1"
   },
   "last_handoff": {
