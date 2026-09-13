@@ -64,6 +64,70 @@ test("target-aware interaction recovers after the controller misses a crossing",
   }
 });
 
+test("controller stall cannot leave runaway movement active in the collision-free tavern", async ({ page }) => {
+  test.setTimeout(45_000);
+  await useIsolatedPlayer(page, "e2e-nav-tavern-stall-player");
+  await page.goto("/");
+  await expect(page.locator("body")).toHaveAttribute("data-scene", "village");
+  await enterTavernSpatially(page);
+  await expect(page.locator("body")).toHaveAttribute("data-scene", "tavern", { timeout: 10_000 });
+
+  await page.evaluate(() => {
+    const debugWindow = window as Window & {
+      __navStallStart?: { x: number; y: number } | null;
+      __navStallProbeInstalled?: boolean;
+    };
+    debugWindow.__navStallStart = null;
+    if (debugWindow.__navStallProbeInstalled) return;
+    debugWindow.__navStallProbeInstalled = true;
+    window.addEventListener("keydown", (event) => {
+      const key = event.key.toLowerCase();
+      if (!new Set(["w", "a", "s", "d"]).has(key) || debugWindow.__navStallStart) return;
+      debugWindow.__navStallStart = {
+        x: Number(document.body.dataset.playerX),
+        y: Number(document.body.dataset.playerY)
+      };
+    }, true);
+  });
+
+  let movementError: unknown = null;
+  const movement = moveTowardInteraction(page, 650, 325, "поговорить с Ореном", 20_000)
+    .catch((error) => {
+      movementError = error;
+    });
+
+  try {
+    await page.waitForFunction(() => {
+      const debugWindow = window as Window & { __navStallStart?: { x: number; y: number } | null };
+      return Boolean(debugWindow.__navStallStart);
+    });
+
+    const blockedUntil = Date.now() + 700;
+    while (Date.now() < blockedUntil) {
+      // The browser keeps rendering while the Playwright controller is deliberately unavailable.
+    }
+
+    const stallTravel = await page.evaluate(() => {
+      const debugWindow = window as Window & { __navStallStart?: { x: number; y: number } | null };
+      const start = debugWindow.__navStallStart;
+      if (!start) return Number.POSITIVE_INFINITY;
+      const current = {
+        x: Number(document.body.dataset.playerX),
+        y: Number(document.body.dataset.playerY)
+      };
+      return Math.hypot(current.x - start.x, current.y - start.y);
+    });
+
+    expect(stallTravel).toBeLessThan(55);
+    await movement;
+    if (movementError) throw movementError;
+    await expect(page.locator("#interaction-hint")).toContainText("поговорить с Ореном");
+  } finally {
+    await releaseMovementKeys(page);
+    await movement.catch(() => undefined);
+  }
+});
+
 test("canonical location change clears the previous NPC interaction immediately", async ({ page }) => {
   test.setTimeout(45_000);
   await useIsolatedPlayer(page, "e2e-nav-stale-player");
