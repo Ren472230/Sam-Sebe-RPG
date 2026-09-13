@@ -1,0 +1,27 @@
+{
+  "artifact": "Sam-Sebe-RPG-Mobile-v2.html",
+  "sha256": "937ce37c4ca657ce94ac74451157d4933147723ef9b133bbb5150c28994fd4b8",
+  "size_bytes": 707948,
+  "status": "verified_local_artifact",
+  "theme": "dark mobile-first",
+  "features": [
+    "portrait-first HUD with safe-area support",
+    "virtual joystick and large context action button",
+    "smooth mobile camera follow",
+    "bottom navigation and animated bottom sheets",
+    "object inspection system with contextual Talen commentary",
+    "more than 30 inspectable foreground/background objects across village and tavern",
+    "ambient scene animation, NPC breathing, fireflies, fire and panel motion",
+    "reduced-motion accessibility path",
+    "existing Oren firewood quest, Talen arrival and causal road-news loop preserved",
+    "offline one-file runtime with no remote script/style/image/fetch dependency"
+  ],
+  "verification": {
+    "tests": "10 passed, 0 failed",
+    "script_syntax": "pass",
+    "original_gameplay_loop": "pass",
+    "remote_runtime_dependencies": "none",
+    "browser_screenshot_runtime": "blocked by container Chromium/DBus environment; not claimed as browser-verified"
+  },
+  "source_note": "The exact downloadable HTML artifact is delivered through ChatGPT sandbox. This manifest records its exact hash; the connector cannot materialize the local HTML bytes directly into the repository in this session."
+}
