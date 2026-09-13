@@ -1,66 +1,72 @@
 {
   "protocol_version": 1,
   "project": "Ren472230/Sam-Sebe-RPG",
-  "run_id": "2026-09-13-pilot-cycle-2-talen-recovery",
+  "run_id": "2026-09-13-standalone-html-design-1",
   "authoritative_branch": "integration/audit-results-v1",
-  "authoritative_head": "5f5695f5918ed5dbc4fefea5e6483795a00260d5",
+  "authoritative_head": "bf45baa98bd4b4463911ac8f1600dc6f1fad2cb0",
   "working_branch": "agent/autonomy-pilot-v0.1",
   "integration_candidate": {
     "pr": 53,
     "branch": "integration/audit-results-v1",
-    "head_sha": "5f5695f5918ed5dbc4fefea5e6483795a00260d5",
+    "head_sha": "bf45baa98bd4b4463911ac8f1600dc6f1fad2cb0",
     "base_branch": "main",
     "base_sha": "813ac7beb233645546fcc1e7bda3827efe63dcdc",
     "state": "open",
     "draft": true,
     "merged": false
   },
-  "phase": "browser_spatial_stabilization",
-  "current_objective": "Prove and fix collision-free tavern interaction navigation oscillation caused by controller stalls, then validate the full Talen approach.",
-  "next_action": "Add a focused red browser regression that repeatedly stalls the controller while approaching an interaction target in the collision-free tavern. Only after the expected failure, replace unbounded held-key actuation with bounded movement pulses and re-run the full gates.",
+  "phase": "standalone_html_v1_design_review",
+  "current_objective": "Define a safe isolated one-file Sam-Sebe-RPG vertical slice that opens locally without a server while preserving deterministic world progression, causal knowledge and portable saves.",
+  "next_action": "After the owner reviews and approves docs/superpowers/specs/2026-09-13-standalone-html-v1-design.md, create the implementation plan on experiment/standalone-html-v1 and begin test-driven implementation there.",
   "blockers": [
-    "Stream Slice validation run 34597172854 on work SHA 1b4b42e5373beff9dd52ee96a9524c54ff62cce4 passes Kaspar and tavern entry but fails approaching Talen at the correct tavern anchor (500,385): last position (589,436), distance 103, generic interaction hint. TavernScene has no collision obstacles, Talen is rendered, browser/page errors are absent, and the alternating a/d + w/s key trace is consistent with controller-stall overshoot oscillation."
+    "Standalone HTML implementation is intentionally paused at the mandatory written-spec review gate.",
+    "The separate server-backed stabilization line is still not release-green: Stream Slice run 34745490944 on gameplay SHA a4b37e43ac986ec2e92587b7cfbb8ab3d69726e5 completed the functional gameplay route but exceeded the 180000 ms Playwright test timeout during the final persistence verification request; browser console and page errors were absent."
   ],
   "active_run": {
-    "run_id": "2026-09-13-standalone-html-design-1",
-    "status": "running",
-    "started_at_utc": "2026-09-13T13:28:22Z",
-    "lease_expires_at_utc": "2026-09-13T14:58:22Z",
-    "base_sha": "a4b37e43ac986ec2e92587b7cfbb8ab3d69726e5",
+    "run_id": null,
+    "status": "idle",
+    "started_at_utc": null,
+    "lease_expires_at_utc": null,
+    "base_sha": null,
     "working_branch": "agent/autonomy-pilot-v0.1"
   },
   "last_handoff": {
-    "completed_at_utc": "2026-09-11T11:48:00Z",
-    "result": "Verified autonomy core ae96395a1be90204283fd6b17407d574a1839442 was installed into the pilot. AUTONOMY_SYSTEM now pins the verified source workflow, and Sam-Sebe-RPG AGENTS/RUNBOOK now enforce a read-only pre-lease phase, post-write lease ownership confirmation, and non-self-referential work_head_sha handoff semantics while preserving project-specific architecture and gate rules.",
-    "head_sha": "a39a0f46c8b07421ad9572208d864e78e8e330f3",
-    "work_head_sha": "a39a0f46c8b07421ad9572208d864e78e8e330f3",
+    "completed_at_utc": "2026-09-13T13:31:48Z",
+    "result": "Recovered the expired prior lease, reconciled the latest browser evidence, created isolated branch experiment/standalone-html-v1, and wrote plus self-reviewed the Standalone HTML v1 architecture. The design keeps source modular, builds one fully offline HTML artifact, ports a bounded deterministic village/tavern slice, reuses the prototype's robust save envelope, preserves causal Talen-to-Oren knowledge transfer, and keeps the existing server-backed line isolated.",
+    "head_sha": "2f7aa5355b1c4c5ce294769446b187e23cadb38c",
+    "work_head_sha": "2f7aa5355b1c4c5ce294769446b187e23cadb38c",
     "verification": [
-      "Universal source ae96395a1be90204283fd6b17407d574a1839442: workflow 34593421620 succeeded.",
-      "Universal source workflow 34593421620: contract tests succeeded and package validator succeeded.",
-      "Pilot AUTONOMY_SYSTEM.json pins source SHA ae96395a1be90204283fd6b17407d574a1839442 and source verification run 34593421620.",
-      "Pilot AGENTS.md and docs/autonomy/RUNBOOK.md contain the hard pre-mutation lease barrier and work_head_sha semantics."
+      "Factual PR #53 head reconciled to bf45baa98bd4b4463911ac8f1600dc6f1fad2cb0.",
+      "Latest server-backed gameplay fix a4b37e43ac986ec2e92587b7cfbb8ab3d69726e5 was inspected with exact workflow evidence: Visual Forge 34745490962 success, Windows 34745490951 success, Release Reproducibility 34745490966 success, Stream Slice 34745490944 failure.",
+      "Stream Slice run 34745490944 passed 22 Python tests, preflight, 45 web contracts and production build, completed all measured gameplay phases, then exceeded the 180000 ms test timeout during final persistence verification.",
+      "Isolated branch experiment/standalone-html-v1 created from autonomy state SHA 88d526d84d500231f4c8219a71214e6da2999329.",
+      "Written design committed and clarified at exact SHA 2f7aa5355b1c4c5ce294769446b187e23cadb38c; self-review found no placeholders, internal contradictions or unresolved implementation-scope ambiguity after the file:// storage boundary was clarified."
     ],
-    "next_action": "Start a new leased cycle from factual pilot branch HEAD and isolate why approachAndTalk cannot reach Talen interaction near target (500,385)."
+    "next_action": "After owner approval of the written Standalone HTML v1 spec, create the detailed implementation plan and start red-to-green implementation on experiment/standalone-html-v1."
   },
   "human_gate": {
-    "required": false,
-    "reason": null
+    "required": true,
+    "reason": "The selected architectural development workflow requires owner review of the committed written design before implementation planning and code changes begin."
   },
   "verified_gates_at_authoritative_head": {
-    "visual_forge_gate": {"run_id": 34586828719, "status": "success"},
-    "release_reproducibility_gate": {"run_id": 34586828692, "status": "success"},
-    "windows_compatibility_gate": {"run_id": 34586828693, "status": "success"},
-    "stream_slice_gate": {"run_id": 34586828765, "status": "failure", "failure_scope": "Chromium tavern-entry navigation"},
-    "playable_candidate_gate": {"run_id": 34586828698, "status": "failure"},
-    "prototype_web_ci": {"run_id": 34586828701, "status": "failure"},
-    "living_world_integration_gate": {"run_id": 34586828703, "status": "failure"}
+    "note": "PR #53 advanced to bf45baa98bd4b4463911ac8f1600dc6f1fad2cb0 after the older recorded gate set; exact seven-gate reconciliation for this newer integration head remains pending."
   },
   "pilot_validation_at_work_head": {
-    "work_head_sha": "1b4b42e5373beff9dd52ee96a9524c54ff62cce4",
-    "visual_forge_gate": {"run_id": 34597172845, "status": "success"},
-    "release_reproducibility_gate": {"run_id": 34597172890, "status": "success"},
-    "windows_compatibility_gate": {"run_id": 34597172932, "status": "success"},
-    "stream_slice_gate": {"run_id": 34597172854, "status": "failure", "failure_scope": "collision-free tavern Talen interaction navigation oscillation after successful earlier route"}
+    "work_head_sha": "a4b37e43ac986ec2e92587b7cfbb8ab3d69726e5",
+    "visual_forge_gate": {"run_id": 34745490962, "status": "success"},
+    "release_reproducibility_gate": {"run_id": 34745490966, "status": "success"},
+    "windows_compatibility_gate": {"run_id": 34745490951, "status": "success"},
+    "stream_slice_gate": {"run_id": 34745490944, "status": "failure", "failure_scope": "global 180000 ms browser test timeout after functional route completion, during final persistence verification request"},
+    "prototype_web_ci": {"run_id": 34745490961, "status": "failure", "failure_scope": "not yet independently reconciled"},
+    "living_world_integration_gate": {"run_id": 34745491008, "status": "failure", "failure_scope": "not yet independently reconciled"},
+    "playable_candidate_gate": {"run_id": 34745490960, "status": "failure", "failure_scope": "not yet independently reconciled"}
+  },
+  "standalone_experiment": {
+    "branch": "experiment/standalone-html-v1",
+    "design_spec": "docs/superpowers/specs/2026-09-13-standalone-html-v1-design.md",
+    "design_head_sha": "2f7aa5355b1c4c5ce294769446b187e23cadb38c",
+    "status": "awaiting_owner_spec_review",
+    "target_artifact": "standalone/dist/sam-sebe-rpg.html"
   },
   "release_reproducibility_work": {
     "web_lockfile": "web/package-lock.json committed with lockfileVersion 3",
@@ -71,9 +77,10 @@
     "github_releases": "none"
   },
   "known_limitations": [
-    "The current gameplay work SHA still has a Stream Slice browser failure caused by collision-free interaction navigation oscillation under controller stalls.",
-    "The active visual pack is a temporary complete SVG Stream Slice pack rather than final production art.",
-    "A real human experience gate remains pending after technical stabilization."
+    "The server-backed integration candidate is not technically release-green on the latest inspected gameplay work SHA.",
+    "The active visual pack remains a temporary complete SVG Stream Slice pack rather than final production art.",
+    "Standalone HTML v1 currently has a reviewed design only; implementation and acceptance evidence have not started.",
+    "A real human experience gate remains pending after technical stabilization of either playable line."
   ],
-  "current_blocker": "Reproducible controller-stall overshoot oscillation in moveTowardInteraction while approaching Talen in the collision-free tavern."
+  "current_blocker": "Mandatory owner review of the committed Standalone HTML v1 design before implementation planning."
 }
