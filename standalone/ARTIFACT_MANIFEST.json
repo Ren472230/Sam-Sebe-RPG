@@ -1,0 +1,34 @@
+{
+  "artifact": "Sam-Sebe-RPG-Standalone-v1.html",
+  "target_repository_path": "standalone/dist/sam-sebe-rpg.html",
+  "version": "1.0.0",
+  "built_at_utc": "2026-09-13T13:49:00Z",
+  "sha256": "0270ef50b4b09ee2572da95691df2dd07de3bf272945cb4187e2f06bde667dfb",
+  "size_bytes": 791780,
+  "theme": "dark graphite with milk, scarlet, turquoise and amber accents",
+  "embedded_visuals": {
+    "generated_concept_art": true,
+    "gameplay_scenes": "inline SVG village and tavern",
+    "external_runtime_assets": false
+  },
+  "gameplay": {
+    "save_slots": 3,
+    "autosave": true,
+    "backup_recovery": true,
+    "export_import": true,
+    "oren_firewood_loop": true,
+    "talen_arrival_tick": 10,
+    "causal_eastern_road_transfer": "Talen -> Oren",
+    "knowledge_isolation": ["Mira", "Kaspar"]
+  },
+  "verification": {
+    "node_tests": "13 passed, 0 failed",
+    "browser_smoke": "PASS",
+    "browser_route": "new slot -> tavern -> Oren quest -> 3 wood -> reward -> world advance -> Talen arrival -> eastern road event",
+    "visual_review": "title and gameplay screenshots inspected in the execution environment",
+    "runtime_external_urls": 0
+  },
+  "environment_boundary": "The managed Chromium policy blocks direct file:// navigation, so browser runtime was exercised by injecting the exact built HTML document into Chromium. Structural build checks verify that the artifact has no remote runtime dependencies. Direct file:// persistence should receive a human check on the target desktop browser.",
+  "delivery": "The exact verified HTML artifact was delivered as a downloadable file in the ChatGPT conversation.",
+  "repository_persistence": "Design, implementation plan and this exact artifact manifest are committed. The implementation source and binary artifact were produced and tested in the execution sandbox but could not be pushed through the current GitHub connector because it does not accept a local file path for content upload and the sandbox has no outbound git network access."
+}
