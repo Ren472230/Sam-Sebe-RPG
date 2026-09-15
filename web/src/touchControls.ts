@@ -14,6 +14,8 @@ const KEYS: Record<TouchControl, KeySpec> = {
   E: { key: "e", code: "KeyE", keyCode: 69 }
 };
 
+const TOUCH_ACTION_PREFIX = "Действие – ";
+const DEFAULT_ACTION_CONTEXT = "взаимодействие";
 const activePointers = new Map<number, TouchControl>();
 
 installTouchControls();
@@ -35,12 +37,14 @@ function installTouchControls(): void {
     controlButton("D", "Вправо", "→", "touch-right")
   );
 
-  const action = controlButton("E", "Взаимодействовать", "Действие", "touch-action");
+  const action = actionButton();
   root.append(dpad, action);
 
   const dialogue = document.getElementById("dialogue");
   if (dialogue) app.insertBefore(root, dialogue);
   else app.append(root);
+
+  bindActionContext(action);
 
   for (const button of root.querySelectorAll<HTMLButtonElement>("button[data-touch-key]")) {
     button.addEventListener("pointerdown", (event) => {
@@ -70,6 +74,52 @@ function controlButton(
   button.setAttribute("aria-label", label);
   button.textContent = text;
   return button;
+}
+
+function actionButton(): HTMLButtonElement {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "touch-action";
+  button.dataset.touchKey = "E";
+  button.dataset.contextual = "false";
+  button.setAttribute("aria-label", "Взаимодействовать");
+
+  const key = document.createElement("span");
+  key.className = "touch-action-key";
+  key.textContent = "Действие";
+
+  const context = document.createElement("span");
+  context.className = "touch-action-context";
+  context.textContent = DEFAULT_ACTION_CONTEXT;
+
+  button.append(key, context);
+  return button;
+}
+
+function bindActionContext(button: HTMLButtonElement): void {
+  const hint = document.getElementById("interaction-hint");
+  const context = button.querySelector<HTMLElement>(".touch-action-context");
+  if (!hint || !context) return;
+
+  const sync = (): void => {
+    const nextContext = actionContextFromHint(hint.textContent ?? "");
+    context.textContent = nextContext;
+    button.dataset.contextual = nextContext === DEFAULT_ACTION_CONTEXT ? "false" : "true";
+  };
+
+  sync();
+  new MutationObserver(sync).observe(hint, {
+    childList: true,
+    characterData: true,
+    subtree: true
+  });
+}
+
+function actionContextFromHint(hintText: string): string {
+  const normalized = hintText.trim();
+  if (!normalized.startsWith(TOUCH_ACTION_PREFIX)) return DEFAULT_ACTION_CONTEXT;
+  const action = normalized.slice(TOUCH_ACTION_PREFIX.length).trim();
+  return action || DEFAULT_ACTION_CONTEXT;
 }
 
 function releasePointer(event: PointerEvent): void {
