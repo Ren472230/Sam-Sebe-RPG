@@ -24,11 +24,11 @@
     "Direct file:// standalone persistence remains outside this cycle and still needs a target-browser check once the standalone source is materialized."
   ],
   "active_run": {
-    "run_id": "2026-09-15-gameplay-navigation-controller-2",
+    "run_id": "2026-09-15-visual-hud-session-2",
     "status": "running",
-    "started_at_utc": "2026-09-15T16:48:00Z",
-    "lease_expires_at_utc": "2026-09-15T18:18:00Z",
-    "base_sha": "61dab372b68b3de8e2c8b70cc8e9d6885e3faaad",
+    "started_at_utc": "2026-09-15T18:19:02Z",
+    "lease_expires_at_utc": "2026-09-15T19:49:02Z",
+    "base_sha": "a6d8465a09f927ee9c628c75c3bc7dcc03984c07",
     "working_branch": "agent/autonomy-pilot-v0.1"
   },
   "last_handoff": {
