@@ -15,13 +15,14 @@
     "draft": true,
     "merged": false
   },
-  "phase": "gameplay_navigation_controller_stabilization",
-  "current_objective": "SESSION_OBJECTIVE: stabilize the real-keyboard browser interaction path across controller stalls and page reload so Stream Slice, Prototype Web CI and the related required browser gates can complete on one exact gameplay work SHA without bypassing physical movement or world state.",
-  "next_action": "Fix the confirmed post-reload readiness race where approachAndTalk starts while canonical scene state is still unset, then validate the focused reload route and navigation regressions before moving the existing validation branch to the exact work SHA.",
+  "phase": "visual_mobile_feedback_verification",
+  "current_objective": "SESSION_OBJECTIVE: finish and harden the 390px touch play surface by validating the previous mobile UI on fresh exact-head CI, adding durable pressed-state visual feedback to touch controls, and preserving reachability/readability without changing gameplay semantics.",
+  "next_action": "Add explicit data-driven pressed-state feedback for held touch controls, extend the deterministic touch visual contract, then verify the resulting exact work SHA through fresh contract/build/mobile browser evidence while treating the current gameplay-navigation gate failures as a separate GAMEPLAY-owned blocker.",
   "blockers": [
-    "Fresh exact-SHA Stream Slice run 34999539597 on a6d8465a09f927ee9c628c75c3bc7dcc03984c07 reaches reload persistence verification, then approachAndTalk starts from tavern coordinates while canonicalLocation is null and movementTrace is null; this is the current confirmed browser-path blocker.",
-    "Fresh Prototype Web CI run 34999147600 on 9201d69870237e0601253dbd726e22c0dd6d291b exposed an invalid stall-distance assertion under real held-key semantics; current source commit a6d8465a09f927ee9c628c75c3bc7dcc03984c07 replaces that assertion with post-controller-recovery key-release proof, so the broader exact-head route still needs revalidation after the reload fix.",
-    "The standalone experiment remains a separate line and is outside this server-backed stabilization session."
+    "Fresh exact-head Prototype Web CI run 35011905698 on aee418cc1d7404fffbd6811c169b53d5c190663a passes all 49 web contracts, the production build and the first five mobile/clarity checks, but remains red because later real-keyboard spatial-navigation tests fail in moveTowardInteraction.",
+    "Fresh exact-head Playable Candidate Gate run 35011905758 is also red on the same gameplay-navigation line; visual release readiness cannot be claimed while required gates remain red, even though the touch-specific contracts/build path is green.",
+    "The previous gameplay lease 2026-09-15-gameplay-browser-stability-2 expired at 2026-09-15T20:18:32Z with branch HEAD aee418cc1d7404fffbd6811c169b53d5c190663a; this visual session recovered only after the lease expired and confirmed the branch state and fresh CI evidence.",
+    "The standalone experiment remains a separate line and is outside this server-backed visual session."
   ],
   "active_run": {
     "run_id": "2026-09-15-visual-mobile-verification-1",
@@ -90,10 +91,10 @@
   },
   "known_limitations": [
     "The server-backed integration candidate remains a separate line and its release-gate state is unchanged by this visual session.",
-    "Exact-head contract execution, production build, 390px browser verification and screenshots for work SHA 6718fcfb5a7fc6b4b69b94b8c88cfb41af20b813 remain pending until an execution runner can use this exact commit.",
+    "Fresh exact-head required gates are currently blocked by gameplay navigation failures even though touch-specific contract/build checks are green on aee418cc1d7404fffbd6811c169b53d5c190663a.",
     "Direct file:// persistence needs one target-browser human check because this managed Chromium blocks file:// by administrator policy.",
     "Standalone implementation source and exact artifact still need repository materialization before visual changes can be applied to that delivered file.",
     "A real human experience check should decide whether standalone becomes the primary client direction."
   ],
-  "current_blocker": "Fresh Stream Slice evidence on a6d8465a09f927ee9c628c75c3bc7dcc03984c07 fails after page reload because approachAndTalk begins while canonicalLocation is null and the tavern scene has not finished rehydrating; the helper times out without any movementTrace."
+  "current_blocker": "Fresh required browser gates on aee418cc1d7404fffbd6811c169b53d5c190663a are red in real-keyboard spatial navigation; the mobile touch contracts, production build and first five 390px/clarity tests are green and may continue as an isolated visual substream without changing gameplay navigation."
 }
