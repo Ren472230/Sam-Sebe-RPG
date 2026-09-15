@@ -16,12 +16,12 @@
     "merged": false
   },
   "phase": "gameplay_navigation_controller_stabilization",
-  "current_objective": "SESSION_OBJECTIVE: make the 390px touch play surface self-explanatory and easier to use by turning the generic touch action control into live contextual feedback and tightening the mobile dialogue/control presentation without changing gameplay semantics. Source implementation is complete at work SHA 6718fcfb5a7fc6b4b69b94b8c88cfb41af20b813; executable exact-SHA validation remains pending.",
-  "next_action": "Run the registered touch visual contract, production web build, and focused 390px first-run browser checks on exact work SHA 6718fcfb5a7fc6b4b69b94b8c88cfb41af20b813 when an execution runner is available; fix only visual overflow, reachability or readability regressions found there.",
+  "current_objective": "SESSION_OBJECTIVE: stabilize the real-keyboard browser interaction path across controller stalls and page reload so Stream Slice, Prototype Web CI and the related required browser gates can complete on one exact gameplay work SHA without bypassing physical movement or world state.",
+  "next_action": "Fix the confirmed post-reload readiness race where approachAndTalk starts while canonical scene state is still unset, then validate the focused reload route and navigation regressions before moving the existing validation branch to the exact work SHA.",
   "blockers": [
-    "Exact-head automated execution is unavailable for visual work SHA 6718fcfb5a7fc6b4b69b94b8c88cfb41af20b813: GitHub reports zero workflow runs for this SHA, and the available local container execution path failed before a runnable checkout could be established. Source-level exact-SHA inspection completed, but contract execution, production build and browser/mobile screenshots are not claimed as passed.",
-    "The standalone experiment source/artifact is still not materialized in GitHub, so the active visual work remains on the server-backed browser client.",
-    "Direct file:// standalone persistence remains outside this cycle and still needs a target-browser check once the standalone source is materialized."
+    "Fresh exact-SHA Stream Slice run 34999539597 on a6d8465a09f927ee9c628c75c3bc7dcc03984c07 reaches reload persistence verification, then approachAndTalk starts from tavern coordinates while canonicalLocation is null and movementTrace is null; this is the current confirmed browser-path blocker.",
+    "Fresh Prototype Web CI run 34999147600 on 9201d69870237e0601253dbd726e22c0dd6d291b exposed an invalid stall-distance assertion under real held-key semantics; current source commit a6d8465a09f927ee9c628c75c3bc7dcc03984c07 replaces that assertion with post-controller-recovery key-release proof, so the broader exact-head route still needs revalidation after the reload fix.",
+    "The standalone experiment remains a separate line and is outside this server-backed stabilization session."
   ],
   "active_run": {
     "run_id": "2026-09-15-gameplay-browser-stability-2",
@@ -95,5 +95,5 @@
     "Standalone implementation source and exact artifact still need repository materialization before visual changes can be applied to that delivered file.",
     "A real human experience check should decide whether standalone becomes the primary client direction."
   ],
-  "current_blocker": "Playable Candidate browser navigation is still red on the latest validation evidence because moveTowardInteraction oscillates around targets and currently drives movement through synthetic DOM keyboard pulses rather than the plan-required real Playwright keyboard input."
+  "current_blocker": "Fresh Stream Slice evidence on a6d8465a09f927ee9c628c75c3bc7dcc03984c07 fails after page reload because approachAndTalk begins while canonicalLocation is null and the tavern scene has not finished rehydrating; the helper times out without any movementTrace."
 }
