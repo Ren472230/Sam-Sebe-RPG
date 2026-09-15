@@ -53,6 +53,7 @@ function bindHud(state: ClientState, streamMode: boolean): void {
   state.subscribe((snapshot) => {
     document.body.dataset.scene = snapshot.world.location_id === "tavern_interior" ? "tavern" : "village";
     if (streamMode) {
+      hud.removeAttribute("data-hud-layout");
       hud.textContent = `${hudLocationName(snapshot.world.location_id, snapshot.world.location_name)}  ·  шаг ${snapshot.world_pulse.tick}`;
       return;
     }
@@ -62,8 +63,33 @@ function bindHud(state: ClientState, streamMode: boolean): void {
       : snapshot.quest.status === "active"
         ? `Цель: собери дрова ${snapshot.quest.owned_firewood}/${snapshot.quest.required_firewood} и вернись к Орену`
         : "Цель: дрова доставлены ✓ · исследуй деревню или подожди, чтобы увидеть, что изменится";
-    const trust = snapshot.oren_trust > 0 ? `  ·  доверие Орена ${snapshot.oren_trust}` : "";
-    hud.textContent = `${hudLocationName(snapshot.world.location_id, snapshot.world.location_name)}  ·  ${objective}  ·  монеты ${snapshot.coins}${trust}`;
+
+    const location = document.createElement("span");
+    location.className = "hud-location";
+    location.textContent = hudLocationName(snapshot.world.location_id, snapshot.world.location_name);
+
+    const objectiveText = document.createElement("span");
+    objectiveText.className = "hud-objective";
+    objectiveText.textContent = objective;
+
+    const resources = document.createElement("span");
+    resources.className = "hud-resources";
+    resources.setAttribute("aria-label", "Ресурсы игрока");
+
+    const coins = document.createElement("span");
+    coins.className = "hud-resource hud-resource-coins";
+    coins.textContent = `монеты ${snapshot.coins}`;
+    resources.append(coins);
+
+    if (snapshot.oren_trust > 0) {
+      const trust = document.createElement("span");
+      trust.className = "hud-resource hud-resource-trust";
+      trust.textContent = `доверие Орена ${snapshot.oren_trust}`;
+      resources.append(trust);
+    }
+
+    hud.dataset.hudLayout = "structured";
+    hud.replaceChildren(location, objectiveText, resources);
   });
 }
 
