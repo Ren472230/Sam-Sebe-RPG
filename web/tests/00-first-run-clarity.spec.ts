@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
 import { installBrowserDiagnostics } from "./helpers/browser-diagnostics";
+import { moveTowardInteraction } from "./helpers/spatial-navigation";
 
 type PlayerPosition = { x: number; y: number };
 type LocalState = {
@@ -317,8 +318,7 @@ test("desktop player talks to Mira only after approaching her and can type Russi
     await expect(page.locator("body")).toHaveAttribute("data-rendered-npc-ids", /npc_mira/);
     await expect(page.getByRole("button", { name: "Поговорить: Мира", exact: true })).toHaveCount(0);
 
-    await moveAxisTo(page, "y", 365, 8);
-    await moveAxisTo(page, "x", 250, 8);
+    await moveTowardInteraction(page, 250, 365, "поговорить с Мирой", 12_000);
 
     const hint = page.locator("#interaction-hint");
     await expect(hint).toContainText("поговорить с Мирой", { timeout: 2_000 });
