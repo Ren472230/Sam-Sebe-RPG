@@ -24,11 +24,11 @@
     "Direct file:// standalone persistence remains outside this cycle and still needs a target-browser check once the standalone source is materialized."
   ],
   "active_run": {
-    "run_id": null,
-    "status": "idle",
-    "started_at_utc": null,
-    "lease_expires_at_utc": null,
-    "base_sha": null,
+    "run_id": "2026-09-15-gameplay-browser-stability-2",
+    "status": "running",
+    "started_at_utc": "2026-09-15T18:48:32Z",
+    "lease_expires_at_utc": "2026-09-15T20:18:32Z",
+    "base_sha": "8f48d6729880ca5300d80cbc9cc4e2e164388bb1",
     "working_branch": "agent/autonomy-pilot-v0.1"
   },
   "last_handoff": {
