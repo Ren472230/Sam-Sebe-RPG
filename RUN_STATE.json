@@ -15,20 +15,20 @@
     "draft": true,
     "merged": false
   },
-  "phase": "visual_hud_hierarchy_v1_complete",
-  "current_objective": "Normal-mode HUD hierarchy is implemented: location, objective and resources are visually separated while gameplay semantics and stream-mode presentation remain unchanged.",
-  "next_action": "Verify the structured HUD on the exact work SHA with the focused 390px first-run browser route and production build as soon as an execution runner is available; fix only HUD-specific overflow or readability regressions before starting another visual surface.",
+  "phase": "gameplay_navigation_controller_stabilization",
+  "current_objective": "Stabilize the real-keyboard browser navigation controller so required gameplay routes can reliably reach Mira and the tavern without synthetic DOM keyboard pulses or gameplay shortcuts.",
+  "next_action": "Replace synthetic pulseMovementKeys steering in moveTowardInteraction with Playwright keyboard-driven closed-loop steering, preserve hint-driven success semantics, then validate the exact work SHA through the existing PR #56 validation path.",
   "blockers": [
-    "Exact-head automated execution was unavailable in this cycle: commits created through the connected GitHub path produced no new workflow run or combined status for work SHA a3e731cdc9a8c35b6996a986313d1d5f48f76755, and the local execution runtime was unavailable. Source-level verification and exact diff inspection completed successfully, but production build and browser checks remain pending on this SHA.",
-    "The standalone experiment source/artifact is still not materialized in GitHub, so this visual cycle improved the active server-backed browser client rather than the delivered standalone file.",
+    "Exact-head automated execution was unavailable in the previous visual cycle: commits created through the connected GitHub path produced no new workflow run or combined status for work SHA a3e731cdc9a8c35b6996a986313d1d5f48f76755, and the local execution runtime was unavailable. Source-level verification and exact diff inspection completed successfully, but production build and browser checks remain pending on this SHA.",
+    "The standalone experiment source/artifact is still not materialized in GitHub, so the active stabilization work continues on the server-backed browser client.",
     "Direct file:// standalone persistence remains outside this cycle and still needs a target-browser check once the standalone source is materialized."
   ],
   "active_run": {
-    "run_id": null,
-    "status": "idle",
-    "started_at_utc": null,
-    "lease_expires_at_utc": null,
-    "base_sha": null,
+    "run_id": "2026-09-15-gameplay-navigation-controller-1",
+    "status": "running",
+    "started_at_utc": "2026-09-15T14:52:00Z",
+    "lease_expires_at_utc": "2026-09-15T16:22:00Z",
+    "base_sha": "c25eb4f9ff76afd04363fd07c5f8a075ff93d3cd",
     "working_branch": "agent/autonomy-pilot-v0.1"
   },
   "last_handoff": {
@@ -62,7 +62,7 @@
     "stream_slice_gate": {"run_id": 34745490944, "status": "failure", "failure_scope": "global 180000 ms browser test timeout after functional route completion, during final persistence verification request"},
     "prototype_web_ci": {"run_id": 34745490961, "status": "failure", "failure_scope": "not yet independently reconciled"},
     "living_world_integration_gate": {"run_id": 34745491008, "status": "failure", "failure_scope": "not yet independently reconciled"},
-    "playable_candidate_gate": {"run_id": 34745490960, "status": "failure", "failure_scope": "not yet independently reconciled"}
+    "playable_candidate_gate": {"run_id": 34745490960, "status": "failure", "failure_scope": "navigation-stability and canonical vertical-slice routes still fail in moveTowardInteraction on exact validation SHA a4b37e43ac986ec2e92587b7cfbb8ab3d69726e5; browser logs show repeated controller oscillation and synthetic pulse steering"}
   },
   "standalone_experiment": {
     "branch": "experiment/standalone-html-v1",
@@ -82,16 +82,16 @@
     "web_lockfile": "web/package-lock.json",
     "python_constraints": "constraints/python-3.12.txt",
     "ci_install_policy": "current release/browser workflows use npm ci and constrained pip installs",
-    "windows_launcher": "uses constrained pip and npm ci when the lockfile exists; npm install fallback only if missing",
+    "windows_launcher": "uses constrained pip and npm ci when lockfile exists; npm install fallback only if missing",
     "repository_hygiene": "root .gitignore covers generated caches, environments, browser reports, local SQLite state, environment files, secrets and editor/OS debris",
     "github_releases": "none"
   },
   "known_limitations": [
-    "The server-backed integration candidate remains a separate line and its release-gate state is unchanged by this visual cycle.",
-    "Exact-head production build and browser verification for HUD hierarchy v1 are pending because no execution runner was available during this cycle.",
+    "The server-backed integration candidate remains a separate line and its release-gate state is unchanged by the previous visual cycle.",
+    "Exact-head production build and browser verification for HUD hierarchy v1 remain pending until the next validation run that includes the current branch changes.",
     "Direct file:// persistence needs one target-browser human check because this managed Chromium blocks file:// by administrator policy.",
     "Standalone implementation source and exact artifact still need repository materialization before visual changes can be applied to that delivered file.",
     "A real human experience check should decide whether standalone becomes the primary client direction."
   ],
-  "current_blocker": null
+  "current_blocker": "Playable Candidate browser navigation is still red on the latest validation evidence because moveTowardInteraction oscillates around targets and currently drives movement through synthetic DOM keyboard pulses rather than the plan-required real Playwright keyboard input."
 }
