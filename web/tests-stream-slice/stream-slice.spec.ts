@@ -73,9 +73,24 @@ async function waitOneTick(page: Page, playerId: string): Promise<void> {
   ).toBe(before + 1);
 }
 
+async function waitForTavernSpatialReadiness(page: Page): Promise<void> {
+  const body = page.locator("body");
+  await expect(body).toHaveAttribute("data-scene", "tavern", { timeout: 10_000 });
+  // data-scene is published from canonical state before Phaser has necessarily created
+  // TavernScene. The rendered NPC marker is emitted from TavernScene.create only after
+  // the player, keyboard controller and state subscription exist, so it is the stable
+  // boundary for starting real-keyboard spatial navigation after a page reload.
+  await expect(body).toHaveAttribute("data-rendered-tavern-npc-ids", /npc_oren/, { timeout: 10_000 });
+  await expect.poll(async () => page.evaluate(() => {
+    const x = Number(document.body.dataset.playerX);
+    const y = Number(document.body.dataset.playerY);
+    return Number.isFinite(x) && Number.isFinite(y);
+  }), { timeout: 10_000 }).toBe(true);
+}
+
 async function enterStreamTavern(page: Page): Promise<void> {
   await enterTavernSpatially(page);
-  await expect(page.locator("body")).toHaveAttribute("data-rendered-tavern-npc-ids", /npc_oren/, { timeout: 10_000 });
+  await waitForTavernSpatialReadiness(page);
 }
 
 
@@ -162,7 +177,7 @@ test("Stream Slice shows one causal evening, hospitality loop and persistence wi
       await page.reload();
       await expect(page.locator("body")).toHaveClass(/stream-mode/);
       expect(await currentPlayerId(page)).toBe(playerId);
-      await expect(page.locator("body")).toHaveAttribute("data-scene", "tavern");
+      await waitForTavernSpatialReadiness(page);
       await approachAndTalk(page, 650, 325, "поговорить с Ореном", "Орен");
       await sendDialogue(page, "Что рассказал Тален?", /Тален.*караван/i);
       await page.screenshot({ path: "test-results-stream-slice/stream-05-reloaded.png", fullPage: true });
