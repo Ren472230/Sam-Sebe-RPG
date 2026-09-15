@@ -20,6 +20,8 @@ type AxisDriveResult = {
   moved: boolean;
 };
 
+const MOVEMENT_KEYS = ["w", "a", "s", "d"] as const;
+
 export async function playerPosition(page: Page): Promise<PlayerPosition> {
   return page.evaluate(() => ({
     x: Number(document.body.dataset.playerX),
@@ -28,8 +30,12 @@ export async function playerPosition(page: Page): Promise<PlayerPosition> {
 }
 
 export async function releaseMovementKeys(page: Page): Promise<void> {
-  for (const key of ["w", "a", "s", "d"] as const) await page.keyboard.up(key);
-  await page.waitForTimeout(50);
+  // Cleanup must stay outside a controller movement budget: after a page reload,
+  // sequential protocol round-trips can be slow enough to consume the entire budget
+  // before the first real keydown. These independent key-up events can be released
+  // together without changing gameplay semantics.
+  await Promise.all(MOVEMENT_KEYS.map((key) => page.keyboard.up(key)));
+  await page.waitForTimeout(25);
 }
 
 async function installNavigationDiagnostics(page: Page): Promise<void> {
@@ -84,10 +90,10 @@ export async function moveAxisTo(
   tolerance = 8,
   timeout = 10_000
 ): Promise<void> {
-  const started = Date.now();
   let heldKey: MovementKey | null = null;
   let reached: PlayerPosition | null = null;
   await releaseMovementKeys(page);
+  const started = Date.now();
   try {
     while (Date.now() - started < timeout) {
       const position = await playerPosition(page);
@@ -134,11 +140,11 @@ async function moveAxisOneWayTo(
   const key: MovementKey = axis === "x"
     ? (value < target ? "d" : "a")
     : (value < target ? "s" : "w");
-  const started = Date.now();
   const targetBand = 12;
   let reached: PlayerPosition | null = null;
 
   await releaseMovementKeys(page);
+  const started = Date.now();
   await page.keyboard.down(key);
   try {
     while (Date.now() - started < timeout) {
@@ -266,11 +272,11 @@ export async function moveTowardInteraction(
   timeout = 12_000
 ): Promise<void> {
   await installNavigationDiagnostics(page);
-  const deadline = Date.now() + timeout;
   let lastAxis: "x" | "y" | null = null;
   let stalledRounds = 0;
 
   await releaseMovementKeys(page);
+  const deadline = Date.now() + timeout;
   try {
     while (Date.now() < deadline) {
       let snapshot = await interactionSnapshot(page, hintText);
