@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 const touchSource = readFileSync(new URL("../src/touchControls.ts", import.meta.url), "utf8");
+const touchFeedbackStyles = readFileSync(new URL("../src/touchFeedback.css", import.meta.url), "utf8");
 const styles = readFileSync(new URL("../src/styles.css", import.meta.url), "utf8");
 
 test("touch action control mirrors the existing interaction hint without changing E semantics", () => {
@@ -13,6 +14,16 @@ test("touch action control mirrors the existing interaction hint without changin
   assert.match(touchSource, /const TOUCH_ACTION_PREFIX = "Действие – "/);
   assert.match(touchSource, /new MutationObserver\(sync\)\.observe\(hint/);
   assert.match(touchSource, /button\.dataset\.contextual = nextContext === DEFAULT_ACTION_CONTEXT \? "false" : "true"/);
+});
+
+test("held touch controls expose durable pressed feedback without changing keyboard dispatch", () => {
+  assert.match(touchSource, /import "\.\/touchFeedback\.css"/);
+  assert.match(touchSource, /button\.dataset\.pressed = "false"/);
+  assert.match(touchSource, /activePointers\.set\(event\.pointerId, control\);\s*syncPressedState\(control\);\s*dispatchKeyboard\("keydown", control\)/);
+  assert.match(touchSource, /activePointers\.delete\(event\.pointerId\);\s*syncPressedState\(control\);\s*dispatchKeyboard\("keyup", control\)/);
+  assert.match(touchSource, /button\.dataset\.pressed = Array\.from\(activePointers\.values\(\)\)\.includes\(control\) \? "true" : "false"/);
+  assert.match(touchFeedbackStyles, /button\[data-pressed="true"\][\s\S]*background:\s*#65d5d9;[\s\S]*box-shadow:[\s\S]*transform:\s*translateY\(1px\);/);
+  assert.match(touchFeedbackStyles, /button:focus-visible[\s\S]*outline:\s*3px solid #65d5d9;/);
 });
 
 test("390px touch and dialogue surfaces preserve large targets and bounded modal layout", () => {

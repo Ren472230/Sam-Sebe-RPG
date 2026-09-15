@@ -1,3 +1,5 @@
+import "./touchFeedback.css";
+
 type TouchControl = "W" | "A" | "S" | "D" | "E";
 
 type KeySpec = {
@@ -52,6 +54,7 @@ function installTouchControls(): void {
       const control = button.dataset.touchKey as TouchControl | undefined;
       if (!control || activePointers.has(event.pointerId)) return;
       activePointers.set(event.pointerId, control);
+      syncPressedState(control);
       dispatchKeyboard("keydown", control);
     });
   }
@@ -71,6 +74,7 @@ function controlButton(
   button.type = "button";
   button.className = className;
   button.dataset.touchKey = control;
+  button.dataset.pressed = "false";
   button.setAttribute("aria-label", label);
   button.textContent = text;
   return button;
@@ -82,6 +86,7 @@ function actionButton(): HTMLButtonElement {
   button.className = "touch-action";
   button.dataset.touchKey = "E";
   button.dataset.contextual = "false";
+  button.dataset.pressed = "false";
   button.setAttribute("aria-label", "Взаимодействовать");
 
   const key = document.createElement("span");
@@ -126,12 +131,21 @@ function releasePointer(event: PointerEvent): void {
   const control = activePointers.get(event.pointerId);
   if (!control) return;
   activePointers.delete(event.pointerId);
+  syncPressedState(control);
   dispatchKeyboard("keyup", control);
 }
 
 function releaseAll(): void {
+  const controls = new Set(activePointers.values());
   for (const control of activePointers.values()) dispatchKeyboard("keyup", control);
   activePointers.clear();
+  for (const control of controls) syncPressedState(control);
+}
+
+function syncPressedState(control: TouchControl): void {
+  const button = document.querySelector<HTMLButtonElement>(`#touch-controls button[data-touch-key="${control}"]`);
+  if (!button) return;
+  button.dataset.pressed = Array.from(activePointers.values()).includes(control) ? "true" : "false";
 }
 
 function dispatchKeyboard(type: "keydown" | "keyup", control: TouchControl): void {
