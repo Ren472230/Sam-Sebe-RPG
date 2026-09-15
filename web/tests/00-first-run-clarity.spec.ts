@@ -205,6 +205,9 @@ test("390px viewport keeps touch controls reachable without a keyboard", async (
     const interact = page.getByRole("button", { name: "Взаимодействовать", exact: true });
     await expect(right).toBeVisible();
     await expect(interact).toBeVisible();
+    await expect(interact.locator(".touch-action-key")).toHaveText("Действие");
+    await expect(interact.locator(".touch-action-context")).toHaveText("взаимодействие");
+    await expect(interact).toHaveAttribute("data-contextual", "false");
 
     const hint = page.locator("#interaction-hint");
     await expect(hint).toContainText("Экранные кнопки – движение · Действие – взаимодействие");
@@ -240,10 +243,13 @@ test("390px village uses the touch action label near firewood", async ({ page },
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/");
     const hint = page.locator("#interaction-hint");
+    const interact = page.getByRole("button", { name: "Взаимодействовать", exact: true });
 
     await moveByStepsUntilHint(page, "a", "подобрать дрова");
     await expect(hint).toContainText("Действие – подобрать дрова");
     await expect(hint).not.toContainText(/E —/);
+    await expect(interact.locator(".touch-action-context")).toHaveText("подобрать дрова");
+    await expect(interact).toHaveAttribute("data-contextual", "true");
     diagnostics.assertClean();
   } finally {
     await diagnostics.attach(testInfo);
@@ -259,10 +265,13 @@ test("390px tavern uses the touch action label near Oren", async ({ page }, test
     await page.goto("/");
     await expect(page.locator("body")).toHaveAttribute("data-scene", "tavern");
     const hint = page.locator("#interaction-hint");
+    const interact = page.getByRole("button", { name: "Взаимодействовать", exact: true });
 
     await moveUntilHint(page, ["w", "d"], "поговорить с Ореном");
     await expect(hint).toContainText("Действие – поговорить с Ореном");
     await expect(hint).not.toContainText(/E —/);
+    await expect(interact.locator(".touch-action-context")).toHaveText("поговорить с Ореном");
+    await expect(interact).toHaveAttribute("data-contextual", "true");
     diagnostics.assertClean();
   } finally {
     await diagnostics.attach(testInfo);
