@@ -3,7 +3,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { expect, test, type Page } from "@playwright/test";
 
 import { installBrowserDiagnostics } from "./helpers/browser-diagnostics";
-import { enterTavernSpatially } from "./helpers/spatial-navigation";
+import { enterTavernSpatially, moveTowardInteraction } from "./helpers/spatial-navigation";
 
 type PlayerPosition = { x: number; y: number };
 type ActionPayload = {
@@ -109,12 +109,20 @@ async function leaveTavern(page: Page): Promise<void> {
 
 async function collectOneFirewood(page: Page, expectedCount: number): Promise<void> {
   const hint = page.locator("#interaction-hint");
-  const targetXs = [112, 151, 188, 224, 112];
-  const targetX = targetXs[expectedCount - 1];
-  if (targetX === undefined) throw new Error(`unsupported firewood count: ${expectedCount}`);
+  const targets = [
+    { x: 112, y: 430 },
+    { x: 151, y: 446 },
+    { x: 188, y: 428 },
+    { x: 224, y: 449 },
+    // Re-entering VillageScene after the early hand-in remaps the final visible
+    // firewood entity to the first deterministic display slot.
+    { x: 112, y: 430 }
+  ];
+  const target = targets[expectedCount - 1];
+  if (!target) throw new Error(`unsupported firewood count: ${expectedCount}`);
 
-  await moveAxisTo(page, "x", targetX, 20);
-  await expect(hint).toContainText("подобрать дрова", { timeout: 10_000 });
+  await moveTowardInteraction(page, target.x, target.y, "подобрать дрова", 12_000);
+  await expect(hint).toContainText("подобрать дрова", { timeout: 3_000 });
   await page.keyboard.press("e");
   await releaseMovementKeys(page);
   await expect(page.locator("#hud")).toContainText(`дрова ${expectedCount}/5`);
