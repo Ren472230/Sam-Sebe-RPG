@@ -214,20 +214,31 @@ function crossedInteractionAxis(axis: InteractionAxis, position: PlayerPosition)
     : current <= axis.target;
 }
 
-async function releaseInteractionAxis(
+async function releaseInteractionAxes(
   page: Page,
-  axis: InteractionAxis,
-  position: PlayerPosition
+  axes: InteractionAxis[],
+  reached: PlayerPosition
 ): Promise<void> {
-  if (!axis.active) return;
-  await page.keyboard.up(axis.key);
-  axis.active = false;
-  await recordAxisTrace(page, {
-    axis: axis.axis,
-    target: axis.target,
-    reached: position,
-    released: await playerPosition(page)
-  });
+  const releasing = axes.filter((axis) => axis.active);
+  if (releasing.length === 0) return;
+
+  // Release every selected real keyboard axis first. Diagnostics come afterwards so
+  // the other held axis cannot keep moving while we await trace bookkeeping.
+  for (const axis of releasing) {
+    await page.keyboard.up(axis.key);
+    axis.active = false;
+  }
+
+  await page.waitForTimeout(25);
+  const released = await playerPosition(page);
+  for (const axis of releasing) {
+    await recordAxisTrace(page, {
+      axis: axis.axis,
+      target: axis.target,
+      reached,
+      released
+    });
+  }
 }
 
 export async function moveTowardInteraction(
@@ -255,20 +266,17 @@ export async function moveTowardInteraction(
       snapshot = await interactionSnapshot(page, targetX, targetY, hintText, stableInteractionRadius);
 
       if (snapshot.ready) {
-        for (const axis of axes) await releaseInteractionAxis(page, axis, snapshot.position);
-        await page.waitForTimeout(50);
+        await releaseInteractionAxes(page, axes, snapshot.position);
+        await page.waitForTimeout(25);
         snapshot = await interactionSnapshot(page, targetX, targetY, hintText, stableInteractionRadius);
         if (snapshot.ready) return;
       }
 
-      for (const axis of axes) {
-        if (axis.active && crossedInteractionAxis(axis, snapshot.position)) {
-          await releaseInteractionAxis(page, axis, snapshot.position);
-        }
-      }
+      const crossed = axes.filter((axis) => axis.active && crossedInteractionAxis(axis, snapshot.position));
+      if (crossed.length > 0) await releaseInteractionAxes(page, crossed, snapshot.position);
 
       if (axes.every((axis) => !axis.active)) {
-        await page.waitForTimeout(50);
+        await page.waitForTimeout(25);
         snapshot = await interactionSnapshot(page, targetX, targetY, hintText, stableInteractionRadius);
         if (snapshot.ready) return;
         break;
