@@ -24,11 +24,11 @@
     "The standalone experiment remains a separate line and is outside this server-backed gameplay session."
   ],
   "active_run": {
-    "run_id": null,
-    "status": "idle",
-    "started_at_utc": null,
-    "lease_expires_at_utc": null,
-    "base_sha": null,
+    "run_id": "2026-09-15-gameplay-navigation-stability-2",
+    "status": "running",
+    "started_at_utc": "2026-09-15T21:50:32Z",
+    "lease_expires_at_utc": "2026-09-15T23:20:32Z",
+    "base_sha": "e26e390c175768f05d4c53420ccc45ca31ad3aa8",
     "working_branch": "agent/autonomy-pilot-v0.1"
   },
   "last_handoff": {
