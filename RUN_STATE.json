@@ -16,8 +16,8 @@
     "merged": false
   },
   "phase": "gameplay_navigation_controller_stabilization",
-  "current_objective": "Stabilize the real-keyboard browser navigation controller so required gameplay routes can reliably reach Mira and the tavern without synthetic DOM keyboard pulses or gameplay shortcuts.",
-  "next_action": "Replace synthetic pulseMovementKeys steering in moveTowardInteraction with Playwright keyboard-driven closed-loop steering, preserve hint-driven success semantics, then validate the exact work SHA through the existing PR #56 validation path.",
+  "current_objective": "SESSION_OBJECTIVE: make the 390px touch play surface self-explanatory and easier to use by turning the generic touch action control into live contextual feedback and tightening the mobile dialogue/control presentation without changing gameplay semantics.",
+  "next_action": "Checkpoint 1: bind the touch action button's visible context to the existing interaction hint, preserve the same E-key semantics and accessible name, then add deterministic UI coverage before continuing to mobile dialogue polish.",
   "blockers": [
     "Exact-head automated execution was unavailable in the previous visual cycle: commits created through the connected GitHub path produced no new workflow run or combined status for work SHA a3e731cdc9a8c35b6996a986313d1d5f48f76755, and the local execution runtime was unavailable. Source-level verification and exact diff inspection completed successfully, but production build and browser checks remain pending on this SHA.",
     "The standalone experiment source/artifact is still not materialized in GitHub, so the active stabilization work continues on the server-backed browser client.",
