@@ -25,11 +25,11 @@
     "The current visual contracts, build and mobile browser checks are green on the same work SHA, so additional visual commits would create a new SHA without addressing the release-blocking gameplay cause."
   ],
   "active_run": {
-    "run_id": null,
-    "status": "idle",
-    "started_at_utc": null,
-    "lease_expires_at_utc": null,
-    "base_sha": null,
+    "run_id": "2026-09-16-gameplay-navigation-session-2",
+    "status": "running",
+    "started_at_utc": "2026-09-15T22:50:13Z",
+    "lease_expires_at_utc": "2026-09-16T00:20:13Z",
+    "base_sha": "61e2737752f712a74d8ba8276777f3278c859c94",
     "working_branch": "agent/autonomy-pilot-v0.1"
   },
   "last_handoff": {
