@@ -366,6 +366,9 @@ async function moveWithConcurrentKeysUntilHint(
 
 export async function enterTavernSpatially(page: Page): Promise<void> {
   const hint = page.locator("#interaction-hint");
+  // The tavern collision body occupies the upper lane. Align with the doorway while
+  // still in the open plaza, then approach north through the real interaction band.
+  await moveAxisOneWayTo(page, "x", 825, 20_000);
   await moveTowardInteraction(page, 825, 330, "войти в таверну", 20_000);
   await expect(hint).toContainText("войти в таверну", { timeout: 3_000 });
   await page.keyboard.press("e");
