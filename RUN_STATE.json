@@ -23,12 +23,12 @@
     "The current GitHub connector accepts text content but not a local sandbox file path, while the sandbox itself has no outbound GitHub network access. Therefore the tested implementation source and binary-derived HTML artifact are delivered to the user and recorded by hash, but are not yet fully materialized in the experiment branch."
   ],
   "active_run": {
-    "run_id": null,
-    "status": "idle",
-    "started_at_utc": null,
-    "lease_expires_at_utc": null,
-    "base_sha": null,
-    "working_branch": "experiment/standalone-html-v1"
+    "run_id": "visual-2026-09-15T141937Z-1",
+    "status": "running",
+    "started_at_utc": "2026-09-15T14:19:37Z",
+    "lease_expires_at_utc": "2026-09-15T15:49:37Z",
+    "base_sha": "a045939151024e43b14b46039c07bcce97773a3c",
+    "working_branch": "agent/autonomy-pilot-v0.1"
   },
   "last_handoff": {
     "completed_at_utc": "2026-09-13T13:52:00Z",
@@ -44,7 +44,7 @@
       "Visual QA screenshots of the title and completed gameplay route were inspected.",
       "Experiment branch records the approved spec, implementation plan, and exact artifact manifest at cd5b55accea05283338ce043fb68bd122ebb9038."
     ],
-    "next_action": "Persist the tested standalone implementation source and exact HTML artifact into experiment/standalone-html-v1 from an environment that supports local-file repository upload, then rerun the same standalone verification from that checkout."
+    "next_action": "Persist the tested standalone implementation source and exact HTML artifact into experiment/standalone-html-v1 from an environment that supports local-file upload/push support, then rerun the same standalone verification from that checkout."
   },
   "human_gate": {
     "required": false,
