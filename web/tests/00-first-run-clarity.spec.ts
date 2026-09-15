@@ -3,6 +3,10 @@ import { expect, test, type Page } from "@playwright/test";
 import { installBrowserDiagnostics } from "./helpers/browser-diagnostics";
 
 type PlayerPosition = { x: number; y: number };
+type LocalState = {
+  location: { id: string };
+  living_npc: { nearby_npc_ids: string[] };
+};
 
 async function playerPosition(page: Page): Promise<PlayerPosition> {
   return page.evaluate(() => ({
@@ -96,37 +100,62 @@ async function putLocalPlayerInTavern(page: Page): Promise<void> {
   }
 }
 
-async function putLocalPlayerInWorkshop(page: Page): Promise<void> {
+async function loadLocalState(page: Page, playerId: string): Promise<LocalState> {
+  const response = await page.request.get(`/api/state/${encodeURIComponent(playerId)}`);
+  expect(response.ok()).toBeTruthy();
+  return await response.json() as LocalState;
+}
+
+async function moveCanonicalForMira(
+  page: Page,
+  playerId: string,
+  destinationId: string,
+  step: number
+): Promise<void> {
+  const action = await page.request.post("/api/action", {
+    data: {
+      player_id: playerId,
+      action_type: "MOVE",
+      destination_id: destinationId,
+      external_id: `spatial-mira-locate-${step}-${destinationId}`
+    }
+  });
+  expect(action.ok()).toBeTruthy();
+  expect((await action.json() as { success: boolean }).success).toBeTruthy();
+}
+
+async function putLocalPlayerWithMira(page: Page): Promise<void> {
   const session = await page.request.post("/api/session", {
     data: { external_id: "local-player", name: "Ren" }
   });
   expect(session.ok()).toBeTruthy();
   const playerId = (await session.json() as { player_id: string }).player_id;
-  const stateResponse = await page.request.get(`/api/state/${encodeURIComponent(playerId)}`);
-  expect(stateResponse.ok()).toBeTruthy();
-  const state = await stateResponse.json() as { location: { id: string } };
+  let state = await loadLocalState(page, playerId);
 
-  const pathByLocation: Record<string, string[]> = {
+  const pathToWorkshop: Record<string, string[]> = {
     workshop_yard: [],
     village_square: ["workshop_yard"],
     river_edge: ["village_square", "workshop_yard"],
     tavern_interior: ["village_square", "workshop_yard"]
   };
-  const path = pathByLocation[state.location.id];
+  const path = pathToWorkshop[state.location.id];
   if (!path) throw new Error(`unsupported first-run location: ${state.location.id}`);
 
-  for (const [index, destinationId] of path.entries()) {
-    const action = await page.request.post("/api/action", {
-      data: {
-        player_id: playerId,
-        action_type: "MOVE",
-        destination_id: destinationId,
-        external_id: `spatial-mira-reset-${index}-${destinationId}`
-      }
-    });
-    expect(action.ok()).toBeTruthy();
-    expect((await action.json() as { success: boolean }).success).toBeTruthy();
+  let step = 0;
+  for (const destinationId of path) {
+    await moveCanonicalForMira(page, playerId, destinationId, step);
+    step += 1;
   }
+
+  state = await loadLocalState(page, playerId);
+  if (state.living_npc.nearby_npc_ids.includes("npc_mira")) return;
+
+  // Mira follows the canonical world schedule. In the evening she can be on the
+  // village square, so the test follows her through a legal MOVE instead of
+  // assuming that wall-clock synchronization always leaves her in the workshop.
+  await moveCanonicalForMira(page, playerId, "village_square", step);
+  state = await loadLocalState(page, playerId);
+  expect(state.living_npc.nearby_npc_ids).toContain("npc_mira");
 }
 
 
@@ -282,7 +311,7 @@ test("390px tavern uses the touch action label near Oren", async ({ page }, test
 test("desktop player talks to Mira only after approaching her and can type Russian ы", async ({ page }, testInfo) => {
   const diagnostics = installBrowserDiagnostics(page);
   try {
-    await putLocalPlayerInWorkshop(page);
+    await putLocalPlayerWithMira(page);
     await page.goto("/");
     await expect(page.locator("body")).toHaveAttribute("data-scene", "village");
     await expect(page.locator("body")).toHaveAttribute("data-rendered-npc-ids", /npc_mira/);
