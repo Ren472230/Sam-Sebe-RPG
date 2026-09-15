@@ -16,15 +16,70 @@ button, textarea { font: inherit; }
 }
 
 #hud {
-  min-height: 42px;
-  display: flex;
+  min-height: 50px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  padding: 0 16px;
+  gap: 8px 12px;
+  padding: 7px 10px;
   background: #232629;
   border: 1px solid #4a4f53;
   border-bottom: 3px solid #61d4d8;
   letter-spacing: .02em;
   font-size: 14px;
+}
+
+.hud-location {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 5px 10px 5px 8px;
+  background: #eee8dc;
+  color: #202326;
+  border-left: 4px solid #65d5d9;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.hud-objective {
+  min-width: 0;
+  color: #f4f2ec;
+  font-weight: 750;
+  line-height: 1.35;
+}
+
+.hud-resources {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  min-width: 0;
+}
+
+.hud-resource {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 4px 8px;
+  border: 1px solid #666d71;
+  background: #191c1e;
+  font-size: 11px;
+  font-weight: 850;
+  letter-spacing: .04em;
+  white-space: nowrap;
+}
+
+.hud-resource-coins {
+  color: #e7b35c;
+  border-bottom-color: #e0a34c;
+}
+
+.hud-resource-trust {
+  color: #8de4e7;
+  border-bottom-color: #65d5d9;
 }
 
 #world-pulse {
@@ -237,6 +292,7 @@ button, textarea { font: inherit; }
 
 .stream-mode #hud {
   min-height: 34px;
+  display: flex;
   color: #bfc5c7;
   font-size: 12px;
   border-bottom-width: 1px;
@@ -311,6 +367,44 @@ button, textarea { font: inherit; }
 }
 
 @media (max-width: 700px) {
+  #hud {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 6px 8px;
+    padding: 7px 8px 8px;
+  }
+
+  .hud-location {
+    justify-self: start;
+    min-height: 28px;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .hud-resources {
+    justify-self: end;
+    max-width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .hud-objective {
+    grid-column: 1 / -1;
+    padding: 2px 2px 0;
+    font-size: 13px;
+  }
+
+  .hud-resource {
+    min-height: 26px;
+    padding: 3px 6px;
+    font-size: 10px;
+  }
+
+  .stream-mode #hud {
+    display: flex;
+    padding: 0 16px;
+  }
+
   #game { min-height: 0; }
 
   #playtest-tools {
