@@ -16,35 +16,37 @@
     "merged": false
   },
   "phase": "gameplay_navigation_controller_stabilization",
-  "current_objective": "SESSION_OBJECTIVE: make the 390px touch play surface self-explanatory and easier to use by turning the generic touch action control into live contextual feedback and tightening the mobile dialogue/control presentation without changing gameplay semantics.",
-  "next_action": "Checkpoint 1: bind the touch action button's visible context to the existing interaction hint, preserve the same E-key semantics and accessible name, then add deterministic UI coverage before continuing to mobile dialogue polish.",
+  "current_objective": "SESSION_OBJECTIVE: make the 390px touch play surface self-explanatory and easier to use by turning the generic touch action control into live contextual feedback and tightening the mobile dialogue/control presentation without changing gameplay semantics. Source implementation is complete at work SHA 6718fcfb5a7fc6b4b69b94b8c88cfb41af20b813; executable exact-SHA validation remains pending.",
+  "next_action": "Run the registered touch visual contract, production web build, and focused 390px first-run browser checks on exact work SHA 6718fcfb5a7fc6b4b69b94b8c88cfb41af20b813 when an execution runner is available; fix only visual overflow, reachability or readability regressions found there.",
   "blockers": [
-    "Exact-head automated execution was unavailable in the previous visual cycle: commits created through the connected GitHub path produced no new workflow run or combined status for work SHA a3e731cdc9a8c35b6996a986313d1d5f48f76755, and the local execution runtime was unavailable. Source-level verification and exact diff inspection completed successfully, but production build and browser checks remain pending on this SHA.",
-    "The standalone experiment source/artifact is still not materialized in GitHub, so the active stabilization work continues on the server-backed browser client.",
+    "Exact-head automated execution is unavailable for visual work SHA 6718fcfb5a7fc6b4b69b94b8c88cfb41af20b813: GitHub reports zero workflow runs for this SHA, and the available local container execution path failed before a runnable checkout could be established. Source-level exact-SHA inspection completed, but contract execution, production build and browser/mobile screenshots are not claimed as passed.",
+    "The standalone experiment source/artifact is still not materialized in GitHub, so the active visual work remains on the server-backed browser client.",
     "Direct file:// standalone persistence remains outside this cycle and still needs a target-browser check once the standalone source is materialized."
   ],
   "active_run": {
-    "run_id": "2026-09-15-visual-hud-session-2",
-    "status": "running",
-    "started_at_utc": "2026-09-15T18:19:02Z",
-    "lease_expires_at_utc": "2026-09-15T19:49:02Z",
-    "base_sha": "a6d8465a09f927ee9c628c75c3bc7dcc03984c07",
+    "run_id": null,
+    "status": "idle",
+    "started_at_utc": null,
+    "lease_expires_at_utc": null,
+    "base_sha": null,
     "working_branch": "agent/autonomy-pilot-v0.1"
   },
   "last_handoff": {
-    "completed_at_utc": "2026-09-15T14:27:00Z",
-    "result": "Completed visual HUD hierarchy v1 for the active browser client. Normal mode now renders separate semantic location, objective and resource regions instead of one flat status sentence. The location uses the milk/turquoise visual language, the objective remains the dominant flexible text, coins use amber, trust uses turquoise, and the <=700px layout moves the objective to its own row while keeping compact resources above. Stream mode keeps its existing compact HUD. Added a deterministic source-level HUD visual contract and registered it in the existing contract-test command. No gameplay rules, rewards, quest logic, world causality or save semantics changed.",
-    "head_sha": "a3e731cdc9a8c35b6996a986313d1d5f48f76755",
-    "work_head_sha": "a3e731cdc9a8c35b6996a986313d1d5f48f76755",
+    "completed_at_utc": "2026-09-15T18:26:30Z",
+    "result": "SESSION_OBJECTIVE: improve the 390px touch play surface without changing gameplay semantics. CHECKPOINT 1: the mobile E-action control now keeps the same E key mapping and accessible name while showing a two-level label whose context follows the existing interaction hint through a MutationObserver; default state says 'взаимодействие', and contextual states surface actions such as 'подобрать дрова' or 'поговорить с Ореном'. CHECKPOINT 2: the <=700px presentation now gives the contextual action a clearer scarlet/turquoise state, preserves 56px+ touch targets and safe-area padding, and turns dialogue into a bounded fixed mobile modal with constrained transcript/input height and 44px+ action buttons. CHECKPOINT 3: existing 390px Playwright assertions were extended for live action context, and a deterministic touch visual source contract was added and registered in test:contract. Gameplay rules, rewards, quest conditions, NPC behavior, world causality and save semantics were left unchanged. STOP_REASON: EXTERNAL_BLOCKER because the exact work SHA has no GitHub workflow run and the available local execution path could not establish a runnable checkout, so adding further visual changes before build/browser validation would increase unverified risk.",
+    "head_sha": "6718fcfb5a7fc6b4b69b94b8c88cfb41af20b813",
+    "work_head_sha": "6718fcfb5a7fc6b4b69b94b8c88cfb41af20b813",
     "verification": [
-      "Exact source read at work SHA confirms structured HUD DOM classes and unchanged objective/resource values in web/src/main.ts.",
-      "Exact source read at work SHA confirms desktop three-column HUD, <=700px bounded two-column/mobile objective row, milk/turquoise location treatment, amber coin treatment and preserved compact stream-mode override in web/src/styles.css.",
-      "Exact source read confirms web/tests/hud-visual-contract.test.ts exists and web/package.json includes it in test:contract.",
-      "Compare f5ed44a84339c72dbfe86897bc67353bd31856a0...a3e731cdc9a8c35b6996a986313d1d5f48f76755 is ahead by four commits and changes only web/src/main.ts, web/src/styles.css, web/tests/hud-visual-contract.test.ts and web/package.json.",
-      "GitHub combined status for work SHA has no statuses and Actions has no run for this exact SHA, so production build and browser verification were not executed and are not claimed as passed.",
-      "Existing first-run Playwright coverage already contains a 390px horizontal-overflow and touch-control reachability assertion, but it still needs execution on this exact work SHA."
+      "Exact source read at work SHA confirms web/src/touchControls.ts preserves data-touch-key=E and aria-label 'Взаимодействовать' while adding touch-action-key/touch-action-context and hint-driven MutationObserver synchronization.",
+      "Exact source read at work SHA confirms <=700px CSS keeps 56px movement targets, 118px contextual action surface, safe-area bottom padding, bounded fixed dialogue layout, 48-92px textarea sizing and 44px minimum dialogue action buttons.",
+      "Exact source read confirms web/tests/touch-visual-contract.test.ts exists and web/package.json registers it in test:contract.",
+      "Exact source read confirms existing 390px first-run browser tests now assert default and contextual touch-action text for general movement, firewood and Oren interactions without changing their gameplay setup.",
+      "Compare a6d8465a09f927ee9c628c75c3bc7dcc03984c07...6718fcfb5a7fc6b4b69b94b8c88cfb41af20b813 is ahead by seven commits and changes only RUN_STATE.json plus the intended touch UI, CSS, visual tests and package test registration.",
+      "GitHub Actions query for exact work SHA 6718fcfb5a7fc6b4b69b94b8c88cfb41af20b813 returned total_count=0; no exact-SHA CI result exists.",
+      "Local/container execution could not establish a runnable repository checkout in this environment, so test:contract, production build, Playwright 390px smoke and screenshot inspection remain pending and are not reported as passed.",
+      "Fresh required browser-gate evidence for the broader integration line remains red around gameplay navigation; this visual session did not alter those navigation helpers or claim release readiness."
     ],
-    "next_action": "Verify the structured HUD on the exact work SHA with the focused 390px first-run browser route and production build as soon as an execution runner is available; fix only HUD-specific overflow or readability regressions before starting another visual surface.",
+    "next_action": "Run the registered touch visual contract, production web build, and focused 390px first-run browser checks on exact work SHA 6718fcfb5a7fc6b4b69b94b8c88cfb41af20b813 when an execution runner is available; fix only visual overflow, reachability or readability regressions found there.",
     "owner_decision_required": false
   },
   "human_gate": {
@@ -52,7 +54,7 @@
     "reason": null
   },
   "verified_gates_at_authoritative_head": {
-    "note": "The standalone experiment has its own test contour and this visual HUD cycle does not change the release-gate status of server-backed PR #53."
+    "note": "The standalone experiment has its own test contour and this visual touch cycle does not change the release-gate status of server-backed PR #53."
   },
   "pilot_validation_at_work_head": {
     "work_head_sha": "a4b37e43ac986ec2e92587b7cfbb8ab3d69726e5",
@@ -87,8 +89,8 @@
     "github_releases": "none"
   },
   "known_limitations": [
-    "The server-backed integration candidate remains a separate line and its release-gate state is unchanged by the previous visual cycle.",
-    "Exact-head production build and browser verification for HUD hierarchy v1 remain pending until the next validation run that includes the current branch changes.",
+    "The server-backed integration candidate remains a separate line and its release-gate state is unchanged by this visual session.",
+    "Exact-head contract execution, production build, 390px browser verification and screenshots for work SHA 6718fcfb5a7fc6b4b69b94b8c88cfb41af20b813 remain pending until an execution runner can use this exact commit.",
     "Direct file:// persistence needs one target-browser human check because this managed Chromium blocks file:// by administrator policy.",
     "Standalone implementation source and exact artifact still need repository materialization before visual changes can be applied to that delivered file.",
     "A real human experience check should decide whether standalone becomes the primary client direction."
