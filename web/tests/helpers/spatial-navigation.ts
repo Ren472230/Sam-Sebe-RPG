@@ -8,19 +8,16 @@ type AxisTrace = {
   reached: PlayerPosition;
   released: PlayerPosition;
 };
-type PendingAxisTrace = Omit<AxisTrace, "released">;
 
 type InteractionSnapshot = {
   position: PlayerPosition;
   hint: string;
-  ready: boolean;
 };
 
-type InteractionAxis = {
-  axis: "x" | "y";
-  key: MovementKey;
-  target: number;
-  active: boolean;
+type AxisDriveResult = {
+  reachedTargetBand: boolean;
+  hintReady: boolean;
+  moved: boolean;
 };
 
 export async function playerPosition(page: Page): Promise<PlayerPosition> {
@@ -138,6 +135,7 @@ async function moveAxisOneWayTo(
     ? (value < target ? "d" : "a")
     : (value < target ? "s" : "w");
   const started = Date.now();
+  const targetBand = 12;
   let reached: PlayerPosition | null = null;
 
   await releaseMovementKeys(page);
@@ -147,7 +145,7 @@ async function moveAxisOneWayTo(
       position = await playerPosition(page);
       const current = position[axis];
       const crossed = key === "d" || key === "s" ? current >= target : current <= target;
-      if (crossed) {
+      if (crossed || Math.abs(current - target) <= targetBand) {
         reached = position;
         break;
       }
@@ -170,12 +168,9 @@ async function moveAxisOneWayTo(
 
 async function interactionSnapshot(
   page: Page,
-  targetX: number,
-  targetY: number,
-  hintText: string,
-  radius: number
-): Promise<InteractionSnapshot> {
-  return page.evaluate(({ targetX, targetY, hintText, radius }) => {
+  hintText: string
+): Promise<InteractionSnapshot & { hintReady: boolean }> {
+  return page.evaluate(({ hintText }) => {
     const position = {
       x: Number(document.body.dataset.playerX),
       y: Number(document.body.dataset.playerY)
@@ -184,62 +179,83 @@ async function interactionSnapshot(
     return {
       position,
       hint,
-      ready: Number.isFinite(position.x)
-        && Number.isFinite(position.y)
-        && Math.hypot(targetX - position.x, targetY - position.y) <= radius
-        && hint.includes(hintText)
+      hintReady: hint.includes(hintText)
     };
-  }, { targetX, targetY, hintText, radius });
+  }, { hintText });
 }
 
-function interactionAxis(
+function axisKey(axis: "x" | "y", current: number, target: number): MovementKey {
+  return axis === "x"
+    ? (current < target ? "d" : "a")
+    : (current < target ? "s" : "w");
+}
+
+function crossedTarget(key: MovementKey, current: number, target: number): boolean {
+  return key === "d" || key === "s" ? current >= target : current <= target;
+}
+
+async function driveSingleAxisUntilHintOrTarget(
+  page: Page,
   axis: "x" | "y",
-  current: number,
-  target: number
-): InteractionAxis | null {
-  if (!Number.isFinite(current) || current === target) return null;
-  return {
-    axis,
-    target,
-    key: axis === "x"
-      ? (current < target ? "d" : "a")
-      : (current < target ? "s" : "w"),
-    active: true
-  };
-}
+  target: number,
+  hintText: string,
+  deadline: number
+): Promise<AxisDriveResult> {
+  const start = await interactionSnapshot(page, hintText);
+  if (start.hintReady) return { reachedTargetBand: false, hintReady: true, moved: false };
 
-function crossedInteractionAxis(axis: InteractionAxis, position: PlayerPosition): boolean {
-  const current = position[axis.axis];
-  return axis.key === "d" || axis.key === "s"
-    ? current >= axis.target
-    : current <= axis.target;
-}
-
-async function releaseInteractionAxes(
-  page: Page,
-  axes: InteractionAxis[],
-  reached: PlayerPosition,
-  pendingTraces: PendingAxisTrace[]
-): Promise<void> {
-  const releasing = axes.filter((axis) => axis.active);
-  for (const axis of releasing) {
-    // Keep the steering loop hot: stop real keyboard movement immediately and defer
-    // every diagnostic read/write until no movement axis remains held.
-    await page.keyboard.up(axis.key);
-    axis.active = false;
-    pendingTraces.push({ axis: axis.axis, target: axis.target, reached });
+  const startValue = start.position[axis];
+  if (!Number.isFinite(startValue)) {
+    return { reachedTargetBand: false, hintReady: false, moved: false };
   }
-}
+  if (Math.abs(startValue - target) <= 4) {
+    return { reachedTargetBand: true, hintReady: false, moved: false };
+  }
 
-async function flushInteractionTraces(
-  page: Page,
-  pendingTraces: PendingAxisTrace[]
-): Promise<void> {
-  if (pendingTraces.length === 0) return;
+  const key = axisKey(axis, startValue, target);
+  const targetBand = 12;
+  let snapshot = start;
+  let lastValue = startValue;
+  let stationarySamples = 0;
+  let reachedTargetBand = false;
+  let hintReady = false;
+
+  await page.keyboard.down(key);
+  try {
+    while (Date.now() < deadline) {
+      snapshot = await interactionSnapshot(page, hintText);
+      if (snapshot.hintReady) {
+        hintReady = true;
+        break;
+      }
+
+      const current = snapshot.position[axis];
+      if (!Number.isFinite(current)) break;
+      if (crossedTarget(key, current, target) || Math.abs(current - target) <= targetBand) {
+        reachedTargetBand = true;
+        break;
+      }
+
+      if (Math.abs(current - lastValue) < 1) stationarySamples += 1;
+      else stationarySamples = 0;
+      lastValue = current;
+
+      // A blocked axis should yield quickly so the other axis can route around scenery.
+      if (stationarySamples >= 6) break;
+      await page.waitForTimeout(25);
+    }
+  } finally {
+    await page.keyboard.up(key);
+  }
+
+  await page.waitForTimeout(25);
   const released = await playerPosition(page);
-  for (const trace of pendingTraces.splice(0)) {
-    await recordAxisTrace(page, { ...trace, released });
-  }
+  await recordAxisTrace(page, { axis, target, reached: snapshot.position, released });
+  return {
+    reachedTargetBand,
+    hintReady,
+    moved: Math.abs(released[axis] - startValue) >= 1
+  };
 }
 
 export async function moveTowardInteraction(
@@ -250,55 +266,67 @@ export async function moveTowardInteraction(
   timeout = 12_000
 ): Promise<void> {
   await installNavigationDiagnostics(page);
-  const stableInteractionRadius = 68;
-  const started = Date.now();
-  let snapshot = await interactionSnapshot(page, targetX, targetY, hintText, stableInteractionRadius);
-  if (snapshot.ready) return;
-
-  const xAxis = interactionAxis("x", snapshot.position.x, targetX);
-  const yAxis = interactionAxis("y", snapshot.position.y, targetY);
-  const axes = [xAxis, yAxis].filter((axis): axis is InteractionAxis => axis !== null);
-  const pendingTraces: PendingAxisTrace[] = [];
+  const deadline = Date.now() + timeout;
+  let lastAxis: "x" | "y" | null = null;
+  let stalledRounds = 0;
 
   await releaseMovementKeys(page);
-  for (const axis of axes) await page.keyboard.down(axis.key);
-
   try {
-    while (Date.now() - started < timeout) {
-      snapshot = await interactionSnapshot(page, targetX, targetY, hintText, stableInteractionRadius);
-
-      if (snapshot.ready) {
-        await releaseInteractionAxes(page, axes, snapshot.position, pendingTraces);
-        await page.waitForTimeout(25);
-        snapshot = await interactionSnapshot(page, targetX, targetY, hintText, stableInteractionRadius);
-        if (snapshot.ready) return;
+    while (Date.now() < deadline) {
+      let snapshot = await interactionSnapshot(page, hintText);
+      if (snapshot.hintReady) {
+        await releaseMovementKeys(page);
+        snapshot = await interactionSnapshot(page, hintText);
+        if (snapshot.hintReady) return;
       }
 
-      const crossed = axes.filter((axis) => axis.active && crossedInteractionAxis(axis, snapshot.position));
-      if (crossed.length > 0) {
-        await releaseInteractionAxes(page, crossed, snapshot.position, pendingTraces);
+      const dx = targetX - snapshot.position.x;
+      const dy = targetY - snapshot.position.y;
+      const candidates = ([
+        { axis: "x" as const, delta: Math.abs(dx), target: targetX },
+        { axis: "y" as const, delta: Math.abs(dy), target: targetY }
+      ]).filter((entry) => Number.isFinite(entry.delta) && entry.delta > 4)
+        .sort((a, b) => {
+          if (lastAxis && a.axis === lastAxis && b.axis !== lastAxis) return 1;
+          if (lastAxis && b.axis === lastAxis && a.axis !== lastAxis) return -1;
+          return b.delta - a.delta;
+        });
+
+      if (candidates.length === 0) break;
+
+      let roundProgress = false;
+      for (const candidate of candidates) {
+        const result = await driveSingleAxisUntilHintOrTarget(
+          page,
+          candidate.axis,
+          candidate.target,
+          hintText,
+          deadline
+        );
+        lastAxis = candidate.axis;
+        roundProgress = roundProgress || result.moved || result.reachedTargetBand;
+
+        snapshot = await interactionSnapshot(page, hintText);
+        if (result.hintReady || snapshot.hintReady) {
+          await releaseMovementKeys(page);
+          snapshot = await interactionSnapshot(page, hintText);
+          if (snapshot.hintReady) return;
+        }
+
+        if (Date.now() >= deadline) break;
+        if (result.moved) break;
       }
 
-      if (axes.every((axis) => !axis.active)) {
-        await page.waitForTimeout(25);
-        snapshot = await interactionSnapshot(page, targetX, targetY, hintText, stableInteractionRadius);
-        if (snapshot.ready) return;
-        break;
-      }
-
-      await page.waitForTimeout(25);
+      if (roundProgress) stalledRounds = 0;
+      else stalledRounds += 1;
+      if (stalledRounds >= 3) break;
     }
   } finally {
-    const stillActive = axes.filter((axis) => axis.active);
-    if (stillActive.length > 0) {
-      await releaseInteractionAxes(page, stillActive, snapshot.position, pendingTraces);
-    }
     await releaseMovementKeys(page);
-    await flushInteractionTraces(page, pendingTraces);
   }
 
-  snapshot = await interactionSnapshot(page, targetX, targetY, hintText, stableInteractionRadius);
-  if (snapshot.ready) return;
+  const snapshot = await interactionSnapshot(page, hintText);
+  if (snapshot.hintReady) return;
 
   const diagnostics = await page.evaluate(() => {
     const debugWindow = window as Window & {
@@ -316,7 +344,7 @@ export async function moveTowardInteraction(
   });
   const gap = Math.hypot(targetX - snapshot.position.x, targetY - snapshot.position.y);
   throw new Error(
-    `player did not reach stable interaction ${JSON.stringify(hintText)} near (${targetX}, ${targetY}); `
+    `player did not reach interaction ${JSON.stringify(hintText)} near (${targetX}, ${targetY}); `
       + `last=${JSON.stringify(snapshot.position)} distance=${Math.round(gap)} `
       + `hint=${JSON.stringify(snapshot.hint)} diagnostics=${JSON.stringify(diagnostics)}`
   );
