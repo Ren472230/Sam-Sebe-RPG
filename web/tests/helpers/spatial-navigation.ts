@@ -29,6 +29,21 @@ type AxisMonitorResult = {
   timedOut: boolean;
 };
 
+type VectorDriveResult = {
+  hintReady: boolean;
+  moved: boolean;
+  reachedAxis: boolean;
+};
+
+type VectorMonitorResult = {
+  position: PlayerPosition;
+  hint: string;
+  hintReady: boolean;
+  reachedAxis: boolean;
+  stalled: boolean;
+  timedOut: boolean;
+};
+
 const MOVEMENT_KEYS = ["w", "a", "s", "d"] as const;
 
 export async function playerPosition(page: Page): Promise<PlayerPosition> {
@@ -39,15 +54,24 @@ export async function playerPosition(page: Page): Promise<PlayerPosition> {
 }
 
 async function waitForBrowserFrame(page: Page): Promise<void> {
+  if (page.isClosed()) return;
   await page.evaluate(() => new Promise<void>((resolve) => {
     requestAnimationFrame(() => resolve());
   }));
 }
 
 export async function releaseMovementKeys(page: Page): Promise<void> {
+  if (page.isClosed()) return;
   // Playwright Keyboard keeps state per page, so release the physical keys in order
   // and let one real browser frame observe the released state before steering again.
-  for (const key of MOVEMENT_KEYS) await page.keyboard.up(key);
+  for (const key of MOVEMENT_KEYS) {
+    try {
+      await page.keyboard.up(key);
+    } catch (error) {
+      if (page.isClosed()) return;
+      throw error;
+    }
+  }
   await waitForBrowserFrame(page);
 }
 
@@ -126,7 +150,7 @@ export async function moveAxisTo(
       await page.waitForTimeout(50);
     }
   } finally {
-    if (heldKey) await page.keyboard.up(heldKey);
+    if (heldKey && !page.isClosed()) await page.keyboard.up(heldKey);
     await releaseMovementKeys(page);
   }
 
@@ -158,9 +182,8 @@ async function monitorHeldAxis(
     };
 
     const initial = readSnapshot();
-    const initialValue = initial.position[axis];
-    let lastValue = initialValue;
-    let stationaryFrames = 0;
+    let lastValue = initial.position[axis];
+    let lastProgressAt = performance.now();
     const positive = key === "d" || key === "s";
     const started = performance.now();
 
@@ -200,18 +223,18 @@ async function monitorHeldAxis(
           return;
         }
 
-        if (Number.isFinite(lastValue) && Math.abs(current - lastValue) < 1) stationaryFrames += 1;
-        else stationaryFrames = 0;
+        const now = performance.now();
+        if (Number.isFinite(lastValue) && Math.abs(current - lastValue) >= 1) lastProgressAt = now;
         lastValue = current;
 
-        // Sample inside the browser render loop rather than through repeated
-        // Playwright round-trips. A physically blocked axis yields quickly so
-        // the controller can try the other axis without consuming the whole budget.
-        if (stationaryFrames >= 6) {
+        // Phaser and this diagnostic sampler both run from requestAnimationFrame.
+        // Use elapsed no-progress time rather than a frame count so a slow runner
+        // cannot mistake several sampler frames for a physically blocked player.
+        if (now - lastProgressAt >= 900) {
           finish(snapshot, false, true, false);
           return;
         }
-        if (performance.now() - started >= Math.max(1, timeoutMs)) {
+        if (now - started >= Math.max(1, timeoutMs)) {
           finish(snapshot, false, false, true);
           return;
         }
@@ -264,7 +287,7 @@ async function moveAxisOneWayTo(
   try {
     observed = await monitorHeldAxis(page, axis, target, "", key, timeout, targetBand);
   } finally {
-    await page.keyboard.up(key);
+    if (!page.isClosed()) await page.keyboard.up(key);
   }
 
   const released = await settledInteractionSnapshot(page, "");
@@ -298,7 +321,7 @@ async function interactionSnapshot(
     return {
       position,
       hint,
-      hintReady: hint.includes(hintText)
+      hintReady: hintText.length > 0 && hint.includes(hintText)
     };
   }, { hintText });
 }
@@ -340,7 +363,7 @@ async function driveSingleAxisUntilHintOrTarget(
   try {
     observed = await monitorHeldAxis(page, axis, target, hintText, key, remaining, targetBand);
   } finally {
-    await page.keyboard.up(key);
+    if (!page.isClosed()) await page.keyboard.up(key);
   }
 
   const released = await settledInteractionSnapshot(page, hintText);
@@ -360,6 +383,154 @@ async function driveSingleAxisUntilHintOrTarget(
   };
 }
 
+async function monitorHeldVector(
+  page: Page,
+  targetX: number,
+  targetY: number,
+  hintText: string,
+  xKey: MovementKey | null,
+  yKey: MovementKey | null,
+  timeoutMs: number,
+  targetBand: number
+): Promise<VectorMonitorResult> {
+  return page.evaluate(async ({ targetX, targetY, hintText, xKey, yKey, timeoutMs, targetBand }) => {
+    const readSnapshot = () => {
+      const position = {
+        x: Number(document.body.dataset.playerX),
+        y: Number(document.body.dataset.playerY)
+      };
+      const hint = document.getElementById("interaction-hint")?.textContent ?? "";
+      return { position, hint };
+    };
+    const crossed = (key: MovementKey, current: number, target: number): boolean =>
+      key === "d" || key === "s" ? current >= target : current <= target;
+
+    const initial = readSnapshot();
+    let last = initial.position;
+    let lastProgressAt = performance.now();
+    const started = performance.now();
+
+    return await new Promise<VectorMonitorResult>((resolve) => {
+      const finish = (
+        snapshot: InteractionSnapshot,
+        reachedAxis: boolean,
+        stalled: boolean,
+        timedOut: boolean
+      ): void => resolve({
+        position: snapshot.position,
+        hint: snapshot.hint,
+        hintReady: hintText.length > 0 && snapshot.hint.includes(hintText),
+        reachedAxis,
+        stalled,
+        timedOut
+      });
+
+      const sample = (): void => {
+        const snapshot = readSnapshot();
+        if (hintText.length > 0 && snapshot.hint.includes(hintText)) {
+          finish(snapshot, false, false, false);
+          return;
+        }
+        const { x, y } = snapshot.position;
+        if (!Number.isFinite(x) || !Number.isFinite(y)) {
+          finish(snapshot, false, true, false);
+          return;
+        }
+
+        const reachedX = xKey !== null && (crossed(xKey, x, targetX) || Math.abs(x - targetX) <= targetBand);
+        const reachedY = yKey !== null && (crossed(yKey, y, targetY) || Math.abs(y - targetY) <= targetBand);
+        if (reachedX || reachedY) {
+          finish(snapshot, true, false, false);
+          return;
+        }
+
+        const now = performance.now();
+        if (Math.hypot(x - last.x, y - last.y) >= 1) lastProgressAt = now;
+        last = snapshot.position;
+        if (now - lastProgressAt >= 900) {
+          finish(snapshot, false, true, false);
+          return;
+        }
+        if (now - started >= Math.max(1, timeoutMs)) {
+          finish(snapshot, false, false, true);
+          return;
+        }
+        requestAnimationFrame(sample);
+      };
+      requestAnimationFrame(sample);
+    });
+  }, { targetX, targetY, hintText, xKey, yKey, timeoutMs, targetBand });
+}
+
+async function driveConcurrentSegment(
+  page: Page,
+  targetX: number,
+  targetY: number,
+  hintText: string,
+  deadline: number
+): Promise<VectorDriveResult> {
+  const start = await interactionSnapshot(page, hintText);
+  if (start.hintReady) return { hintReady: true, moved: false, reachedAxis: false };
+
+  const dx = targetX - start.position.x;
+  const dy = targetY - start.position.y;
+  const targetBand = 4;
+  const xKey = Number.isFinite(dx) && Math.abs(dx) > targetBand
+    ? axisKey("x", start.position.x, targetX)
+    : null;
+  const yKey = Number.isFinite(dy) && Math.abs(dy) > targetBand
+    ? axisKey("y", start.position.y, targetY)
+    : null;
+  const keys = [xKey, yKey].filter((key): key is MovementKey => key !== null);
+  if (keys.length === 0) return { hintReady: false, moved: false, reachedAxis: true };
+
+  const remaining = Math.max(1, deadline - Date.now());
+  for (const key of keys) await page.keyboard.down(key);
+  let observed: VectorMonitorResult | null = null;
+  try {
+    observed = await monitorHeldVector(
+      page,
+      targetX,
+      targetY,
+      hintText,
+      xKey,
+      yKey,
+      remaining,
+      targetBand
+    );
+  } finally {
+    if (!page.isClosed()) {
+      for (const key of keys) await page.keyboard.up(key);
+    }
+  }
+
+  const released = await settledInteractionSnapshot(page, hintText);
+  if (xKey) {
+    await recordAxisTrace(page, {
+      axis: "x",
+      target: targetX,
+      reached: observed?.position ?? released.position,
+      released: released.position
+    });
+  }
+  if (yKey) {
+    await recordAxisTrace(page, {
+      axis: "y",
+      target: targetY,
+      reached: observed?.position ?? released.position,
+      released: released.position
+    });
+  }
+  return {
+    hintReady: released.hintReady,
+    moved: Math.hypot(
+      released.position.x - start.position.x,
+      released.position.y - start.position.y
+    ) >= 1,
+    reachedAxis: Boolean(observed?.reachedAxis)
+  };
+}
+
 export async function moveTowardInteraction(
   page: Page,
   targetX: number,
@@ -368,7 +539,6 @@ export async function moveTowardInteraction(
   timeout = 12_000
 ): Promise<void> {
   await installNavigationDiagnostics(page);
-  let lastAxis: "x" | "y" | null = null;
   let stalledRounds = 0;
 
   await releaseMovementKeys(page);
@@ -384,43 +554,38 @@ export async function moveTowardInteraction(
 
       const dx = targetX - snapshot.position.x;
       const dy = targetY - snapshot.position.y;
-      const candidates = ([
-        { axis: "x" as const, delta: Math.abs(dx), target: targetX },
-        { axis: "y" as const, delta: Math.abs(dy), target: targetY }
-      ]).filter((entry) => Number.isFinite(entry.delta) && entry.delta > 4)
-        .sort((a, b) => {
-          if (lastAxis && a.axis === lastAxis && b.axis !== lastAxis) return 1;
-          if (lastAxis && b.axis === lastAxis && a.axis !== lastAxis) return -1;
-          return b.delta - a.delta;
-        });
+      if (!Number.isFinite(dx) || !Number.isFinite(dy)) break;
+      if (Math.abs(dx) <= 4 && Math.abs(dy) <= 4) break;
 
-      if (candidates.length === 0) break;
-
-      let roundProgress = false;
-      for (const candidate of candidates) {
-        const result = await driveSingleAxisUntilHintOrTarget(
-          page,
-          candidate.axis,
-          candidate.target,
-          hintText,
-          deadline
-        );
-        lastAxis = candidate.axis;
-        roundProgress = roundProgress || result.moved || result.reachedTargetBand;
-
-        snapshot = await interactionSnapshot(page, hintText);
-        if (result.hintReady || snapshot.hintReady) {
-          await releaseMovementKeys(page);
-          snapshot = await interactionSnapshot(page, hintText);
-          if (snapshot.hintReady) return;
-        }
-
-        if (Date.now() >= deadline) break;
-        if (result.moved) break;
+      // Long lateral approaches in the village need to stay in the open lower lane
+      // until they clear the workshop/well geometry. For ordinary interactions,
+      // drive both physical axes together so a slow controller does not spend the
+      // whole shared deadline completing only the first axis.
+      const absX = Math.abs(dx);
+      const absY = Math.abs(dy);
+      let result: AxisDriveResult | VectorDriveResult;
+      if (absX > 4 && absX >= Math.max(1, absY) * 3) {
+        result = await driveSingleAxisUntilHintOrTarget(page, "x", targetX, hintText, deadline);
+      } else if (absY > 4 && absY >= Math.max(1, absX) * 3) {
+        result = await driveSingleAxisUntilHintOrTarget(page, "y", targetY, hintText, deadline);
+      } else {
+        result = await driveConcurrentSegment(page, targetX, targetY, hintText, deadline);
       }
 
-      if (roundProgress) stalledRounds = 0;
-      else stalledRounds += 1;
+      snapshot = await interactionSnapshot(page, hintText);
+      if (result.hintReady || snapshot.hintReady) {
+        await releaseMovementKeys(page);
+        snapshot = await interactionSnapshot(page, hintText);
+        if (snapshot.hintReady) return;
+      }
+
+      const reachedTarget = "reachedTargetBand" in result && result.reachedTargetBand;
+      const reachedAxis = "reachedAxis" in result && result.reachedAxis;
+      if (result.moved || reachedTarget || reachedAxis) {
+        stalledRounds = 0;
+      } else {
+        stalledRounds += 1;
+      }
       if (stalledRounds >= 3) break;
     }
   } finally {
@@ -489,7 +654,9 @@ async function moveWithConcurrentKeysUntilHint(
         + `diagnostics=${JSON.stringify(diagnostics)} cause=${error instanceof Error ? error.message : String(error)}`
     );
   } finally {
-    for (const key of keys) await page.keyboard.up(key);
+    if (!page.isClosed()) {
+      for (const key of keys) await page.keyboard.up(key);
+    }
     await releaseMovementKeys(page);
   }
 }
