@@ -15,6 +15,13 @@ type InteractionSnapshot = {
   ready: boolean;
 };
 
+type InteractionAxis = {
+  axis: "x" | "y";
+  key: MovementKey;
+  target: number;
+  active: boolean;
+};
+
 export async function playerPosition(page: Page): Promise<PlayerPosition> {
   return page.evaluate(() => ({
     x: Number(document.body.dataset.playerX),
@@ -184,69 +191,43 @@ async function interactionSnapshot(
   }, { targetX, targetY, hintText, radius });
 }
 
-function movementKeyForBand(
-  value: number,
-  min: number,
-  max: number,
-  negative: MovementKey,
-  positive: MovementKey
-): MovementKey | null {
-  if (value < min) return positive;
-  if (value > max) return negative;
-  return null;
+function interactionAxis(
+  axis: "x" | "y",
+  current: number,
+  target: number
+): InteractionAxis | null {
+  if (!Number.isFinite(current) || current === target) return null;
+  return {
+    axis,
+    target,
+    key: axis === "x"
+      ? (current < target ? "d" : "a")
+      : (current < target ? "s" : "w"),
+    active: true
+  };
 }
 
-async function pulseMovementKeys(
+function crossedInteractionAxis(axis: InteractionAxis, position: PlayerPosition): boolean {
+  const current = position[axis.axis];
+  return axis.key === "d" || axis.key === "s"
+    ? current >= axis.target
+    : current <= axis.target;
+}
+
+async function releaseInteractionAxis(
   page: Page,
-  keys: MovementKey[],
-  frameCount = 2
+  axis: InteractionAxis,
+  position: PlayerPosition
 ): Promise<void> {
-  const uniqueKeys = [...new Set(keys)];
-  if (uniqueKeys.length === 0) {
-    await page.waitForTimeout(25);
-    return;
-  }
-
-  await page.evaluate(async ({ keys, frameCount }) => {
-    const specs: Record<string, { key: string; code: string; keyCode: number }> = {
-      w: { key: "w", code: "KeyW", keyCode: 87 },
-      a: { key: "a", code: "KeyA", keyCode: 65 },
-      s: { key: "s", code: "KeyS", keyCode: 83 },
-      d: { key: "d", code: "KeyD", keyCode: 68 }
-    };
-
-    const dispatch = (type: "keydown" | "keyup", key: string): void => {
-      const spec = specs[key];
-      const event = new KeyboardEvent(type, {
-        key: spec.key,
-        code: spec.code,
-        bubbles: true,
-        cancelable: true,
-        repeat: false
-      });
-      Object.defineProperty(event, "keyCode", { get: () => spec.keyCode });
-      Object.defineProperty(event, "which", { get: () => spec.keyCode });
-      window.dispatchEvent(event);
-    };
-
-    for (const key of keys) dispatch("keydown", key);
-    try {
-      await new Promise<void>((resolve) => {
-        let frames = Math.max(1, frameCount);
-        const step = (): void => {
-          frames -= 1;
-          if (frames <= 0) {
-            resolve();
-            return;
-          }
-          requestAnimationFrame(step);
-        };
-        requestAnimationFrame(step);
-      });
-    } finally {
-      for (const key of keys) dispatch("keyup", key);
-    }
-  }, { keys: uniqueKeys, frameCount });
+  if (!axis.active) return;
+  await page.keyboard.up(axis.key);
+  axis.active = false;
+  await recordAxisTrace(page, {
+    axis: axis.axis,
+    target: axis.target,
+    reached: position,
+    released: await playerPosition(page)
+  });
 }
 
 export async function moveTowardInteraction(
@@ -258,32 +239,48 @@ export async function moveTowardInteraction(
 ): Promise<void> {
   await installNavigationDiagnostics(page);
   const stableInteractionRadius = 68;
-  const axisMargin = 8;
   const started = Date.now();
   let snapshot = await interactionSnapshot(page, targetX, targetY, hintText, stableInteractionRadius);
   if (snapshot.ready) return;
 
-  const xMin = targetX - axisMargin;
-  const xMax = targetX + axisMargin;
-  const yMin = targetY - axisMargin;
-  const yMax = targetY + axisMargin;
+  const xAxis = interactionAxis("x", snapshot.position.x, targetX);
+  const yAxis = interactionAxis("y", snapshot.position.y, targetY);
+  const axes = [xAxis, yAxis].filter((axis): axis is InteractionAxis => axis !== null);
 
   await releaseMovementKeys(page);
+  for (const axis of axes) await page.keyboard.down(axis.key);
+
   try {
     while (Date.now() - started < timeout) {
       snapshot = await interactionSnapshot(page, targetX, targetY, hintText, stableInteractionRadius);
+
       if (snapshot.ready) {
+        for (const axis of axes) await releaseInteractionAxis(page, axis, snapshot.position);
         await page.waitForTimeout(50);
         snapshot = await interactionSnapshot(page, targetX, targetY, hintText, stableInteractionRadius);
         if (snapshot.ready) return;
-        continue;
       }
 
-      const xKey = movementKeyForBand(snapshot.position.x, xMin, xMax, "a", "d");
-      const yKey = movementKeyForBand(snapshot.position.y, yMin, yMax, "w", "s");
-      await pulseMovementKeys(page, [xKey, yKey].filter((key): key is MovementKey => key !== null));
+      for (const axis of axes) {
+        if (axis.active && crossedInteractionAxis(axis, snapshot.position)) {
+          await releaseInteractionAxis(page, axis, snapshot.position);
+        }
+      }
+
+      if (axes.every((axis) => !axis.active)) {
+        await page.waitForTimeout(50);
+        snapshot = await interactionSnapshot(page, targetX, targetY, hintText, stableInteractionRadius);
+        if (snapshot.ready) return;
+        break;
+      }
+
+      await page.waitForTimeout(25);
     }
   } finally {
+    for (const axis of axes) {
+      if (axis.active) await page.keyboard.up(axis.key);
+      axis.active = false;
+    }
     await releaseMovementKeys(page);
   }
 
