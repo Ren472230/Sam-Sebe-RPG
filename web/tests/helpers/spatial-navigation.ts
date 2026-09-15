@@ -174,7 +174,7 @@ async function monitorHeldAxis(
         resolve({
           position: snapshot.position,
           hint: snapshot.hint,
-          hintReady: snapshot.hint.includes(hintText),
+          hintReady: hintText.length > 0 && snapshot.hint.includes(hintText),
           reachedTargetBand,
           stalled,
           timedOut
@@ -183,7 +183,7 @@ async function monitorHeldAxis(
 
       const sample = (): void => {
         const snapshot = readSnapshot();
-        if (snapshot.hint.includes(hintText)) {
+        if (hintText.length > 0 && snapshot.hint.includes(hintText)) {
           finish(snapshot, false, false, false);
           return;
         }
@@ -237,7 +237,7 @@ async function settledInteractionSnapshot(
     return {
       position,
       hint,
-      hintReady: hint.includes(hintText)
+      hintReady: hintText.length > 0 && hint.includes(hintText)
     };
   }, { hintText });
 }
