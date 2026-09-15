@@ -45,11 +45,11 @@ type VectorMonitorResult = {
 };
 
 const MOVEMENT_KEYS = ["w", "a", "s", "d"] as const;
-// VillageScene keeps all canonical outdoor location anchors on y=455. At this
-// center line the player's 21 px half-height clears the well, whose collision
-// rectangle ends at y=420, so long lateral travel can use real keys without
-// trying to walk through static geometry.
-const VILLAGE_OPEN_LANE_Y = 455;
+// The well occupies x=435..540 and y=330..420. Clearing x=560 while holding
+// the real S key guarantees the avatar moves below the well before the long
+// rightward tavern approach, even when the previous firewood interaction left
+// the avatar near y=400.
+const VILLAGE_WELL_CLEAR_X = 560;
 
 export async function playerPosition(page: Page): Promise<PlayerPosition> {
   return page.evaluate(() => ({
@@ -314,6 +314,54 @@ async function moveAxisOneWayTo(
   if (!reached) {
     throw new Error(
       `one-way ${key} movement did not reach ${axis}=${target}; `
+        + `start=${JSON.stringify(start)} end=${JSON.stringify(released.position)}`
+    );
+  }
+}
+
+async function moveAxisWithAssistTo(
+  page: Page,
+  axis: "x" | "y",
+  target: number,
+  assistKey: MovementKey,
+  timeout = 8_000
+): Promise<void> {
+  await installNavigationDiagnostics(page);
+  const start = await playerPosition(page);
+  const value = start[axis];
+  if (!Number.isFinite(value) || Math.abs(value - target) <= 12) return;
+
+  const key: MovementKey = axis === "x"
+    ? (value < target ? "d" : "a")
+    : (value < target ? "s" : "w");
+  const targetBand = 12;
+  let observed: AxisMonitorResult | null = null;
+
+  await releaseMovementKeys(page);
+  await page.keyboard.down(key);
+  if (assistKey !== key) await page.keyboard.down(assistKey);
+  try {
+    observed = await monitorHeldAxis(page, axis, target, "", key, timeout, targetBand);
+  } finally {
+    if (!page.isClosed()) {
+      if (assistKey !== key) await page.keyboard.up(assistKey);
+      await page.keyboard.up(key);
+    }
+  }
+
+  const released = await settledInteractionSnapshot(page, "");
+  const current = released.position[axis];
+  const reached = Number.isFinite(current)
+    && (crossedTarget(key, current, target) || Math.abs(current - target) <= targetBand);
+  await recordAxisTrace(page, {
+    axis,
+    target,
+    reached: observed?.position ?? released.position,
+    released: released.position
+  });
+  if (!reached) {
+    throw new Error(
+      `assisted ${key}+${assistKey} movement did not reach ${axis}=${target}; `
         + `start=${JSON.stringify(start)} end=${JSON.stringify(released.position)}`
     );
   }
@@ -680,10 +728,14 @@ async function moveWithConcurrentKeysUntilHint(
 
 export async function enterTavernSpatially(page: Page): Promise<void> {
   const hint = page.locator("#interaction-hint");
-  // Rejoin the canonical open village lane before the long lateral approach.
-  // This uses the same y=455 outdoor anchor as VillageScene and clears the well
-  // physically instead of trying to drive D through its collision rectangle.
-  await moveAxisOneWayTo(page, "y", VILLAGE_OPEN_LANE_Y, 20_000);
+  const start = await playerPosition(page);
+  // When approaching from the firewood/workshop side, keep a real downward key
+  // held together with D until the avatar is physically beyond the well. This
+  // makes the route robust even if the previous interaction ended around y=400,
+  // where a pure horizontal line intersects the well collision rectangle.
+  if (start.x < VILLAGE_WELL_CLEAR_X) {
+    await moveAxisWithAssistTo(page, "x", VILLAGE_WELL_CLEAR_X, "s", 20_000);
+  }
   await moveAxisOneWayTo(page, "x", 825, 20_000);
   await moveTowardInteraction(page, 825, 330, "войти в таверну", 20_000);
   await expect(hint).toContainText("войти в таверну", { timeout: 3_000 });
