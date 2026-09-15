@@ -20,6 +20,15 @@ type AxisDriveResult = {
   moved: boolean;
 };
 
+type AxisMonitorResult = {
+  position: PlayerPosition;
+  hint: string;
+  hintReady: boolean;
+  reachedTargetBand: boolean;
+  stalled: boolean;
+  timedOut: boolean;
+};
+
 const MOVEMENT_KEYS = ["w", "a", "s", "d"] as const;
 
 export async function playerPosition(page: Page): Promise<PlayerPosition> {
@@ -29,13 +38,17 @@ export async function playerPosition(page: Page): Promise<PlayerPosition> {
   }));
 }
 
+async function waitForBrowserFrame(page: Page): Promise<void> {
+  await page.evaluate(() => new Promise<void>((resolve) => {
+    requestAnimationFrame(() => resolve());
+  }));
+}
+
 export async function releaseMovementKeys(page: Page): Promise<void> {
-  // Cleanup must stay outside a controller movement budget: after a page reload,
-  // sequential protocol round-trips can be slow enough to consume the entire budget
-  // before the first real keydown. These independent key-up events can be released
-  // together without changing gameplay semantics.
-  await Promise.all(MOVEMENT_KEYS.map((key) => page.keyboard.up(key)));
-  await page.waitForTimeout(25);
+  // Playwright Keyboard keeps state per page, so release the physical keys in order
+  // and let one real browser frame observe the released state before steering again.
+  for (const key of MOVEMENT_KEYS) await page.keyboard.up(key);
+  await waitForBrowserFrame(page);
 }
 
 async function installNavigationDiagnostics(page: Page): Promise<void> {
@@ -125,6 +138,110 @@ export async function moveAxisTo(
   throw new Error(`player did not reach ${axis}=${target}; last=${JSON.stringify(released)}`);
 }
 
+async function monitorHeldAxis(
+  page: Page,
+  axis: "x" | "y",
+  target: number,
+  hintText: string,
+  key: MovementKey,
+  timeoutMs: number,
+  targetBand: number
+): Promise<AxisMonitorResult> {
+  return page.evaluate(async ({ axis, target, hintText, key, timeoutMs, targetBand }) => {
+    const readSnapshot = () => {
+      const position = {
+        x: Number(document.body.dataset.playerX),
+        y: Number(document.body.dataset.playerY)
+      };
+      const hint = document.getElementById("interaction-hint")?.textContent ?? "";
+      return { position, hint };
+    };
+
+    const initial = readSnapshot();
+    const initialValue = initial.position[axis];
+    let lastValue = initialValue;
+    let stationaryFrames = 0;
+    const positive = key === "d" || key === "s";
+    const started = performance.now();
+
+    return await new Promise<AxisMonitorResult>((resolve) => {
+      const finish = (
+        snapshot: InteractionSnapshot,
+        reachedTargetBand: boolean,
+        stalled: boolean,
+        timedOut: boolean
+      ): void => {
+        resolve({
+          position: snapshot.position,
+          hint: snapshot.hint,
+          hintReady: snapshot.hint.includes(hintText),
+          reachedTargetBand,
+          stalled,
+          timedOut
+        });
+      };
+
+      const sample = (): void => {
+        const snapshot = readSnapshot();
+        if (snapshot.hint.includes(hintText)) {
+          finish(snapshot, false, false, false);
+          return;
+        }
+
+        const current = snapshot.position[axis];
+        if (!Number.isFinite(current)) {
+          finish(snapshot, false, true, false);
+          return;
+        }
+
+        const crossed = positive ? current >= target : current <= target;
+        if (crossed || Math.abs(current - target) <= targetBand) {
+          finish(snapshot, true, false, false);
+          return;
+        }
+
+        if (Number.isFinite(lastValue) && Math.abs(current - lastValue) < 1) stationaryFrames += 1;
+        else stationaryFrames = 0;
+        lastValue = current;
+
+        // Sample inside the browser render loop rather than through repeated
+        // Playwright round-trips. A physically blocked axis yields quickly so
+        // the controller can try the other axis without consuming the whole budget.
+        if (stationaryFrames >= 6) {
+          finish(snapshot, false, true, false);
+          return;
+        }
+        if (performance.now() - started >= Math.max(1, timeoutMs)) {
+          finish(snapshot, false, false, true);
+          return;
+        }
+        requestAnimationFrame(sample);
+      };
+
+      requestAnimationFrame(sample);
+    });
+  }, { axis, target, hintText, key, timeoutMs, targetBand });
+}
+
+async function settledInteractionSnapshot(
+  page: Page,
+  hintText: string
+): Promise<InteractionSnapshot & { hintReady: boolean }> {
+  return page.evaluate(async ({ hintText }) => {
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    const position = {
+      x: Number(document.body.dataset.playerX),
+      y: Number(document.body.dataset.playerY)
+    };
+    const hint = document.getElementById("interaction-hint")?.textContent ?? "";
+    return {
+      position,
+      hint,
+      hintReady: hint.includes(hintText)
+    };
+  }, { hintText });
+}
+
 async function moveAxisOneWayTo(
   page: Page,
   axis: "x" | "y",
@@ -132,44 +249,40 @@ async function moveAxisOneWayTo(
   timeout = 8_000
 ): Promise<void> {
   await installNavigationDiagnostics(page);
-  let position = await playerPosition(page);
-  const start = position;
-  const value = position[axis];
+  const start = await playerPosition(page);
+  const value = start[axis];
   if (!Number.isFinite(value) || value === target) return;
 
   const key: MovementKey = axis === "x"
     ? (value < target ? "d" : "a")
     : (value < target ? "s" : "w");
   const targetBand = 12;
-  let reached: PlayerPosition | null = null;
+  let observed: AxisMonitorResult | null = null;
 
   await releaseMovementKeys(page);
-  const started = Date.now();
   await page.keyboard.down(key);
   try {
-    while (Date.now() - started < timeout) {
-      position = await playerPosition(page);
-      const current = position[axis];
-      const crossed = key === "d" || key === "s" ? current >= target : current <= target;
-      if (crossed || Math.abs(current - target) <= targetBand) {
-        reached = position;
-        break;
-      }
-      await page.waitForTimeout(25);
-    }
+    observed = await monitorHeldAxis(page, axis, target, "", key, timeout, targetBand);
   } finally {
     await page.keyboard.up(key);
-    await releaseMovementKeys(page);
   }
 
-  const released = await playerPosition(page);
+  const released = await settledInteractionSnapshot(page, "");
+  const current = released.position[axis];
+  const reached = Number.isFinite(current)
+    && (crossedTarget(key, current, target) || Math.abs(current - target) <= targetBand);
+  await recordAxisTrace(page, {
+    axis,
+    target,
+    reached: observed?.position ?? released.position,
+    released: released.position
+  });
   if (!reached) {
     throw new Error(
       `one-way ${key} movement did not reach ${axis}=${target}; `
-        + `start=${JSON.stringify(start)} end=${JSON.stringify(released)}`
+        + `start=${JSON.stringify(start)} end=${JSON.stringify(released.position)}`
     );
   }
-  await recordAxisTrace(page, { axis, target, reached, released });
 }
 
 async function interactionSnapshot(
@@ -220,47 +333,30 @@ async function driveSingleAxisUntilHintOrTarget(
 
   const key = axisKey(axis, startValue, target);
   const targetBand = 4;
-  let snapshot = start;
-  let lastValue = startValue;
-  let stationarySamples = 0;
-  let reachedTargetBand = false;
-  let hintReady = false;
+  const remaining = Math.max(1, deadline - Date.now());
+  let observed: AxisMonitorResult | null = null;
 
   await page.keyboard.down(key);
   try {
-    while (Date.now() < deadline) {
-      snapshot = await interactionSnapshot(page, hintText);
-      if (snapshot.hintReady) {
-        hintReady = true;
-        break;
-      }
-
-      const current = snapshot.position[axis];
-      if (!Number.isFinite(current)) break;
-      if (crossedTarget(key, current, target) || Math.abs(current - target) <= targetBand) {
-        reachedTargetBand = true;
-        break;
-      }
-
-      if (Math.abs(current - lastValue) < 1) stationarySamples += 1;
-      else stationarySamples = 0;
-      lastValue = current;
-
-      // A blocked axis should yield quickly so the other axis can route around scenery.
-      if (stationarySamples >= 6) break;
-      await page.waitForTimeout(25);
-    }
+    observed = await monitorHeldAxis(page, axis, target, hintText, key, remaining, targetBand);
   } finally {
     await page.keyboard.up(key);
   }
 
-  await page.waitForTimeout(25);
-  const released = await playerPosition(page);
-  await recordAxisTrace(page, { axis, target, reached: snapshot.position, released });
+  const released = await settledInteractionSnapshot(page, hintText);
+  const releasedValue = released.position[axis];
+  const reachedAfterRelease = Number.isFinite(releasedValue)
+    && (crossedTarget(key, releasedValue, target) || Math.abs(releasedValue - target) <= targetBand);
+  await recordAxisTrace(page, {
+    axis,
+    target,
+    reached: observed?.position ?? released.position,
+    released: released.position
+  });
   return {
-    reachedTargetBand,
-    hintReady,
-    moved: Math.abs(released[axis] - startValue) >= 1
+    reachedTargetBand: reachedAfterRelease,
+    hintReady: released.hintReady,
+    moved: Math.abs(releasedValue - startValue) >= 1
   };
 }
 
