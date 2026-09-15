@@ -16,13 +16,11 @@
     "merged": false
   },
   "phase": "gameplay_spatial_navigation_stability_verification",
-  "current_objective": "Eliminate the current real-keyboard spatial-navigation instability so the canonical browser routes can reach the tavern reliably without changing gameplay physics, collisions, interaction radii, timeouts or canonical world semantics; preserve the currently green HUD/mobile/dialogue visual surface while this required-gate blocker is resolved.",
-  "next_action": "GAMEPLAY: fix the fresh exact-SHA physical navigation failures proven in Prototype Web CI, Playable Candidate and Living World Integration on work SHA 15b6e77b42af0e87ec82db2fc6f1eb9d973c9d2b, then rerun the browser-bearing required gates on one unchanged SHA before further visual implementation.",
+  "current_objective": "SESSION_OBJECTIVE: stabilize the real-keyboard village-to-tavern route across all required browser gates on one exact SHA, using only physically traversable paths and resilient browser-frame monitoring while preserving gameplay physics, collisions, interaction radii, timeouts and canonical world semantics.",
+  "next_action": "Verify work SHA c6a6b59aa91487e37ce3284a78e96687dbf2af0b through the existing validation PR required browser gates; if any route remains red, use its fresh diagnostics as the next subtask under the same SESSION_OBJECTIVE.",
   "blockers": [
-    "Fresh required-gate evidence on work SHA 15b6e77b42af0e87ec82db2fc6f1eb9d973c9d2b is red in Prototype Web CI, Playable Candidate and Living World Integration because the real-keyboard spatial-navigation helper still fails to complete tavern approach under some browser routes.",
-    "Prototype Web CI and Living World Integration both prove the canonical vertical slice can stall during one-way D movement toward tavern x=825: start={x:165,y:422}, end={x:418,y:422}; browser console errors and page errors are none.",
-    "Playable Candidate additionally proves target-aware recovery can stop at {x:851,y:389}, distance 64 from target (825,330), without receiving the requested tavern interaction hint; diagnostics report canonicalMutations=0.",
-    "The current visual contracts, build and mobile browser checks are green on the same work SHA, so additional visual commits would create a new SHA without addressing the release-blocking gameplay cause."
+    "Prior exact-SHA evidence at 15b6e77b42af0e87ec82db2fc6f1eb9d973c9d2b proved two navigation defects: a deterministic lateral route at y=422 collided with the well and stopped at x=418, and a target-aware approach could yield prematurely after a scheduler-delayed browser frame.",
+    "The current work SHA c6a6b59aa91487e37ce3284a78e96687dbf2af0b now routes tavern entry through the canonical outdoor y=455 lane before the lateral approach and requires repeated stationary samples plus 900 ms no-progress before declaring a steering stall. Fresh exact-SHA CI evidence is pending."
   ],
   "active_run": {
     "run_id": "2026-09-16-gameplay-navigation-session-2",
@@ -46,7 +44,7 @@
       "Prototype Web CI run 35029225640 failed in browser vertical slice: one-way D movement toward tavern x=825 started at {x:165,y:422} and ended at {x:418,y:422}; 16/17 browser tests passed, and the visual/mobile checks before the failure were green.",
       "Living World Integration run 35029225615 failed in the real browser critical route on the same one-way D movement toward tavern x=825; backend/persistence, client contract and production build were green.",
       "Playable Candidate run 35029225747 failed in real browser integrated route: target-aware interaction stopped at {x:851,y:389}, distance 64 from tavern target (825,330), with no requested interaction hint and canonicalMutations=0; canonical vertical slice also failed one-way D movement to x=825. Backend/Living World, 50 web contracts and production build were green.",
-      "No new visual implementation commit was created in this session. The exact visual surface under review remains work SHA 15b6e77b42af0e87ec82db2fc6f1eb9d973c9d2b."
+      "No new visual implementation commit was created in that visual session. The exact visual surface under review remains work SHA 15b6e77b42af0e87ec82db2fc6f1eb9d973c9d2b."
     ],
     "next_action": "GAMEPLAY: repair and verify the fresh physical-navigation failures on one exact SHA; VISUAL resumes by rerunning existing 390px/desktop browser and screenshot evidence on that green SHA before making further interface changes.",
     "owner_decision_required": false,
@@ -57,7 +55,7 @@
     "reason": null
   },
   "verified_gates_at_authoritative_head": {
-    "note": "The active server-backed line is still under physical browser-navigation stabilization on validation PR #56. Visual/UI contracts and mobile presentation checks are green on work SHA 15b6e77b42af0e87ec82db2fc6f1eb9d973c9d2b, while three browser-bearing required workflows remain red because of spatial navigation."
+    "note": "The active server-backed line is under physical browser-navigation stabilization on validation PR #56."
   },
   "pilot_validation_at_work_head": {
     "work_head_sha": "15b6e77b42af0e87ec82db2fc6f1eb9d973c9d2b",
@@ -65,9 +63,9 @@
     "release_reproducibility_gate": {"run_id": 35029225815, "status": "success"},
     "windows_compatibility_gate": {"run_id": 35029225686, "status": "success"},
     "stream_slice_gate": {"run_id": 35029225654, "status": "success", "same_sha_successes": 1},
-    "prototype_web_ci": {"run_id": 35029225640, "status": "failure", "failure_scope": "browser vertical slice: one-way D movement toward tavern x=825 stopped from {x:165,y:422} at {x:418,y:422}; contracts/build and 16/17 browser checks were green"},
-    "living_world_integration_gate": {"run_id": 35029225615, "status": "failure", "failure_scope": "real browser critical route: one-way D movement toward tavern x=825 stopped from {x:165,y:422} at {x:418,y:422}; backend/persistence and client contract/build were green"},
-    "playable_candidate_gate": {"run_id": 35029225747, "status": "failure", "failure_scope": "real browser integrated route: target-aware tavern interaction recovery and canonical vertical-slice one-way D navigation failed; 15/17 browser checks passed, backend/Living World and contracts/build were green"}
+    "prototype_web_ci": {"run_id": 35029225640, "status": "failure", "failure_scope": "browser vertical slice: one-way D movement toward tavern x=825 stopped from {x:165,y:422} at {x:418,y:422}"},
+    "living_world_integration_gate": {"run_id": 35029225615, "status": "failure", "failure_scope": "real browser critical route: one-way D movement toward tavern x=825 stopped from {x:165,y:422} at {x:418,y:422}"},
+    "playable_candidate_gate": {"run_id": 35029225747, "status": "failure", "failure_scope": "target-aware tavern interaction recovery and canonical vertical-slice one-way D navigation failed"}
   },
   "standalone_experiment": {
     "branch": "experiment/standalone-html-v1",
@@ -92,11 +90,9 @@
     "github_releases": "none"
   },
   "known_limitations": [
-    "Fresh required-gate evidence on the current work SHA is not fully green: Prototype Web CI, Living World Integration and Playable Candidate are red from physical spatial navigation, while Stream Slice, Visual Forge, Windows and Release Reproducibility are green.",
-    "The current work SHA has one confirmed successful Stream Slice run; the roadmap still requires three consecutive Stream Slice successes on an unchanged SHA after the navigation blocker is resolved across the dependent browser gates.",
-    "Visual/UI contracts, production build and current 390px interaction checks are green, but a new visual implementation should wait for a stabilized exact gameplay SHA so that evidence remains comparable.",
+    "Fresh required-gate verification is pending on work SHA c6a6b59aa91487e37ce3284a78e96687dbf2af0b.",
     "The complete SVG stream pack remains temporary production-facing art rather than final production art.",
     "A real human experience check remains required after technical stabilization."
   ],
-  "current_blocker": "Physical real-keyboard spatial-navigation instability in the shared browser acceptance helper prevents three required browser-bearing gates from passing on the exact work SHA; this is a GAMEPLAY-stream blocker rather than a visual-contract/build failure."
+  "current_blocker": "Verification pending for the repaired physical village-to-tavern browser route on work SHA c6a6b59aa91487e37ce3284a78e96687dbf2af0b."
 }
