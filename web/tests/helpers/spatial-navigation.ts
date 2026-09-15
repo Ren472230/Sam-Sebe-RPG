@@ -8,6 +8,7 @@ type AxisTrace = {
   reached: PlayerPosition;
   released: PlayerPosition;
 };
+type PendingAxisTrace = Omit<AxisTrace, "released">;
 
 type InteractionSnapshot = {
   position: PlayerPosition;
@@ -217,27 +218,27 @@ function crossedInteractionAxis(axis: InteractionAxis, position: PlayerPosition)
 async function releaseInteractionAxes(
   page: Page,
   axes: InteractionAxis[],
-  reached: PlayerPosition
+  reached: PlayerPosition,
+  pendingTraces: PendingAxisTrace[]
 ): Promise<void> {
   const releasing = axes.filter((axis) => axis.active);
-  if (releasing.length === 0) return;
-
-  // Release every selected real keyboard axis first. Diagnostics come afterwards so
-  // the other held axis cannot keep moving while we await trace bookkeeping.
   for (const axis of releasing) {
+    // Keep the steering loop hot: stop real keyboard movement immediately and defer
+    // every diagnostic read/write until no movement axis remains held.
     await page.keyboard.up(axis.key);
     axis.active = false;
+    pendingTraces.push({ axis: axis.axis, target: axis.target, reached });
   }
+}
 
-  await page.waitForTimeout(25);
+async function flushInteractionTraces(
+  page: Page,
+  pendingTraces: PendingAxisTrace[]
+): Promise<void> {
+  if (pendingTraces.length === 0) return;
   const released = await playerPosition(page);
-  for (const axis of releasing) {
-    await recordAxisTrace(page, {
-      axis: axis.axis,
-      target: axis.target,
-      reached,
-      released
-    });
+  for (const trace of pendingTraces.splice(0)) {
+    await recordAxisTrace(page, { ...trace, released });
   }
 }
 
@@ -257,6 +258,7 @@ export async function moveTowardInteraction(
   const xAxis = interactionAxis("x", snapshot.position.x, targetX);
   const yAxis = interactionAxis("y", snapshot.position.y, targetY);
   const axes = [xAxis, yAxis].filter((axis): axis is InteractionAxis => axis !== null);
+  const pendingTraces: PendingAxisTrace[] = [];
 
   await releaseMovementKeys(page);
   for (const axis of axes) await page.keyboard.down(axis.key);
@@ -266,14 +268,16 @@ export async function moveTowardInteraction(
       snapshot = await interactionSnapshot(page, targetX, targetY, hintText, stableInteractionRadius);
 
       if (snapshot.ready) {
-        await releaseInteractionAxes(page, axes, snapshot.position);
+        await releaseInteractionAxes(page, axes, snapshot.position, pendingTraces);
         await page.waitForTimeout(25);
         snapshot = await interactionSnapshot(page, targetX, targetY, hintText, stableInteractionRadius);
         if (snapshot.ready) return;
       }
 
       const crossed = axes.filter((axis) => axis.active && crossedInteractionAxis(axis, snapshot.position));
-      if (crossed.length > 0) await releaseInteractionAxes(page, crossed, snapshot.position);
+      if (crossed.length > 0) {
+        await releaseInteractionAxes(page, crossed, snapshot.position, pendingTraces);
+      }
 
       if (axes.every((axis) => !axis.active)) {
         await page.waitForTimeout(25);
@@ -285,11 +289,12 @@ export async function moveTowardInteraction(
       await page.waitForTimeout(25);
     }
   } finally {
-    for (const axis of axes) {
-      if (axis.active) await page.keyboard.up(axis.key);
-      axis.active = false;
+    const stillActive = axes.filter((axis) => axis.active);
+    if (stillActive.length > 0) {
+      await releaseInteractionAxes(page, stillActive, snapshot.position, pendingTraces);
     }
     await releaseMovementKeys(page);
+    await flushInteractionTraces(page, pendingTraces);
   }
 
   snapshot = await interactionSnapshot(page, targetX, targetY, hintText, stableInteractionRadius);
