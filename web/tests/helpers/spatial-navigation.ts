@@ -45,6 +45,11 @@ type VectorMonitorResult = {
 };
 
 const MOVEMENT_KEYS = ["w", "a", "s", "d"] as const;
+// VillageScene keeps all canonical outdoor location anchors on y=455. At this
+// center line the player's 21 px half-height clears the well, whose collision
+// rectangle ends at y=420, so long lateral travel can use real keys without
+// trying to walk through static geometry.
+const VILLAGE_OPEN_LANE_Y = 455;
 
 export async function playerPosition(page: Page): Promise<PlayerPosition> {
   return page.evaluate(() => ({
@@ -184,6 +189,7 @@ async function monitorHeldAxis(
     const initial = readSnapshot();
     let lastValue = initial.position[axis];
     let lastProgressAt = performance.now();
+    let stationarySamples = 0;
     const positive = key === "d" || key === "s";
     const started = performance.now();
 
@@ -224,13 +230,18 @@ async function monitorHeldAxis(
         }
 
         const now = performance.now();
-        if (Number.isFinite(lastValue) && Math.abs(current - lastValue) >= 1) lastProgressAt = now;
+        if (Number.isFinite(lastValue) && Math.abs(current - lastValue) >= 1) {
+          lastProgressAt = now;
+          stationarySamples = 0;
+        } else {
+          stationarySamples += 1;
+        }
         lastValue = current;
 
-        // Phaser and this diagnostic sampler both run from requestAnimationFrame.
-        // Use elapsed no-progress time rather than a frame count so a slow runner
-        // cannot mistake several sampler frames for a physically blocked player.
-        if (now - lastProgressAt >= 900) {
+        // One delayed animation frame is scheduler noise, not proof of collision.
+        // Require repeated stationary observations as well as elapsed no-progress
+        // time before yielding control to a different steering segment.
+        if (stationarySamples >= 3 && now - lastProgressAt >= 900) {
           finish(snapshot, false, true, false);
           return;
         }
@@ -408,6 +419,7 @@ async function monitorHeldVector(
     const initial = readSnapshot();
     let last = initial.position;
     let lastProgressAt = performance.now();
+    let stationarySamples = 0;
     const started = performance.now();
 
     return await new Promise<VectorMonitorResult>((resolve) => {
@@ -445,9 +457,14 @@ async function monitorHeldVector(
         }
 
         const now = performance.now();
-        if (Math.hypot(x - last.x, y - last.y) >= 1) lastProgressAt = now;
+        if (Math.hypot(x - last.x, y - last.y) >= 1) {
+          lastProgressAt = now;
+          stationarySamples = 0;
+        } else {
+          stationarySamples += 1;
+        }
         last = snapshot.position;
-        if (now - lastProgressAt >= 900) {
+        if (stationarySamples >= 3 && now - lastProgressAt >= 900) {
           finish(snapshot, false, true, false);
           return;
         }
@@ -663,8 +680,10 @@ async function moveWithConcurrentKeysUntilHint(
 
 export async function enterTavernSpatially(page: Page): Promise<void> {
   const hint = page.locator("#interaction-hint");
-  // The tavern collision body occupies the upper lane. Align with the doorway while
-  // still in the open plaza, then approach north through the real interaction band.
+  // Rejoin the canonical open village lane before the long lateral approach.
+  // This uses the same y=455 outdoor anchor as VillageScene and clears the well
+  // physically instead of trying to drive D through its collision rectangle.
+  await moveAxisOneWayTo(page, "y", VILLAGE_OPEN_LANE_Y, 20_000);
   await moveAxisOneWayTo(page, "x", 825, 20_000);
   await moveTowardInteraction(page, 825, 330, "войти в таверну", 20_000);
   await expect(hint).toContainText("войти в таверну", { timeout: 3_000 });
