@@ -180,12 +180,27 @@ test("canonical location change clears the previous NPC interaction immediately"
   const hint = page.locator("#interaction-hint");
 
   await expect(body).toHaveAttribute("data-canonical-location", "workshop_yard");
+
+  // Mira follows the canonical world schedule. Make the interaction precondition
+  // through the same legal player-facing MOVE control instead of assuming she is
+  // always physically rendered in the workshop at every wall-clock phase.
+  let interactionLocation: "workshop_yard" | "village_square" = "workshop_yard";
+  const workshopNpcIds = await body.getAttribute("data-rendered-npc-ids") ?? "";
+  if (!workshopNpcIds.split(",").includes("npc_mira")) {
+    await page.getByRole("button", { name: "Идти: площадь", exact: true }).click();
+    await expect(body).toHaveAttribute("data-canonical-location", "village_square");
+    await expect(body).toHaveAttribute("data-rendered-npc-ids", /npc_mira/);
+    interactionLocation = "village_square";
+  }
+
   await approachAndTalk(page, 250, 365, "поговорить с Мирой", "Мира");
   await page.getByRole("button", { name: "Закрыть", exact: true }).click();
   await expect(hint).toContainText("поговорить с Мирой", { timeout: 3_000 });
 
-  await page.getByRole("button", { name: "Идти: площадь", exact: true }).click();
-  await expect(body).toHaveAttribute("data-canonical-location", "village_square");
+  const destination = interactionLocation === "workshop_yard" ? "площадь" : "мастерская";
+  const destinationId = interactionLocation === "workshop_yard" ? "village_square" : "workshop_yard";
+  await page.getByRole("button", { name: `Идти: ${destination}`, exact: true }).click();
+  await expect(body).toHaveAttribute("data-canonical-location", destinationId);
 
   await expect(hint).not.toContainText("поговорить с Мирой", { timeout: 150 });
   await page.keyboard.press("e");
