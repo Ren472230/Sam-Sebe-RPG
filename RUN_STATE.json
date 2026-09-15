@@ -17,37 +17,38 @@
   },
   "phase": "gameplay_spatial_navigation_stability_verification",
   "current_objective": "SESSION_OBJECTIVE: eliminate the current real-keyboard spatial-navigation instability so the canonical browser routes can reach Mira and the tavern reliably under normal, slow-browser and controller-stall conditions without changing gameplay physics, collisions, interaction radii, timeouts or canonical world semantics.",
-  "next_action": "Inspect Stream Slice Gate run 35023235641 attempt 2 on exact work SHA 4985f53c66722f2cf85ed9648be1652099c451f8. If it is green, rerun the same job once more for attempt 3 on the same SHA; then require the remaining browser-bearing required gates on that SHA to finish green before declaring navigation stabilization complete. If any current exact-SHA gate is red, inspect that fresh failure before making another code change.",
+  "next_action": "Inspect fresh required-gate results for work SHA 15b6e77b42af0e87ec82db2fc6f1eb9d973c9d2b, starting with Stream Slice Gate run 35029225654. If its first Stream Slice Chromium acceptance is green, rerun that same job twice sequentially on the unchanged SHA to obtain the roadmap-required three consecutive successful Stream Slice runs. Any fresh red required gate must be diagnosed before another implementation change.",
   "blockers": [
-    "No confirmed implementation blocker remains on the final work SHA. Exact-SHA validation is still running: required browser-bearing gates have not all completed, and the roadmap requires three sequential successful Stream Slice runs on one SHA before stability is proven.",
-    "Stream Slice Gate run 35023235641 attempt 1 completed successfully on exact work SHA 4985f53c66722f2cf85ed9648be1652099c451f8. Attempt 2 was explicitly started on the same SHA and was still running when this session reached its execution boundary.",
+    "No confirmed code blocker remains at handoff. Fresh required-gate validation for work SHA 15b6e77b42af0e87ec82db2fc6f1eb9d973c9d2b is still in progress, so navigation stability is not yet proven.",
+    "The roadmap requires three consecutive successful Stream Slice runs on one unchanged SHA. The first Stream Slice Gate run for 15b6e77b42af0e87ec82db2fc6f1eb9d973c9d2b was still executing Chromium acceptance at handoff; no same-SHA reruns have yet been counted for this work SHA.",
     "The standalone experiment remains a separate line and is outside this server-backed gameplay session."
   ],
   "active_run": {
-    "run_id": "2026-09-15-gameplay-navigation-stability-2",
-    "status": "running",
-    "started_at_utc": "2026-09-15T21:50:32Z",
-    "lease_expires_at_utc": "2026-09-15T23:20:32Z",
-    "base_sha": "e26e390c175768f05d4c53420ccc45ca31ad3aa8",
+    "run_id": null,
+    "status": "idle",
+    "started_at_utc": null,
+    "lease_expires_at_utc": null,
+    "base_sha": null,
     "working_branch": "agent/autonomy-pilot-v0.1"
   },
   "last_handoff": {
-    "completed_at_utc": "2026-09-15T21:10:47Z",
-    "result": "SESSION_OBJECTIVE: eliminate real-keyboard spatial-navigation instability without changing gameplay physics or world semantics. CHECKPOINT 1: reconciled fresh red evidence on e1b89bae47bc2d66794fec2da0e6ad5683d6c6a0. Prototype Web CI had 50/50 contracts and a green build but four browser failures: slow/controller-stalled navigation could spend the shared deadline on one axis or overshoot before Playwright issued keyup, while the stale-Mira regression also assumed Mira was always rendered in the workshop despite her canonical schedule. CHECKPOINT 2: moved high-frequency navigation sensing into the independently rendering browser frame loop while retaining real Playwright keyboard.down/up actuation. The controller now detects hint/target/stall inside requestAnimationFrame, releases the real key, waits one browser frame, then steers from the settled post-release position. No speed, collision, interaction radius, timeout or canonical location behavior changed. CHECKPOINT 3: corrected the stale-Mira regression to establish its NPC precondition through the legal player-facing MOVE control when Mira is scheduled on the square. CHECKPOINT 4: corrected an empty-hint edge case in the one-way axis monitor. Final work SHA 4985f53c66722f2cf85ed9648be1652099c451f8. Fresh exact-SHA evidence already shows Visual Forge, Windows Compatibility and Release Reproducibility green; Prototype Web CI passed all 50 web contracts, production build, startup controls and the complete main browser vertical-slice suite; Stream Slice Gate attempt 1 passed backend tests, preflight, contracts, build and Chromium acceptance. Playable Candidate backend/Living World and Living World backend/persistence jobs also passed while their browser jobs were still running. CHECKPOINT 5: started Stream Slice Gate attempt 2 on the exact same work SHA to satisfy the roadmap's repeated-stability requirement. STOP_REASON: EXECUTION_LIMIT. No owner decision is required.",
-    "head_sha": "4985f53c66722f2cf85ed9648be1652099c451f8",
-    "work_head_sha": "4985f53c66722f2cf85ed9648be1652099c451f8",
+    "completed_at_utc": "2026-09-15T22:09:52Z",
+    "result": "SESSION_OBJECTIVE: eliminate real-keyboard spatial-navigation instability while preserving real keyboard input, physics, collisions, interaction radii, canonical world semantics and existing timeout policy. CHECKPOINT 1: reconciled the previous exact-SHA evidence. Work SHA 4985f53c66722f2cf85ed9648be1652099c451f8 had Visual Forge, Windows, Release Reproducibility, Prototype Web CI and Playable Candidate green, plus two successful Stream Slice attempts, but Living World Integration remained red with browser navigation failures. CHECKPOINT 2: on 4c91d92efdb289511b8eed822a33aace22ff4817 moved interaction steering to a browser-frame feedback loop while retaining real Playwright keyboard down/up actuation; concurrent x/y steering now prevents one axis from consuming the shared navigation window, post-release coordinates drive corrections, and stall sensing uses elapsed no-progress time. No gameplay speed, collision, interaction radius, canonical state or global timeout changed. CHECKPOINT 3: fresh Stream Slice run 35028429319 on 4c91d92efdb289511b8eed822a33aace22ff4817 proved backend tests, preflight, 50 web contracts, production build and the human-control rehearsal green, then exposed a different boundary: the complete causal evening route was functionally progressing but the monolithic Playwright test exhausted its existing 180-second per-test budget on a slow runner. CHECKPOINT 4: on final work SHA 15b6e77b42af0e87ec82db2fc6f1eb9d973c9d2b split the causal evening acceptance into two serial persisted phases instead of increasing a timeout or bypassing gameplay. Phase one proves the physical Mira/Kaspar/tavern/Talen/Oren causal route through tick 10. Phase two starts a fresh browser page against the same persisted player/world, waits for real TavernScene readiness, performs the physical bread-delivery route, reloads and re-verifies causal knowledge. This preserves real controls and adds a stable browser-scene readiness boundary for reload navigation. CHECKPOINT 5: validation branch and PR #56 were fast-forwarded to the unchanged work SHA 15b6e77b42af0e87ec82db2fc6f1eb9d973c9d2b. Fresh exact-head PR evidence at handoff: Visual Forge Gate run 35029225620 success; Release Reproducibility Gate run 35029225815 success; Windows Compatibility Gate run 35029225686 success including full Python, Stream Slice preflight, web contracts/build, fresh SQLite/timezone and Windows backend/API boot. Stream Slice Gate run 35029225654 had backend install, profile Python tests, preflight, 50 contracts, build and Chromium installation green with Stream Slice Chromium acceptance still in progress. Living World Integration run 35029225615 had backend/persistence green and client contract/build green with the real browser route in progress. Playable Candidate run 35029225747 had backend/Living World green and web contract/build green with browser acceptance in progress. Prototype Web CI run 35029225640 had contracts/build/startup controls green with browser vertical slice in progress. STOP_REASON: EXECUTION_LIMIT. No owner decision is required.",
+    "head_sha": "15b6e77b42af0e87ec82db2fc6f1eb9d973c9d2b",
+    "work_head_sha": "15b6e77b42af0e87ec82db2fc6f1eb9d973c9d2b",
     "verification": [
-      "RED baseline e1b89bae47bc2d66794fec2da0e6ad5683d6c6a0: Prototype Web CI run 35019458344 passed 50/50 contracts and production build but failed 4/17 browser scenarios in spatial navigation; required browser-bearing gates were red on the same SHA.",
-      "Final work SHA 4985f53c66722f2cf85ed9648be1652099c451f8: Visual Forge Gate run 35023235600 completed successfully.",
-      "Final work SHA 4985f53c66722f2cf85ed9648be1652099c451f8: Windows Compatibility Gate run 35023235721 completed successfully, including full Python suite, Stream Slice preflight, web contracts/build, fresh SQLite checks and Windows backend boot.",
-      "Final work SHA 4985f53c66722f2cf85ed9648be1652099c451f8: Release Reproducibility Gate run 35023235950 completed successfully on both Windows and Ubuntu clean dependency/build jobs.",
-      "Final work SHA 4985f53c66722f2cf85ed9648be1652099c451f8: Prototype Web CI run 35023236029 passed web contracts, production build, startup controls and the complete main browser vertical-slice step; Living NPC acceptance was still running at handoff.",
-      "Final work SHA 4985f53c66722f2cf85ed9648be1652099c451f8: Stream Slice Gate run 35023235641 attempt 1 completed successfully through Stream Slice Chromium acceptance. Attempt 2 was started on the same SHA and remained in progress at handoff.",
-      "Final work SHA 4985f53c66722f2cf85ed9648be1652099c451f8: Playable Candidate Gate run 35023236181 backend/Living World job completed successfully; browser job had contracts/build green and the real browser route still running at handoff.",
-      "Final work SHA 4985f53c66722f2cf85ed9648be1652099c451f8: Living World Integration Gate run 35023235929 backend/persistence job completed successfully; client contract/build green and real browser critical route still running at handoff.",
-      "No release-ready claim is made until the remaining exact-SHA browser gates finish and Stream Slice succeeds three sequential times on this SHA."
+      "Prior work SHA 4985f53c66722f2cf85ed9648be1652099c451f8: Stream Slice Gate run 35023235641 attempts 1 and 2 completed successfully, while Living World Integration run 35023235929 supplied the remaining fresh red browser-navigation evidence; old successes are historical context only and are not used as proof for the new work SHA.",
+      "Intermediate SHA 4c91d92efdb289511b8eed822a33aace22ff4817: Stream Slice Gate run 35028429319 passed backend installation, 22 profile Python tests, preflight, 50 web contracts, production build, Chromium installation and the human-control rehearsal. The causal route then hit the existing 180-second per-test ceiling after several successful causal phases on a slow runner, motivating phase separation rather than timeout inflation.",
+      "Final work SHA 15b6e77b42af0e87ec82db2fc6f1eb9d973c9d2b: Visual Forge Gate run 35029225620 completed successfully.",
+      "Final work SHA 15b6e77b42af0e87ec82db2fc6f1eb9d973c9d2b: Release Reproducibility Gate run 35029225815 completed successfully.",
+      "Final work SHA 15b6e77b42af0e87ec82db2fc6f1eb9d973c9d2b: Windows Compatibility Gate run 35029225686 completed successfully; full Python suite, Stream Slice preflight, web contracts, production build, fresh SQLite/timezone checks and Windows backend/API state all passed.",
+      "Final work SHA 15b6e77b42af0e87ec82db2fc6f1eb9d973c9d2b: Stream Slice Gate run 35029225654 had installation, profile Python tests, preflight, web contracts, production build and Chromium install green; Stream Slice Chromium acceptance was still in progress at handoff.",
+      "Final work SHA 15b6e77b42af0e87ec82db2fc6f1eb9d973c9d2b: Living World Integration Gate run 35029225615 backend/persistence completed successfully; client TypeScript contract and production build were green while the real browser critical route was still in progress.",
+      "Final work SHA 15b6e77b42af0e87ec82db2fc6f1eb9d973c9d2b: Playable Candidate Gate run 35029225747 backend/Living World completed successfully; web contracts and production build were green while the real browser integrated route was still in progress.",
+      "Final work SHA 15b6e77b42af0e87ec82db2fc6f1eb9d973c9d2b: Prototype Web CI run 35029225640 had web contracts, production build and startup-control verification green while the browser vertical slice was still in progress.",
+      "No navigation-stability or release-ready claim is made until all fresh browser-bearing required gates settle and Stream Slice succeeds three consecutive times on the unchanged work SHA."
     ],
-    "next_action": "Inspect Stream Slice Gate run 35023235641 attempt 2 on exact work SHA 4985f53c66722f2cf85ed9648be1652099c451f8. If it is green, rerun the same job once more for attempt 3 on the same SHA; then require the remaining browser-bearing required gates on that SHA to finish green before declaring navigation stabilization complete. If any current exact-SHA gate is red, inspect that fresh failure before making another code change.",
+    "next_action": "Inspect fresh required-gate results for work SHA 15b6e77b42af0e87ec82db2fc6f1eb9d973c9d2b, starting with Stream Slice Gate run 35029225654. If its first Stream Slice Chromium acceptance is green, rerun that same job twice sequentially on the unchanged SHA to obtain the roadmap-required three consecutive successful Stream Slice runs. Any fresh red required gate must be diagnosed before another implementation change.",
     "owner_decision_required": false,
     "stop_reason": "EXECUTION_LIMIT"
   },
@@ -56,17 +57,17 @@
     "reason": null
   },
   "verified_gates_at_authoritative_head": {
-    "note": "The standalone experiment has its own test contour. The active server-backed gameplay line is validating physical browser navigation on exact work SHA 4985f53c66722f2cf85ed9648be1652099c451f8 before any release-ready claim."
+    "note": "The active server-backed gameplay line is validating physical browser navigation on work SHA 15b6e77b42af0e87ec82db2fc6f1eb9d973c9d2b through validation PR #56. The standalone experiment has its own test contour and does not change these release-gate results."
   },
   "pilot_validation_at_work_head": {
-    "work_head_sha": "4985f53c66722f2cf85ed9648be1652099c451f8",
-    "visual_forge_gate": {"run_id": 35023235600, "status": "success"},
-    "release_reproducibility_gate": {"run_id": 35023235950, "status": "success"},
-    "windows_compatibility_gate": {"run_id": 35023235721, "status": "success"},
-    "stream_slice_gate": {"run_id": 35023235641, "status": "stability_verification_in_progress", "attempt_1": "success", "attempt_2": "in_progress"},
-    "prototype_web_ci": {"run_id": 35023236029, "status": "in_progress", "verified_partial": "50 web contracts success; production build success; startup controls success; full main browser vertical-slice success; Living NPC acceptance in progress"},
-    "living_world_integration_gate": {"run_id": 35023235929, "status": "in_progress", "verified_partial": "backend/persistence success; client contract/build success; browser critical route in progress"},
-    "playable_candidate_gate": {"run_id": 35023236181, "status": "in_progress", "verified_partial": "backend/Living World success; web contracts/build success; real browser route in progress"}
+    "work_head_sha": "15b6e77b42af0e87ec82db2fc6f1eb9d973c9d2b",
+    "visual_forge_gate": {"run_id": 35029225620, "status": "success"},
+    "release_reproducibility_gate": {"run_id": 35029225815, "status": "success"},
+    "windows_compatibility_gate": {"run_id": 35029225686, "status": "success"},
+    "stream_slice_gate": {"run_id": 35029225654, "status": "in_progress", "verified_partial": "backend install success; profile Python tests success; Stream Slice preflight success; web contracts success; production build success; Chromium installed; acceptance in progress", "same_sha_successes": 0},
+    "prototype_web_ci": {"run_id": 35029225640, "status": "in_progress", "verified_partial": "web contracts success; production build success; startup controls success; browser vertical slice in progress"},
+    "living_world_integration_gate": {"run_id": 35029225615, "status": "in_progress", "verified_partial": "backend/persistence success; client contract success; production build success; real browser critical route in progress"},
+    "playable_candidate_gate": {"run_id": 35029225747, "status": "in_progress", "verified_partial": "backend/Living World success; web contracts success; production build success; real browser integrated route in progress"}
   },
   "standalone_experiment": {
     "branch": "experiment/standalone-html-v1",
@@ -91,8 +92,8 @@
     "github_releases": "none"
   },
   "known_limitations": [
-    "The final work SHA has one successful Stream Slice run, while the required three-run same-SHA stability proof is incomplete; attempt 2 is already running.",
-    "Prototype Web CI, Playable Candidate and Living World Integration still have exact-SHA browser work in progress at this handoff, so the full seven-gate release contour is not yet claimed green.",
+    "The current work SHA has not yet completed the roadmap-required three consecutive Stream Slice successes; its first acceptance run was still in progress at handoff.",
+    "Prototype Web CI, Playable Candidate and Living World Integration still had browser work in progress at handoff, so the full seven-gate contour is not yet claimed green on the current work SHA.",
     "Direct file:// persistence needs one target-browser human check because this managed Chromium blocks file:// by administrator policy.",
     "Standalone implementation source and exact artifact still need repository materialization before that experiment can become a maintained primary client.",
     "A real human experience check remains required after technical stabilization."
