@@ -213,7 +213,7 @@ async function driveSingleAxisUntilHintOrTarget(
   }
 
   const key = axisKey(axis, startValue, target);
-  const targetBand = 12;
+  const targetBand = 4;
   let snapshot = start;
   let lastValue = startValue;
   let stationarySamples = 0;
