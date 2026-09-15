@@ -19,17 +19,17 @@
   "current_objective": "SESSION_OBJECTIVE: finish and harden the 390px touch play surface by validating the previous mobile UI on fresh exact-head CI, adding durable pressed-state visual feedback to touch controls, and preserving reachability/readability without changing gameplay semantics.",
   "next_action": "Finish exact 390px browser verification on work SHA e1b89bae47bc2d66794fec2da0e6ad5683d6c6a0 by inspecting Prototype Web CI run 35019458344 and the dedicated touch-press browser test; fix only touch visual/reachability regressions found there.",
   "blockers": [
-    "Fresh exact-head Prototype Web CI run 35011905698 on aee418cc1d7404fffbd6811c169b53d5c190663a passed all 49 then-current web contracts, production build and the first five mobile/clarity checks, but remained red because later real-keyboard spatial-navigation tests failed in moveTowardInteraction; this failure was analyzed as GAMEPLAY-owned rather than a touch-visual regression.",
+    "Fresh exact-head Prototype Web CI run 35011905698 on aee418cc1d7404fffbd6811c169b53d5c190663a passed all 49 then-current web contracts, production build and the first five 390px/clarity checks, but remained red because later real-keyboard spatial-navigation tests failed in moveTowardInteraction; this failure was analyzed as GAMEPLAY-owned rather than a touch-visual regression.",
     "Final visual work SHA e1b89bae47bc2d66794fec2da0e6ad5683d6c6a0 has fresh CI in flight. Prototype Web CI run 35019458344 has already passed web contracts, production build and startup controls, while its full browser vertical-slice step is still in progress; the new dedicated held-touch browser assertion therefore remains pending rather than claimed green.",
     "Required browser gates on the preceding gameplay head showed spatial-navigation instability. This visual session did not alter spatial-navigation helpers, world rules or physical movement semantics.",
     "The standalone experiment remains a separate line and is outside this server-backed visual session."
   ],
   "active_run": {
-    "run_id": null,
-    "status": "idle",
-    "started_at_utc": null,
-    "lease_expires_at_utc": null,
-    "base_sha": null,
+    "run_id": "2026-09-15-gameplay-navigation-stability-3",
+    "status": "running",
+    "started_at_utc": "2026-09-15T20:52:30Z",
+    "lease_expires_at_utc": "2026-09-15T22:22:30Z",
+    "base_sha": "a720740239faeadf90c0b4e8a2afe18779592fbf",
     "working_branch": "agent/autonomy-pilot-v0.1"
   },
   "last_handoff": {
