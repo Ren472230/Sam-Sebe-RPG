@@ -15,39 +15,39 @@
     "draft": true,
     "merged": false
   },
-  "phase": "visual_mobile_feedback_verification",
+  "phase": "visual_mobile_feedback_verification_pending_browser",
   "current_objective": "SESSION_OBJECTIVE: finish and harden the 390px touch play surface by validating the previous mobile UI on fresh exact-head CI, adding durable pressed-state visual feedback to touch controls, and preserving reachability/readability without changing gameplay semantics.",
-  "next_action": "Add explicit data-driven pressed-state feedback for held touch controls, extend the deterministic touch visual contract, then verify the resulting exact work SHA through fresh contract/build/mobile browser evidence while treating the current gameplay-navigation gate failures as a separate GAMEPLAY-owned blocker.",
+  "next_action": "Finish exact 390px browser verification on work SHA e1b89bae47bc2d66794fec2da0e6ad5683d6c6a0 by inspecting Prototype Web CI run 35019458344 and the dedicated touch-press browser test; fix only touch visual/reachability regressions found there.",
   "blockers": [
-    "Fresh exact-head Prototype Web CI run 35011905698 on aee418cc1d7404fffbd6811c169b53d5c190663a passes all 49 web contracts, the production build and the first five mobile/clarity checks, but remains red because later real-keyboard spatial-navigation tests fail in moveTowardInteraction.",
-    "Fresh exact-head Playable Candidate Gate run 35011905758 is also red on the same gameplay-navigation line; visual release readiness cannot be claimed while required gates remain red, even though the touch-specific contracts/build path is green.",
-    "The previous gameplay lease 2026-09-15-gameplay-browser-stability-2 expired at 2026-09-15T20:18:32Z with branch HEAD aee418cc1d7404fffbd6811c169b53d5c190663a; this visual session recovered only after the lease expired and confirmed the branch state and fresh CI evidence.",
+    "Fresh exact-head Prototype Web CI run 35011905698 on aee418cc1d7404fffbd6811c169b53d5c190663a passed all 49 then-current web contracts, production build and the first five mobile/clarity checks, but remained red because later real-keyboard spatial-navigation tests failed in moveTowardInteraction; this failure was analyzed as GAMEPLAY-owned rather than a touch-visual regression.",
+    "Final visual work SHA e1b89bae47bc2d66794fec2da0e6ad5683d6c6a0 has fresh CI in flight. Prototype Web CI run 35019458344 has already passed web contracts, production build and startup controls, while its full browser vertical-slice step is still in progress; the new dedicated held-touch browser assertion therefore remains pending rather than claimed green.",
+    "Required browser gates on the preceding gameplay head showed spatial-navigation instability. This visual session did not alter spatial-navigation helpers, world rules or physical movement semantics.",
     "The standalone experiment remains a separate line and is outside this server-backed visual session."
   ],
   "active_run": {
-    "run_id": "2026-09-15-visual-mobile-verification-1",
-    "status": "running",
-    "started_at_utc": "2026-09-15T20:18:56Z",
-    "lease_expires_at_utc": "2026-09-15T21:48:56Z",
-    "base_sha": "aee418cc1d7404fffbd6811c169b53d5c190663a",
+    "run_id": null,
+    "status": "idle",
+    "started_at_utc": null,
+    "lease_expires_at_utc": null,
+    "base_sha": null,
     "working_branch": "agent/autonomy-pilot-v0.1"
   },
   "last_handoff": {
-    "completed_at_utc": "2026-09-15T18:26:30Z",
-    "result": "SESSION_OBJECTIVE: improve the 390px touch play surface without changing gameplay semantics. CHECKPOINT 1: the mobile E-action control now keeps the same E key mapping and accessible name while showing a two-level label whose context follows the existing interaction hint through a MutationObserver; default state says 'взаимодействие', and contextual states surface actions such as 'подобрать дрова' or 'поговорить с Ореном'. CHECKPOINT 2: the <=700px presentation now gives the contextual action a clearer scarlet/turquoise state, preserves 56px+ touch targets and safe-area padding, and turns dialogue into a bounded fixed mobile modal with constrained transcript/input height and 44px+ action buttons. CHECKPOINT 3: existing 390px Playwright assertions were extended for live action context, and a deterministic touch visual source contract was added and registered in test:contract. Gameplay rules, rewards, quest conditions, NPC behavior, world causality and save semantics were left unchanged. STOP_REASON: EXTERNAL_BLOCKER because the exact work SHA has no GitHub workflow run and the available local execution path could not establish a runnable checkout, so adding further visual changes before build/browser validation would increase unverified risk.",
-    "head_sha": "6718fcfb5a7fc6b4b69b94b8c88cfb41af20b813",
-    "work_head_sha": "6718fcfb5a7fc6b4b69b94b8c88cfb41af20b813",
+    "completed_at_utc": "2026-09-15T20:29:00Z",
+    "result": "SESSION_OBJECTIVE: finish and harden the 390px touch play surface. CHECKPOINT 1: reconciled the expired GAMEPLAY lease and inspected fresh exact-head evidence on aee418cc1d7404fffbd6811c169b53d5c190663a; 49 web contracts, production build and the first five 390px/clarity checks were green, while later required-gate failures were traced to real-keyboard spatial navigation outside the visual scope. CHECKPOINT 2: implemented durable held-touch feedback without changing keyboard/gameplay semantics. Every touch button now carries data-pressed state synchronized with active pointers; held controls use the canonical turquoise feedback, inset graphite edge and 1px physical press offset, the action control preserves its scarlet/turquoise hierarchy, and keyboard-focus visibility is explicit. A deterministic source contract was expanded for pressed-state lifecycle and styling. CHECKPOINT 3: added a real 390px Playwright test that holds the right touch control, verifies data-pressed and computed visual feedback, confirms movement still occurs, verifies pointer release clears feedback, and verifies window blur clears a held visual state so touch controls cannot remain visually stuck. Exact final work SHA e1b89bae47bc2d66794fec2da0e6ad5683d6c6a0 has fresh web-contract, production-build and startup-control success in Prototype Web CI run 35019458344; the full browser vertical-slice step, including the new dedicated browser assertion, was still running when this session reached its execution boundary. STOP_REASON: EXECUTION_LIMIT. Gameplay rules, rewards, quest conditions, NPC behavior, world causality and save semantics were unchanged.",
+    "head_sha": "e1b89bae47bc2d66794fec2da0e6ad5683d6c6a0",
+    "work_head_sha": "e1b89bae47bc2d66794fec2da0e6ad5683d6c6a0",
     "verification": [
-      "Exact source read at work SHA confirms web/src/touchControls.ts preserves data-touch-key=E and aria-label 'Взаимодействовать' while adding touch-action-key/touch-action-context and hint-driven MutationObserver synchronization.",
-      "Exact source read at work SHA confirms <=700px CSS keeps 56px movement targets, 118px contextual action surface, safe-area bottom padding, bounded fixed dialogue layout, 48-92px textarea sizing and 44px minimum dialogue action buttons.",
-      "Exact source read confirms web/tests/touch-visual-contract.test.ts exists and web/package.json registers it in test:contract.",
-      "Exact source read confirms existing 390px first-run browser tests now assert default and contextual touch-action text for general movement, firewood and Oren interactions without changing their gameplay setup.",
-      "Compare a6d8465a09f927ee9c628c75c3bc7dcc03984c07...6718fcfb5a7fc6b4b69b94b8c88cfb41af20b813 is ahead by seven commits and changes only RUN_STATE.json plus the intended touch UI, CSS, visual tests and package test registration.",
-      "GitHub Actions query for exact work SHA 6718fcfb5a7fc6b4b69b94b8c88cfb41af20b813 returned total_count=0; no exact-SHA CI result exists.",
-      "Local/container execution could not establish a runnable repository checkout in this environment, so test:contract, production build, Playwright 390px smoke and screenshot inspection remain pending and are not reported as passed.",
-      "Fresh required browser-gate evidence for the broader integration line remains red around gameplay navigation; this visual session did not alter those navigation helpers or claim release readiness."
+      "Pre-change reconciliation: exact head aee418cc1d7404fffbd6811c169b53d5c190663a had fresh Prototype Web CI run 35011905698 with all 49 then-current contracts green, production build green and the first five 390px/clarity browser checks green before GAMEPLAY-owned spatial-navigation failures.",
+      "Exact implementation SHA 7ddf8c2a7fdc851b033c29b78b4db3b61e673169: Visual Forge Gate run 35019312178 completed successfully; Prototype Web CI run 35019312273 completed web contracts, production build and startup controls successfully before the later superseding validation update.",
+      "Exact implementation source at 7ddf8c2a7fdc851b033c29b78b4db3b61e673169 confirms touchControls.ts imports touchFeedback.css, initializes data-pressed=false, sets held state after pointerdown, clears/synchronizes it after pointerup and blur, and retains the existing keydown/keyup dispatch path.",
+      "Exact final work SHA e1b89bae47bc2d66794fec2da0e6ad5683d6c6a0 contains web/tests/00-touch-press-feedback.spec.ts, which verifies 390px held feedback, computed turquoise/background-shadow/press transform, movement continuity, pointerup release and blur cleanup.",
+      "Prototype Web CI run 35019458344 on exact final work SHA e1b89bae47bc2d66794fec2da0e6ad5683d6c6a0: Run web contract tests = success; Build web client = success; Verify startup controls before the full route = success; full browser vertical slice was still in progress at handoff and is not reported as passed.",
+      "Release Reproducibility Gate run 35019458417 on exact final work SHA completed its ubuntu-latest clean dependency/build job successfully, including web contract tests and production build; the Windows job was still in progress at handoff.",
+      "Visual Forge Gate run 35019458327 on exact final work SHA completed successfully.",
+      "Fresh required-gate failures observed before this visual change were analyzed and localized to real-keyboard spatial navigation. No visual session change touched those helpers, and no release-ready claim is made while exact final browser gates remain incomplete."
     ],
-    "next_action": "Run the registered touch visual contract, production web build, and focused 390px first-run browser checks on exact work SHA 6718fcfb5a7fc6b4b69b94b8c88cfb41af20b813 when an execution runner is available; fix only visual overflow, reachability or readability regressions found there.",
+    "next_action": "Finish exact 390px browser verification on work SHA e1b89bae47bc2d66794fec2da0e6ad5683d6c6a0 by inspecting Prototype Web CI run 35019458344 and the dedicated touch-press browser test; fix only touch visual/reachability regressions found there.",
     "owner_decision_required": false
   },
   "human_gate": {
@@ -55,17 +55,17 @@
     "reason": null
   },
   "verified_gates_at_authoritative_head": {
-    "note": "The standalone experiment has its own test contour and this visual touch cycle does not change the release-gate status of server-backed PR #53."
+    "note": "The standalone experiment has its own test contour. This touch-feedback session is validated only for the stated visual checkpoints and does not change the release-gate status of server-backed PR #53."
   },
   "pilot_validation_at_work_head": {
-    "work_head_sha": "a4b37e43ac986ec2e92587b7cfbb8ab3d69726e5",
-    "visual_forge_gate": {"run_id": 34745490962, "status": "success"},
-    "release_reproducibility_gate": {"run_id": 34745490966, "status": "success"},
-    "windows_compatibility_gate": {"run_id": 34745490951, "status": "success"},
-    "stream_slice_gate": {"run_id": 34745490944, "status": "failure", "failure_scope": "global 180000 ms browser test timeout after functional route completion, during final persistence verification request"},
-    "prototype_web_ci": {"run_id": 34745490961, "status": "failure", "failure_scope": "not yet independently reconciled"},
-    "living_world_integration_gate": {"run_id": 34745491008, "status": "failure", "failure_scope": "not yet independently reconciled"},
-    "playable_candidate_gate": {"run_id": 34745490960, "status": "failure", "failure_scope": "navigation-stability and canonical vertical-slice routes still fail in moveTowardInteraction on exact validation SHA a4b37e43ac986ec2e92587b7cfbb8ab3d69726e5; browser logs show repeated controller oscillation and synthetic pulse steering"}
+    "work_head_sha": "e1b89bae47bc2d66794fec2da0e6ad5683d6c6a0",
+    "visual_forge_gate": {"run_id": 35019458327, "status": "success"},
+    "release_reproducibility_gate": {"run_id": 35019458417, "status": "in_progress", "verified_partial": "ubuntu-latest clean dependency/build gate success including web contracts and production build"},
+    "windows_compatibility_gate": {"run_id": 35019458322, "status": "in_progress"},
+    "stream_slice_gate": {"run_id": 35019458320, "status": "in_progress"},
+    "prototype_web_ci": {"run_id": 35019458344, "status": "in_progress", "verified_partial": "web contracts success; production build success; startup controls success; browser vertical slice in progress"},
+    "living_world_integration_gate": {"run_id": 35019458256, "status": "in_progress"},
+    "playable_candidate_gate": {"run_id": 35019458238, "status": "queued"}
   },
   "standalone_experiment": {
     "branch": "experiment/standalone-html-v1",
@@ -90,11 +90,11 @@
     "github_releases": "none"
   },
   "known_limitations": [
-    "The server-backed integration candidate remains a separate line and its release-gate state is unchanged by this visual session.",
-    "Fresh exact-head required gates are currently blocked by gameplay navigation failures even though touch-specific contract/build checks are green on aee418cc1d7404fffbd6811c169b53d5c190663a.",
+    "Exact final 390px browser verification is still pending in Prototype Web CI run 35019458344; source contracts, production build and startup controls are green on the same work SHA, but the dedicated held-touch browser assertion is not yet claimed passed.",
+    "Fresh required browser-gate evidence immediately before this visual session remained red around GAMEPLAY-owned spatial navigation; final exact-head required gates were still running at handoff.",
     "Direct file:// persistence needs one target-browser human check because this managed Chromium blocks file:// by administrator policy.",
     "Standalone implementation source and exact artifact still need repository materialization before visual changes can be applied to that delivered file.",
     "A real human experience check should decide whether standalone becomes the primary client direction."
   ],
-  "current_blocker": "Fresh required browser gates on aee418cc1d7404fffbd6811c169b53d5c190663a are red in real-keyboard spatial navigation; the mobile touch contracts, production build and first five 390px/clarity tests are green and may continue as an isolated visual substream without changing gameplay navigation."
+  "current_blocker": "No visual implementation blocker is confirmed. The remaining item is exact final browser verification still running on e1b89bae47bc2d66794fec2da0e6ad5683d6c6a0; separate GAMEPLAY-owned spatial-navigation instability may still keep broader required gates red."
 }
