@@ -15,43 +15,44 @@
     "draft": true,
     "merged": false
   },
-  "phase": "visual_hud_hierarchy_v1",
-  "current_objective": "Improve the normal-mode HUD into a scan-friendly visual hierarchy without changing gameplay semantics: separate location, objective and resources, preserve localization, and keep the 390px mobile layout free of horizontal overflow.",
-  "next_action": "Implement semantic HUD regions in web/src/main.ts and the corresponding responsive visual treatment in web/src/styles.css, then validate the focused first-run UI route and build on the exact implementation SHA.",
+  "phase": "visual_hud_hierarchy_v1_complete",
+  "current_objective": "Normal-mode HUD hierarchy is implemented: location, objective and resources are visually separated while gameplay semantics and stream-mode presentation remain unchanged.",
+  "next_action": "Verify the structured HUD on the exact work SHA with the focused 390px first-run browser route and production build as soon as an execution runner is available; fix only HUD-specific overflow or readability regressions before starting another visual surface.",
   "blockers": [
-    "The standalone experiment source/artifact is still not materialized in GitHub, so this visual cycle is improving the active server-backed browser client on the governed pilot branch rather than editing the delivered standalone file.",
+    "Exact-head automated execution was unavailable in this cycle: commits created through the connected GitHub path produced no new workflow run or combined status for work SHA a3e731cdc9a8c35b6996a986313d1d5f48f76755, and the local execution runtime was unavailable. Source-level verification and exact diff inspection completed successfully, but production build and browser checks remain pending on this SHA.",
+    "The standalone experiment source/artifact is still not materialized in GitHub, so this visual cycle improved the active server-backed browser client rather than the delivered standalone file.",
     "Direct file:// standalone persistence remains outside this cycle and still needs a target-browser check once the standalone source is materialized."
   ],
   "active_run": {
-    "run_id": "visual-2026-09-15T141937Z-1",
-    "status": "running",
-    "started_at_utc": "2026-09-15T14:19:37Z",
-    "lease_expires_at_utc": "2026-09-15T15:49:37Z",
-    "base_sha": "a045939151024e43b14b46039c07bcce97773a3c",
+    "run_id": null,
+    "status": "idle",
+    "started_at_utc": null,
+    "lease_expires_at_utc": null,
+    "base_sha": null,
     "working_branch": "agent/autonomy-pilot-v0.1"
   },
   "last_handoff": {
-    "completed_at_utc": "2026-09-13T13:52:00Z",
-    "result": "Built and verified a playable one-file dark-theme Sam-Sebe-RPG standalone v1. The artifact includes three save slots with backup recovery/import/export, keyboard and touch controls, village and tavern SVG scenes, Oren's three-firewood quest, deterministic world progression, Talen arrival at tick 10, causal Talen-to-Oren eastern-road knowledge transfer, event journal, dialogue UI, developer controls, and embedded generated concept art. The exact downloadable artifact was delivered in chat.",
-    "head_sha": "cd5b55accea05283338ce043fb68bd122ebb9038",
-    "work_head_sha": "cd5b55accea05283338ce043fb68bd122ebb9038",
+    "completed_at_utc": "2026-09-15T14:27:00Z",
+    "result": "Completed visual HUD hierarchy v1 for the active browser client. Normal mode now renders separate semantic location, objective and resource regions instead of one flat status sentence. The location uses the milk/turquoise visual language, the objective remains the dominant flexible text, coins use amber, trust uses turquoise, and the <=700px layout moves the objective to its own row while keeping compact resources above. Stream mode keeps its existing compact HUD. Added a deterministic source-level HUD visual contract and registered it in the existing contract-test command. No gameplay rules, rewards, quest logic, world causality or save semantics changed.",
+    "head_sha": "a3e731cdc9a8c35b6996a986313d1d5f48f76755",
+    "work_head_sha": "a3e731cdc9a8c35b6996a986313d1d5f48f76755",
     "verification": [
-      "Final Node test run: 13 passed, 0 failed.",
-      "Final browser smoke: PASS using the exact built HTML document in Chromium.",
-      "Browser route completed with real keyboard/UI actions: new slot -> tavern -> Oren quest -> collect 3 wood -> return -> 10 coin reward -> wait -> Talen appears -> eastern-road event reaches Oren.",
-      "Final build contains no runtime http:// or https:// dependency, no external script/style tags and no unresolved build markers.",
-      "Final artifact SHA256: 0270ef50b4b09ee2572da95691df2dd07de3bf272945cb4187e2f06bde667dfb; size 791780 bytes.",
-      "Visual QA screenshots of the title and completed gameplay route were inspected.",
-      "Experiment branch records the approved spec, implementation plan, and exact artifact manifest at cd5b55accea05283338ce043fb68bd122ebb9038."
+      "Exact source read at work SHA confirms structured HUD DOM classes and unchanged objective/resource values in web/src/main.ts.",
+      "Exact source read at work SHA confirms desktop three-column HUD, <=700px bounded two-column/mobile objective row, milk/turquoise location treatment, amber coin treatment and preserved compact stream-mode override in web/src/styles.css.",
+      "Exact source read confirms web/tests/hud-visual-contract.test.ts exists and web/package.json includes it in test:contract.",
+      "Compare f5ed44a84339c72dbfe86897bc67353bd31856a0...a3e731cdc9a8c35b6996a986313d1d5f48f76755 is ahead by four commits and changes only web/src/main.ts, web/src/styles.css, web/tests/hud-visual-contract.test.ts and web/package.json.",
+      "GitHub combined status for work SHA has no statuses and Actions has no run for this exact SHA, so production build and browser verification were not executed and are not claimed as passed.",
+      "Existing first-run Playwright coverage already contains a 390px horizontal-overflow and touch-control reachability assertion, but it still needs execution on this exact work SHA."
     ],
-    "next_action": "Persist the tested standalone implementation source and exact HTML artifact into experiment/standalone-html-v1 from an environment with local-file upload/push support, then rerun standalone verification from that checkout."
+    "next_action": "Verify the structured HUD on the exact work SHA with the focused 390px first-run browser route and production build as soon as an execution runner is available; fix only HUD-specific overflow or readability regressions before starting another visual surface.",
+    "owner_decision_required": false
   },
   "human_gate": {
     "required": false,
     "reason": null
   },
   "verified_gates_at_authoritative_head": {
-    "note": "The standalone experiment has its own test contour and does not change the release-gate status of server-backed PR #53."
+    "note": "The standalone experiment has its own test contour and this visual HUD cycle does not change the release-gate status of server-backed PR #53."
   },
   "pilot_validation_at_work_head": {
     "work_head_sha": "a4b37e43ac986ec2e92587b7cfbb8ab3d69726e5",
@@ -87,6 +88,7 @@
   },
   "known_limitations": [
     "The server-backed integration candidate remains a separate line and its release-gate state is unchanged by this visual cycle.",
+    "Exact-head production build and browser verification for HUD hierarchy v1 are pending because no execution runner was available during this cycle.",
     "Direct file:// persistence needs one target-browser human check because this managed Chromium blocks file:// by administrator policy.",
     "Standalone implementation source and exact artifact still need repository materialization before visual changes can be applied to that delivered file.",
     "A real human experience check should decide whether standalone becomes the primary client direction."
