@@ -15,56 +15,58 @@
     "draft": true,
     "merged": false
   },
-  "phase": "gameplay_spatial_navigation_stabilization",
+  "phase": "gameplay_spatial_navigation_stability_verification",
   "current_objective": "SESSION_OBJECTIVE: eliminate the current real-keyboard spatial-navigation instability so the canonical browser routes can reach Mira and the tavern reliably under normal, slow-browser and controller-stall conditions without changing gameplay physics, collisions, interaction radii, timeouts or canonical world semantics.",
-  "next_action": "Use the fresh exact-SHA red evidence from e1b89bae47bc2d66794fec2da0e6ad5683d6c6a0 to fix the closed-loop real-keyboard navigation controller, then validate the focused navigation/browser routes on the exact new work SHA before rerunning required gates.",
+  "next_action": "Inspect Stream Slice Gate run 35023235641 attempt 2 on exact work SHA 4985f53c66722f2cf85ed9648be1652099c451f8. If it is green, rerun the same job once more for attempt 3 on the same SHA; then require the remaining browser-bearing required gates on that SHA to finish green before declaring navigation stabilization complete. If any current exact-SHA gate is red, inspect that fresh failure before making another code change.",
   "blockers": [
-    "Exact work SHA e1b89bae47bc2d66794fec2da0e6ad5683d6c6a0 is red in Prototype Web CI run 35019458344, Playable Candidate Gate run 35019458238, Stream Slice Gate run 35019458320 and Living World Integration Gate run 35019458256; Visual Forge, Release Reproducibility and Windows Compatibility are green on that same SHA.",
-    "Prototype Web CI run 35019458344 passed all 50 web contracts, production build, startup controls and 13/17 browser scenarios, but four real-keyboard browser scenarios failed in spatial navigation. The Mira route spent the movement budget on the first axis, and the controller-stall route overshot the X target before release; both failures had clean browser/page diagnostics.",
-    "The current controller uses repeated cross-process position polling while a real key is held. Fresh traces show target-crossing snapshots followed by additional movement before key release, while slow CI can spend the whole overall deadline on one axis. This is the active root-cause hypothesis to verify with a minimal controller-side fix; gameplay speed, collisions, interaction radii and canonical location semantics remain unchanged.",
+    "No confirmed implementation blocker remains on the final work SHA. Exact-SHA validation is still running: required browser-bearing gates have not all completed, and the roadmap requires three sequential successful Stream Slice runs on one SHA before stability is proven.",
+    "Stream Slice Gate run 35023235641 attempt 1 completed successfully on exact work SHA 4985f53c66722f2cf85ed9648be1652099c451f8. Attempt 2 was explicitly started on the same SHA and was still running when this session reached its execution boundary.",
     "The standalone experiment remains a separate line and is outside this server-backed gameplay session."
   ],
   "active_run": {
-    "run_id": "2026-09-15-gameplay-navigation-stability-3",
-    "status": "running",
-    "started_at_utc": "2026-09-15T20:52:30Z",
-    "lease_expires_at_utc": "2026-09-15T22:22:30Z",
-    "base_sha": "a720740239faeadf90c0b4e8a2afe18779592fbf",
+    "run_id": null,
+    "status": "idle",
+    "started_at_utc": null,
+    "lease_expires_at_utc": null,
+    "base_sha": null,
     "working_branch": "agent/autonomy-pilot-v0.1"
   },
   "last_handoff": {
-    "completed_at_utc": "2026-09-15T20:29:00Z",
-    "result": "SESSION_OBJECTIVE: finish and harden the 390px touch play surface. CHECKPOINT 1: reconciled the expired GAMEPLAY lease and inspected fresh exact-head evidence on aee418cc1d7404fffbd6811c169b53d5c190663a; 49 web contracts, production build and the first five 390px/clarity checks were green, while later required-gate failures were traced to real-keyboard spatial navigation outside the visual scope. CHECKPOINT 2: implemented durable held-touch feedback without changing keyboard/gameplay semantics. Every touch button now carries data-pressed state synchronized with active pointers; held controls use the canonical turquoise feedback, inset graphite edge and 1px physical press offset, the action control preserves its scarlet/turquoise hierarchy, and keyboard-focus visibility is explicit. A deterministic source contract was expanded for pressed-state lifecycle and styling. CHECKPOINT 3: added a real 390px Playwright test that holds the right touch control, verifies data-pressed and computed visual feedback, confirms movement still occurs, verifies pointer release clears feedback, and verifies window blur clears a held visual state so touch controls cannot remain visually stuck. Exact final work SHA e1b89bae47bc2d66794fec2da0e6ad5683d6c6a0 has fresh web-contract, production-build and startup-control success in Prototype Web CI run 35019458344; the full browser vertical-slice step, including the new dedicated browser assertion, was still running when this session reached its execution boundary. STOP_REASON: EXECUTION_LIMIT. Gameplay rules, rewards, quest conditions, NPC behavior, world causality and save semantics were unchanged.",
-    "head_sha": "e1b89bae47bc2d66794fec2da0e6ad5683d6c6a0",
-    "work_head_sha": "e1b89bae47bc2d66794fec2da0e6ad5683d6c6a0",
+    "completed_at_utc": "2026-09-15T21:10:47Z",
+    "result": "SESSION_OBJECTIVE: eliminate real-keyboard spatial-navigation instability without changing gameplay physics or world semantics. CHECKPOINT 1: reconciled fresh red evidence on e1b89bae47bc2d66794fec2da0e6ad5683d6c6a0. Prototype Web CI had 50/50 contracts and a green build but four browser failures: slow/controller-stalled navigation could spend the shared deadline on one axis or overshoot before Playwright issued keyup, while the stale-Mira regression also assumed Mira was always rendered in the workshop despite her canonical schedule. CHECKPOINT 2: moved high-frequency navigation sensing into the independently rendering browser frame loop while retaining real Playwright keyboard.down/up actuation. The controller now detects hint/target/stall inside requestAnimationFrame, releases the real key, waits one browser frame, then steers from the settled post-release position. No speed, collision, interaction radius, timeout or canonical location behavior changed. CHECKPOINT 3: corrected the stale-Mira regression to establish its NPC precondition through the legal player-facing MOVE control when Mira is scheduled on the square. CHECKPOINT 4: corrected an empty-hint edge case in the one-way axis monitor. Final work SHA 4985f53c66722f2cf85ed9648be1652099c451f8. Fresh exact-SHA evidence already shows Visual Forge, Windows Compatibility and Release Reproducibility green; Prototype Web CI passed all 50 web contracts, production build, startup controls and the complete main browser vertical-slice suite; Stream Slice Gate attempt 1 passed backend tests, preflight, contracts, build and Chromium acceptance. Playable Candidate backend/Living World and Living World backend/persistence jobs also passed while their browser jobs were still running. CHECKPOINT 5: started Stream Slice Gate attempt 2 on the exact same work SHA to satisfy the roadmap's repeated-stability requirement. STOP_REASON: EXECUTION_LIMIT. No owner decision is required.",
+    "head_sha": "4985f53c66722f2cf85ed9648be1652099c451f8",
+    "work_head_sha": "4985f53c66722f2cf85ed9648be1652099c451f8",
     "verification": [
-      "Pre-change reconciliation: exact head aee418cc1d7404fffbd6811c169b53d5c190663a had fresh Prototype Web CI run 35011905698 with all 49 then-current contracts green, production build green and the first five 390px/clarity browser checks green before GAMEPLAY-owned spatial-navigation failures.",
-      "Exact implementation SHA 7ddf8c2a7fdc851b033c29b78b4db3b61e673169: Visual Forge Gate run 35019312178 completed successfully; Prototype Web CI run 35019312273 completed web contracts, production build and startup controls successfully before the later superseding validation update.",
-      "Exact implementation source at 7ddf8c2a7fdc851b033c29b78b4db3b61e673169 confirms touchControls.ts imports touchFeedback.css, initializes data-pressed=false, sets held state after pointerdown, clears/synchronizes it after pointerup and blur, and retains the existing keydown/keyup dispatch path.",
-      "Exact final work SHA e1b89bae47bc2d66794fec2da0e6ad5683d6c6a0 contains web/tests/00-touch-press-feedback.spec.ts, which verifies 390px held feedback, computed turquoise/background-shadow/press transform, movement continuity, pointerup release and blur cleanup.",
-      "Prototype Web CI run 35019458344 on exact final work SHA e1b89bae47bc2d66794fec2da0e6ad5683d6c6a0 ultimately completed with 50/50 web contracts green, production build green, startup control green, 13/17 browser scenarios passing and four spatial-navigation browser failures.",
-      "Release Reproducibility Gate run 35019458417, Windows Compatibility Gate run 35019458322 and Visual Forge Gate run 35019458327 all completed successfully on exact SHA e1b89bae47bc2d66794fec2da0e6ad5683d6c6a0.",
-      "Playable Candidate Gate run 35019458238, Stream Slice Gate run 35019458320, Prototype Web CI run 35019458344 and Living World Integration Gate run 35019458256 all completed red on the same SHA, so technical readiness is not claimed."
+      "RED baseline e1b89bae47bc2d66794fec2da0e6ad5683d6c6a0: Prototype Web CI run 35019458344 passed 50/50 contracts and production build but failed 4/17 browser scenarios in spatial navigation; required browser-bearing gates were red on the same SHA.",
+      "Final work SHA 4985f53c66722f2cf85ed9648be1652099c451f8: Visual Forge Gate run 35023235600 completed successfully.",
+      "Final work SHA 4985f53c66722f2cf85ed9648be1652099c451f8: Windows Compatibility Gate run 35023235721 completed successfully, including full Python suite, Stream Slice preflight, web contracts/build, fresh SQLite checks and Windows backend boot.",
+      "Final work SHA 4985f53c66722f2cf85ed9648be1652099c451f8: Release Reproducibility Gate run 35023235950 completed successfully on both Windows and Ubuntu clean dependency/build jobs.",
+      "Final work SHA 4985f53c66722f2cf85ed9648be1652099c451f8: Prototype Web CI run 35023236029 passed web contracts, production build, startup controls and the complete main browser vertical-slice step; Living NPC acceptance was still running at handoff.",
+      "Final work SHA 4985f53c66722f2cf85ed9648be1652099c451f8: Stream Slice Gate run 35023235641 attempt 1 completed successfully through Stream Slice Chromium acceptance. Attempt 2 was started on the same SHA and remained in progress at handoff.",
+      "Final work SHA 4985f53c66722f2cf85ed9648be1652099c451f8: Playable Candidate Gate run 35023236181 backend/Living World job completed successfully; browser job had contracts/build green and the real browser route still running at handoff.",
+      "Final work SHA 4985f53c66722f2cf85ed9648be1652099c451f8: Living World Integration Gate run 35023235929 backend/persistence job completed successfully; client contract/build green and real browser critical route still running at handoff.",
+      "No release-ready claim is made until the remaining exact-SHA browser gates finish and Stream Slice succeeds three sequential times on this SHA."
     ],
-    "next_action": "Use the fresh exact-SHA red evidence from e1b89bae47bc2d66794fec2da0e6ad5683d6c6a0 to fix the closed-loop real-keyboard navigation controller, then validate the focused navigation/browser routes on the exact new work SHA before rerunning required gates.",
-    "owner_decision_required": false
+    "next_action": "Inspect Stream Slice Gate run 35023235641 attempt 2 on exact work SHA 4985f53c66722f2cf85ed9648be1652099c451f8. If it is green, rerun the same job once more for attempt 3 on the same SHA; then require the remaining browser-bearing required gates on that SHA to finish green before declaring navigation stabilization complete. If any current exact-SHA gate is red, inspect that fresh failure before making another code change.",
+    "owner_decision_required": false,
+    "stop_reason": "EXECUTION_LIMIT"
   },
   "human_gate": {
     "required": false,
     "reason": null
   },
   "verified_gates_at_authoritative_head": {
-    "note": "The standalone experiment has its own test contour. The active server-backed gameplay session is stabilizing real physical browser navigation before any release-ready claim."
+    "note": "The standalone experiment has its own test contour. The active server-backed gameplay line is validating physical browser navigation on exact work SHA 4985f53c66722f2cf85ed9648be1652099c451f8 before any release-ready claim."
   },
   "pilot_validation_at_work_head": {
-    "work_head_sha": "e1b89bae47bc2d66794fec2da0e6ad5683d6c6a0",
-    "visual_forge_gate": {"run_id": 35019458327, "status": "success"},
-    "release_reproducibility_gate": {"run_id": 35019458417, "status": "success"},
-    "windows_compatibility_gate": {"run_id": 35019458322, "status": "success"},
-    "stream_slice_gate": {"run_id": 35019458320, "status": "failure", "failure_scope": "real-keyboard spatial navigation"},
-    "prototype_web_ci": {"run_id": 35019458344, "status": "failure", "failure_scope": "4/17 browser scenarios failed in real-keyboard spatial navigation after contracts/build/startup succeeded"},
-    "living_world_integration_gate": {"run_id": 35019458256, "status": "failure", "failure_scope": "browser-bearing integration route"},
-    "playable_candidate_gate": {"run_id": 35019458238, "status": "failure", "failure_scope": "browser-bearing playable route"}
+    "work_head_sha": "4985f53c66722f2cf85ed9648be1652099c451f8",
+    "visual_forge_gate": {"run_id": 35023235600, "status": "success"},
+    "release_reproducibility_gate": {"run_id": 35023235950, "status": "success"},
+    "windows_compatibility_gate": {"run_id": 35023235721, "status": "success"},
+    "stream_slice_gate": {"run_id": 35023235641, "status": "stability_verification_in_progress", "attempt_1": "success", "attempt_2": "in_progress"},
+    "prototype_web_ci": {"run_id": 35023236029, "status": "in_progress", "verified_partial": "50 web contracts success; production build success; startup controls success; full main browser vertical-slice success; Living NPC acceptance in progress"},
+    "living_world_integration_gate": {"run_id": 35023235929, "status": "in_progress", "verified_partial": "backend/persistence success; client contract/build success; browser critical route in progress"},
+    "playable_candidate_gate": {"run_id": 35023236181, "status": "in_progress", "verified_partial": "backend/Living World success; web contracts/build success; real browser route in progress"}
   },
   "standalone_experiment": {
     "branch": "experiment/standalone-html-v1",
@@ -89,11 +91,11 @@
     "github_releases": "none"
   },
   "known_limitations": [
-    "The exact server-backed work SHA e1b89bae47bc2d66794fec2da0e6ad5683d6c6a0 remains red in four required browser-bearing gates because spatial navigation is unstable under the current real-keyboard controller.",
-    "The new 390px touch-feedback browser assertion itself passed inside Prototype Web CI; the current blocker is separate desktop/gameplay spatial navigation.",
+    "The final work SHA has one successful Stream Slice run, while the required three-run same-SHA stability proof is incomplete; attempt 2 is already running.",
+    "Prototype Web CI, Playable Candidate and Living World Integration still have exact-SHA browser work in progress at this handoff, so the full seven-gate release contour is not yet claimed green.",
     "Direct file:// persistence needs one target-browser human check because this managed Chromium blocks file:// by administrator policy.",
     "Standalone implementation source and exact artifact still need repository materialization before that experiment can become a maintained primary client.",
     "A real human experience check remains required after technical stabilization."
   ],
-  "current_blocker": "Real-keyboard spatial navigation is unstable on exact SHA e1b89bae47bc2d66794fec2da0e6ad5683d6c6a0: slow/controller-stalled routes can consume the total movement budget on one axis or overshoot a target before Playwright issues keyup, leaving required browser gates red."
+  "current_blocker": null
 }
