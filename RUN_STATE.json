@@ -23,11 +23,11 @@
     "The latest failures are in web/tests/helpers/spatial-navigation.ts: Mira approach can miss the talk interaction and tavern entry can stop short or overshoot x=825. Web/UI contracts and production build remain green, so creating a new visual product SHA would invalidate stabilization evidence without addressing the current blocker."
   ],
   "active_run": {
-    "run_id": null,
-    "status": "idle",
-    "started_at_utc": null,
-    "lease_expires_at_utc": null,
-    "base_sha": null,
+    "run_id": "2026-09-16-gameplay-navigation-stability-2",
+    "status": "running",
+    "started_at_utc": "2026-09-16T02:49:15Z",
+    "lease_expires_at_utc": "2026-09-16T04:19:15Z",
+    "base_sha": "f805ae86875f9624ba154e7aeba8c968aba3f2e9",
     "working_branch": "agent/autonomy-pilot-v0.1"
   },
   "last_handoff": {
@@ -83,7 +83,7 @@
     "web_lockfile": "web/package-lock.json",
     "python_constraints": "constraints/python-3.12.txt",
     "ci_install_policy": "current release/browser workflows use npm ci and constrained pip installs",
-    "windows_launcher": "uses constrained pip and npm ci when the lockfile exists; npm install is a local fallback only if missing",
+    "windows_launcher": "uses constrained pip and npm ci when the lockfile exists; npm install fallback only if missing",
     "repository_hygiene": "root .gitignore covers generated caches, environments, browser reports, local SQLite state, environment files, secrets and editor/OS debris",
     "github_releases": "none"
   },
