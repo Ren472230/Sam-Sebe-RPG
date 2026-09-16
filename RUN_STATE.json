@@ -15,11 +15,12 @@
     "draft": true,
     "merged": false
   },
-  "phase": "gameplay_navigation_stability_proof_next",
-  "current_objective": "SESSION_OBJECTIVE: make physical village navigation to the tavern deterministic under normal and CPU-throttled browser execution using real keyboard input, then prove the same exact gameplay SHA across the affected browser gates without changing collisions, movement speed, interaction radius, game rules or global timeouts.",
-  "next_action": "GAMEPLAY: replace the tavern final open-loop north hold with closed-loop interaction steering that continuously corrects horizontal drift toward the existing tavern target while keeping the interaction hint as the only success condition, then validate the focused slow-browser navigation route before dependent gates.",
+  "phase": "visual_coarse_pointer_landscape_session",
+  "current_objective": "SESSION_OBJECTIVE: keep coarse-pointer mobile/tablet landscape widths from 701px through 900px fully playable by preserving touch movement, contextual interaction feedback and bounded dialogue while keeping keyboard input and all gameplay semantics unchanged.",
+  "next_action": "VISUAL: validate the coarse-pointer landscape controls and 844x390 browser route on exact validation SHA 0238c520df32cf6cb126b04bdb79da8f55cbf746, then make only evidence-backed layout corrections required by that focused result.",
   "blockers": [
-    "Latest exact validation SHA 82aaf49a24759eef1f766b481a865d4bb6baf0a1 has Stream Slice Gate 35063761211 SUCCESS and Prototype Web CI 35063761292 SUCCESS, but Living World Integration Gate 35063761201 and Playable Candidate Gate 35063761199 are FAILURE. In Living World Integration, backend/persistence, 55/55 web contracts and production build are green; the browser job fails only in physical navigation. The slow-browser tavern test ends at x=843,y=334 with the tavern hint absent, about one pixel outside the strict existing interaction radius after horizontal overshoot, and the canonical vertical slice later times out in movePastVillageWell/moveToTavernInteraction with no console or page errors.",
+    "The latest completed pre-session validation SHA 349f3f7d57f557758d6b97c0a0ce0c6bb350a3b4 keeps 55/55 web contracts and production build green, but Stream Slice, Prototype Web CI, Living World Integration and Playable Candidate remain red in shared physical tavern navigation. The Living World browser route fails at x=667/y=315 and the canonical vertical slice at x=671/y=315 while trying to reach x=825; browser console and page errors are empty. This is a GAMEPLAY/test-controller blocker, not a visual rendering failure.",
+    "Exact visual validation SHA 0238c520df32cf6cb126b04bdb79da8f55cbf746 is currently running the required gates for the coarse-pointer landscape change; Visual Forge is already green and the other gates are still pending/in progress.",
     "A real human aesthetic and play-feel judgment remains a later product gate after technical stabilization."
   ],
   "active_run": {
@@ -57,17 +58,17 @@
     "reason": null
   },
   "verified_gates_at_authoritative_head": {
-    "note": "The authoritative integration PR #53 remains unchanged. The latest visual work is isolated on agent/autonomy-pilot-v0.1 and mirrored for exact-SHA validation on PR #56 head 82aaf49a24759eef1f766b481a865d4bb6baf0a1."
+    "note": "The authoritative integration PR #53 remains unchanged. Current visual work stays isolated on agent/autonomy-pilot-v0.1 and is mirrored only to draft validation PR #56."
   },
   "pilot_validation_at_work_head": {
-    "work_head_sha": "82aaf49a24759eef1f766b481a865d4bb6baf0a1",
-    "visual_forge_gate": {"run_id": 35063761278, "status": "success"},
-    "prototype_web_ci": {"run_id": 35063761292, "status": "success"},
-    "release_reproducibility_gate": {"run_id": 35063761349, "status": "success"},
-    "windows_compatibility_gate": {"run_id": 35063761366, "status": "success"},
-    "stream_slice_gate": {"run_id": 35063761211, "status": "success"},
-    "living_world_integration_gate": {"run_id": 35063761201, "status": "failure", "failure_scope": "real browser physical navigation: slow tavern entry and canonical vertical-slice route"},
-    "playable_candidate_gate": {"run_id": 35063761199, "status": "failure"}
+    "work_head_sha": "0238c520df32cf6cb126b04bdb79da8f55cbf746",
+    "visual_forge_gate": {"run_id": 35073769654, "status": "success"},
+    "prototype_web_ci": {"run_id": 35073769779, "status": "in_progress"},
+    "release_reproducibility_gate": {"run_id": 35073769707, "status": "in_progress"},
+    "windows_compatibility_gate": {"run_id": 35073769670, "status": "in_progress"},
+    "stream_slice_gate": {"run_id": 35073769683, "status": "in_progress"},
+    "living_world_integration_gate": {"run_id": 35073769629, "status": "in_progress"},
+    "playable_candidate_gate": {"run_id": 35073769634, "status": "in_progress"}
   },
   "standalone_experiment": {
     "branch": "experiment/standalone-html-v1",
@@ -92,10 +93,11 @@
     "github_releases": "none"
   },
   "known_limitations": [
-    "The latest exact validation SHA 82aaf49a24759eef1f766b481a865d4bb6baf0a1 still has red browser-bearing required gates in shared physical navigation even though Stream Slice and Prototype Web CI are green.",
+    "Shared physical tavern navigation remains unstable on the latest completed validation evidence and belongs to the GAMEPLAY/test-controller stream.",
+    "Current exact visual validation SHA 0238c520df32cf6cb126b04bdb79da8f55cbf746 is still running most required gates.",
     "An isolated temporary branch agent/autonomy-pilot-validation-v0.1-tmp-unused at 12c4e83c40121cf92dc7007e78ec3e4de424880a was accidentally created during connector operations; it does not affect main, the working branch or PR #56 and should be deleted when branch-ref deletion capability is available.",
     "The complete SVG stream pack remains temporary production-facing art rather than final production art.",
     "A real human experience and aesthetic check remains required after technical stabilization."
   ],
-  "current_blocker": "Living World Integration Gate 35063761201 and Playable Candidate Gate 35063761199 are red on latest exact validation SHA 82aaf49a24759eef1f766b481a865d4bb6baf0a1 due to shared physical browser navigation; fix the test controller without changing game collisions, speed, interaction radius or global timeouts."
+  "current_blocker": "GAMEPLAY/test-controller physical tavern navigation remains red on the latest completed exact validation evidence. Current visual validation SHA 0238c520df32cf6cb126b04bdb79da8f55cbf746 is running and must prove the new coarse-pointer landscape surface before this visual objective is closed."
 }
