@@ -80,7 +80,7 @@
     font-size: 9px;
   }
 
-  #touch-controls {
+  body #touch-controls {
     display: grid;
     grid-template-columns: minmax(180px, auto) minmax(132px, .8fr);
     gap: 10px;
