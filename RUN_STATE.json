@@ -24,11 +24,11 @@
     "A real human aesthetic and play-feel judgment remains a later product gate after technical stabilization."
   ],
   "active_run": {
-    "run_id": null,
-    "status": "idle",
-    "started_at_utc": null,
-    "lease_expires_at_utc": null,
-    "base_sha": null,
+    "run_id": "2026-09-16-gameplay-tavern-nav-session-2",
+    "status": "running",
+    "started_at_utc": "2026-09-16T08:51:37Z",
+    "lease_expires_at_utc": "2026-09-16T10:21:37Z",
+    "base_sha": "3f58d0638ebf2c13e2d84e4004f8bf47717b2ba9",
     "working_branch": "agent/autonomy-pilot-v0.1"
   },
   "last_handoff": {
