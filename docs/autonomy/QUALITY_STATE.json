@@ -3,28 +3,28 @@
   "project": "Ren472230/Sam-Sebe-RPG",
   "quality_contract": "docs/autonomy/QUALITY_CONTRACT.md",
   "project_status": "IN_DEVELOPMENT",
-  "quality_score": 60,
+  "quality_score": 75,
   "technical_ready_threshold": 90,
   "last_evaluated_sha": "8402e77367bb0bb8ac28b1acd5ebcf485b3c9eb1",
-  "last_evaluated_at_utc": "2026-09-16T14:04:59Z",
+  "last_evaluated_at_utc": "2026-09-16T14:21:50Z",
   "hard_gates": {
     "RQ-H01": {
       "name": "Seven Required Release Gates on One SHA",
-      "status": "UNKNOWN",
+      "status": "RED",
       "evidence": {
         "candidate_sha": "8402e77367bb0bb8ac28b1acd5ebcf485b3c9eb1",
         "green": {
           "Visual Forge Gate": 35105180925,
           "Stream Slice Gate": 35105180810,
           "Windows Compatibility Gate": 35105180809,
-          "Release Reproducibility Gate": 35105180847
+          "Release Reproducibility Gate": 35105180847,
+          "Prototype Web CI": 35105180802
         },
-        "in_progress": {
-          "Prototype Web CI": 35105180802,
+        "red": {
           "Playable Candidate Gate": 35105180818,
           "Living World Integration Gate": 35105180835
         },
-        "note": "The four completed required gates are GREEN on the same PR head. Three browser-bearing required gates were still running when this evaluation was recorded."
+        "note": "Five required release gates are GREEN on the exact candidate. Playable Candidate and Living World Integration are fresh RED because their canonical browser route exhausted the 180000ms aggregate test budget while reaching the Living World WAIT phase."
       }
     },
     "RQ-H02": {
@@ -32,9 +32,10 @@
       "status": "UNKNOWN",
       "evidence": {
         "candidate_sha": "8402e77367bb0bb8ac28b1acd5ebcf485b3c9eb1",
-        "confirmed_stream_slice_passes": 1,
-        "run_ids": [35105180810],
-        "note": "Dedicated Stream Slice Gate is GREEN. Prototype Web CI and Playable Candidate contain additional same-candidate Stream Slice acceptance executions but those steps had not completed yet."
+        "confirmed_stream_slice_passes": 2,
+        "run_ids": [35105180810, 35105180802],
+        "missing_third_pass": "Playable Candidate skipped its separate Stream Slice acceptance after the preceding canonical browser route failed.",
+        "note": "Dedicated Stream Slice Gate and Prototype Web CI Stream Slice acceptance are GREEN on the same candidate. A third same-candidate pass is still required by the quality contract."
       }
     },
     "RQ-H03": {
@@ -46,7 +47,7 @@
         "prototype_vertical_slice_step": "SUCCESS",
         "stream_slice_gate_run": 35105180810,
         "stream_slice_chromium": "3 passed",
-        "note": "Fresh canonical browser vertical slice completed successfully after the bounded aggregate timeout correction. Fresh Stream Slice acceptance also completed all real-spatial causal/hospitality/persistence scenarios."
+        "note": "Fresh canonical browser vertical slice completed successfully in Prototype Web CI on the exact candidate. Fresh Stream Slice acceptance also completed all real-spatial causal, hospitality and persistence scenarios."
       }
     },
     "RQ-H04": {
@@ -77,26 +78,53 @@
         "reopen_tick": 20,
         "sqlite_integrity": "ok",
         "foreign_key_errors": 0,
-        "note": "Fresh Stream Slice reload verification preserves hospitality/causal knowledge and preflight proves SQLite reopen integrity."
+        "note": "Fresh Stream Slice reload verification preserves hospitality and causal knowledge, and preflight proves SQLite reopen integrity."
       }
     },
     "RQ-H06": {
       "name": "Runtime Integrity / No Critical Blockers",
-      "status": "UNKNOWN",
+      "status": "RED",
       "evidence": {
         "candidate_sha": "8402e77367bb0bb8ac28b1acd5ebcf485b3c9eb1",
-        "known_failures_on_completed_fresh_checks": 0,
-        "note": "Canonical vertical slice and dedicated Stream Slice are green with bounded local movement guards, but three required browser-bearing workflows were still running, so zero-P0/P1/uncaught-error status is not yet declared."
+        "failed_required_runs": [35105180818, 35105180835],
+        "playable_candidate_failure": "Canonical browser vertical slice exhausted the 180000ms test budget while waiting to click 'Подождать 5 шагов'.",
+        "living_world_failure": "Canonical browser vertical slice exhausted the 180000ms test budget while waiting to click 'Подождать 1 шаг'.",
+        "browser_console_errors": "none in both failures",
+        "page_errors": "none in both failures",
+        "note": "The required-gate failures are a current technical-release blocker. The visual-specific responsive and interaction checks complete successfully before these late canonical-route timeouts."
       }
     },
     "RQ-H07": {
       "name": "Visual / Input Usability",
-      "status": "UNKNOWN",
+      "status": "GREEN",
       "evidence": {
         "candidate_sha": "8402e77367bb0bb8ac28b1acd5ebcf485b3c9eb1",
         "visual_forge_gate_run": 35105180925,
         "visual_forge_gate": "GREEN",
-        "note": "GAMEPLAY stream does not close the visual gate. VISUAL evidence and final responsive/screenshot reconciliation remain required."
+        "prototype_web_ci_run": 35105180802,
+        "prototype_web_ci": "SUCCESS",
+        "playable_candidate_run": 35105180818,
+        "living_world_integration_run": 35105180835,
+        "web_contracts": "56/56 passed in both fresh browser-bearing failing workflows",
+        "production_build": "PASS in both fresh browser-bearing failing workflows",
+        "desktop": [
+          "normal mode first-run clarity PASS",
+          "desktop Mira spatial dialogue with Russian text input PASS",
+          "desktop interaction ribbon PASS",
+          "canonical browser vertical slice PASS in Prototype Web CI on the same candidate"
+        ],
+        "portrait_390x844": [
+          "touch controls reachable without keyboard PASS",
+          "village contextual action label near firewood PASS",
+          "tavern contextual action label near Oren PASS",
+          "interaction ribbon and touch action bounded with durable pressed feedback PASS",
+          "touch held/release feedback PASS"
+        ],
+        "landscape_844x390_coarse_pointer": [
+          "coarse-pointer landscape touch controls usable PASS"
+        ],
+        "browser_errors": "No console or page errors were attached to the two late canonical-route timeout failures.",
+        "note": "Fresh exact-candidate browser evidence covers desktop, 390x844 portrait fallback and 844x390 coarse-pointer landscape fallback. The two required-gate failures occur later from aggregate canonical-route timing and do not reproduce a visual overflow, overlap, hidden-control, modal or keyboard-flow defect. Human aesthetic judgment remains RQ-H09."
       }
     },
     "RQ-H08": {
@@ -121,7 +149,7 @@
     "reliability": {
       "max": 30,
       "score": 5,
-      "evidence": "Fresh canonical and Stream Slice routes complete without softlock or direct state substitution; seven-gate and three-pass requirements are still incomplete at this checkpoint."
+      "evidence": "Canonical vertical slice is GREEN in Prototype Web CI and two same-candidate Stream Slice executions are confirmed PASS, but two required release gates remain RED and the three-pass stability requirement is incomplete."
     },
     "core_gameplay": {
       "max": 25,
@@ -135,8 +163,8 @@
     },
     "ux_visual": {
       "max": 15,
-      "score": 0,
-      "evidence": "Reserved for VISUAL evidence; GAMEPLAY does not self-award this category."
+      "score": 15,
+      "evidence": "Exact-candidate browser evidence proves the desktop main mode, 390x844 portrait fallback and 844x390 coarse-pointer landscape fallback with bounded controls, readable interaction feedback, modal-safe text input and preserved desktop keyboard flow; Visual Forge and all 56 UI/web contracts are green."
     },
     "persistence_compatibility": {
       "max": 10,
@@ -151,5 +179,5 @@
     "v1_done_requires_explicit_owner_confirmation": true,
     "autonomous_threshold_reduction_forbidden": true
   },
-  "bootstrap_note": "Canonical V1 quality contract/state were copied unchanged from config/v1-quality-contract after legal lease acquisition. This file now contains the first evidence-backed evaluation on validation candidate 8402e77367bb0bb8ac28b1acd5ebcf485b3c9eb1."
+  "bootstrap_note": "Canonical V1 quality contract/state were copied unchanged from config/v1-quality-contract after legal lease acquisition. VISUAL reconciliation on the same validation candidate closes RQ-H07 from fresh responsive browser evidence and records the newly completed required-gate failures without changing contract thresholds."
 }
