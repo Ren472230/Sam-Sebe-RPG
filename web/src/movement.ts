@@ -1,6 +1,7 @@
 export const PLAYER_SPEED_PX_PER_MS = 0.22;
 export const MAX_MOVEMENT_SUBSTEP_MS = 50;
 export const MAX_MOVEMENT_CATCHUP_MS = 400;
+const MAX_SHORT_RELEASE_TOTAL_MS = 200;
 
 export type HeldMovementKey = {
   isDown: boolean;
@@ -57,12 +58,6 @@ export function effectiveHeldDelta(
   }
 
   if (state.releaseConsumed) return 0;
-  if (state.observedWhileDown) {
-    state.lastTimeDown = timeDown;
-    state.releaseConsumed = true;
-    heldMovementState.set(key as object, state);
-    return 0;
-  }
 
   const heldMs = releasedHeldDurationMs(key);
   if (!Number.isFinite(heldMs) || heldMs <= 0) {
@@ -74,7 +69,10 @@ export function effectiveHeldDelta(
   }
 
   const remainingMs = Math.max(0, heldMs - state.consumedMs);
-  const appliedMs = Math.min(remainingMs, MAX_MOVEMENT_CATCHUP_MS);
+  const shouldReplayReleaseTail = !state.observedWhileDown || heldMs <= MAX_SHORT_RELEASE_TOTAL_MS;
+  const appliedMs = shouldReplayReleaseTail
+    ? Math.min(remainingMs, MAX_MOVEMENT_CATCHUP_MS)
+    : 0;
   state.consumedMs += appliedMs;
   state.lastTimeDown = timeDown;
   state.releaseConsumed = true;
