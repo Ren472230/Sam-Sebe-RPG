@@ -72,6 +72,23 @@ test("a release applies only the unconsumed remainder of the same physical press
 });
 
 
+test("a synthetic key-up without a physical key-down never creates movement", () => {
+  const key = { isDown: false, timeDown: 0, timeUp: 5_000, duration: 5_000, getDuration: () => 0 };
+
+  assert.equal(effectiveHeldDelta(16, key, 5_100), 0);
+});
+
+
+test("a repeated key-up for an already released press does not replay stale movement", () => {
+  const key = { isDown: false, timeDown: 100, timeUp: 180, duration: 80, getDuration: () => 0 };
+
+  assert.equal(effectiveHeldDelta(16, key, 200), 80);
+  key.timeUp = 900;
+  key.duration = 800;
+  assert.equal(effectiveHeldDelta(16, key, 916), 0);
+});
+
+
 test("a new physical press clears leftover catch-up from the previous hold", () => {
   const key = { isDown: true, timeDown: 100, timeUp: 0, duration: 0, getDuration: () => 16 };
 
