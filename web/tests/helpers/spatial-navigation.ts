@@ -21,6 +21,7 @@ const VILLAGE_LOWER_LANE_Y = 455;
 const STEERING_PULSE_MS = 80;
 const CORRIDOR_PULSE_MS = 180;
 const TARGET_TOLERANCE = 7;
+const INTERACTION_AXIS_MARGIN = 30;
 
 export async function playerPosition(page: Page): Promise<PlayerPosition> {
   return page.evaluate(() => ({
@@ -237,6 +238,42 @@ function remainingRouteTime(deadline: number): number {
   return Math.max(1_000, deadline - Date.now());
 }
 
+function interactionAxisTarget(current: number, target: number): number {
+  if (current < target - INTERACTION_AXIS_MARGIN) return target - INTERACTION_AXIS_MARGIN;
+  if (current > target + INTERACTION_AXIS_MARGIN) return target + INTERACTION_AXIS_MARGIN;
+  return current;
+}
+
+async function moveInteractionAxis(
+  page: Page,
+  axis: "x" | "y",
+  target: number,
+  hintText: string,
+  deadline: number
+): Promise<boolean> {
+  const snapshot = await interactionSnapshot(page, hintText);
+  if (snapshot.hintReady) return true;
+  const current = snapshot.position[axis];
+  if (!Number.isFinite(current)) return false;
+
+  // Interaction targets are centers, not exact coordinates. Stop each physical axis
+  // near the edge of the interaction radius. This leaves room for delayed keyup while
+  // still crossing the real spatial interaction band instead of chasing one pixel.
+  const approachTarget = interactionAxisTarget(current, target);
+  if (Math.abs(approachTarget - current) > TARGET_TOLERANCE) {
+    await moveAxisTo(
+      page,
+      axis,
+      approachTarget,
+      10,
+      remainingRouteTime(deadline),
+      STEERING_PULSE_MS
+    );
+  }
+  await waitForBrowserFrame(page);
+  return (await interactionSnapshot(page, hintText)).hintReady;
+}
+
 async function moveToTavernInteraction(
   page: Page,
   targetX: number,
@@ -281,7 +318,6 @@ export async function moveTowardInteraction(
   await installNavigationDiagnostics(page);
   await releaseMovementKeys(page);
   const deadline = Date.now() + timeout;
-  let stagnantPulses = 0;
 
   // The tavern sits above a long collision-free lower corridor. A sequential
   // corridor route is more robust than diagonal steering because a delayed keyup
@@ -299,58 +335,13 @@ export async function moveTowardInteraction(
     throw new Error(`player position is invalid before interaction steering; start=${JSON.stringify(steeringStart.position)}`);
   }
 
-  // Each axis receives one direction for the entire interaction approach. Once the
-  // avatar reaches or crosses that coordinate, the axis is permanently released.
-  // This preserves real keyboard movement while preventing delayed releases from
-  // causing A<->D or W<->S oscillation around a target coordinate.
-  const xKey = Math.abs(targetX - startX) > TARGET_TOLERANCE
-    ? movementKey("x", startX, targetX)
-    : null;
-  const yKey = Math.abs(targetY - startY) > TARGET_TOLERANCE
-    ? movementKey("y", startY, targetY)
-    : null;
-  let xActive = xKey !== null;
-  let yActive = yKey !== null;
-
-  try {
-    while (Date.now() < deadline) {
-      const snapshot = await interactionSnapshot(page, hintText);
-      if (snapshot.hintReady) return;
-      const { x, y } = snapshot.position;
-      if (!Number.isFinite(x) || !Number.isFinite(y)) break;
-
-      if (xKey && xActive && reachedOrCrossedTarget(xKey, x, targetX)) xActive = false;
-      if (yKey && yActive && reachedOrCrossedTarget(yKey, y, targetY)) yActive = false;
-
-      const keys: MovementKey[] = [];
-      if (yKey && yActive) keys.push(yKey);
-      if (xKey && xActive) keys.push(xKey);
-
-      if (keys.length === 0) {
-        // Both target coordinates have been physically reached/crossed. Give the
-        // scene one extra frame to publish the interaction hint, then stop rather
-        // than reversing an axis and moving away from the intended interaction.
-        await waitForBrowserFrame(page);
-        if ((await interactionSnapshot(page, hintText)).hintReady) return;
-        break;
-      }
-
-      const { start, end } = await pulseKeys(page, keys);
-      await recordPulse(page, keys, targetX, targetY, start, end);
-
-      const after = await interactionSnapshot(page, hintText);
-      if (after.hintReady) return;
-
-      if (xKey && xActive && reachedOrCrossedTarget(xKey, end.x, targetX)) xActive = false;
-      if (yKey && yActive && reachedOrCrossedTarget(yKey, end.y, targetY)) yActive = false;
-
-      const progress = Math.hypot(end.x - start.x, end.y - start.y);
-      stagnantPulses = progress < 1 ? stagnantPulses + 1 : 0;
-      if (stagnantPulses >= 6) break;
-    }
-  } finally {
-    await releaseMovementKeys(page);
-  }
+  // Keep only one physical movement key active at a time. In a throttled browser,
+  // Playwright key commands can be delayed asymmetrically; a nominal diagonal pulse
+  // can therefore move one axis by ~100px before the other key is released. Sequential
+  // axes preserve real keyboard semantics and let the scene's interaction grace catch
+  // the actual spatial pass through the target radius.
+  if (await moveInteractionAxis(page, "x", targetX, hintText, deadline)) return;
+  if (await moveInteractionAxis(page, "y", targetY, hintText, deadline)) return;
 
   const snapshot = await interactionSnapshot(page, hintText);
   if (snapshot.hintReady) return;
