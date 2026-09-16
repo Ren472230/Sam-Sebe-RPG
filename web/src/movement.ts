@@ -1,5 +1,6 @@
 export const PLAYER_SPEED_PX_PER_MS = 0.22;
 export const MAX_MOVEMENT_SUBSTEP_MS = 50;
+export const MAX_OBSERVABLE_MOVEMENT_MS = 200;
 
 export type HeldMovementKey = {
   isDown: boolean;
@@ -10,7 +11,7 @@ export function effectiveHeldDelta(deltaMs: number, key: HeldMovementKey | null)
   if (!key?.isDown || !Number.isFinite(deltaMs) || deltaMs <= 0) return 0;
   const heldMs = key.getDuration();
   if (!Number.isFinite(heldMs) || heldMs <= 0) return 0;
-  return Math.min(deltaMs, heldMs);
+  return Math.min(deltaMs, heldMs, MAX_OBSERVABLE_MOVEMENT_MS);
 }
 
 export function applyMovementDelta(
