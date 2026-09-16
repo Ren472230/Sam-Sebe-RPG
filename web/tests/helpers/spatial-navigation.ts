@@ -295,8 +295,10 @@ async function moveToTavernInteraction(
   if (start.x < VILLAGE_WELL_CLEAR_X) await movePastVillageWell(page, deadline);
   if ((await interactionSnapshot(page, hintText)).hintReady) return;
 
-  const lowerApproachX = targetX - 20;
-  await moveAxisTo(page, "x", lowerApproachX, 18, remainingRouteTime(deadline), CORRIDOR_PULSE_MS);
+  // Center the lower-lane approach on the tavern hotspot before moving north.
+  // The previous targetX - 20 / ±18 band could stop around x=810,y=334,
+  // which is just outside the real <85px interaction radius around (825,250).
+  await moveAxisTo(page, "x", targetX, 8, remainingRouteTime(deadline), CORRIDOR_PULSE_MS);
   if ((await interactionSnapshot(page, hintText)).hintReady) return;
 
   await moveWithConcurrentKeysUntilHint(page, ["w"], hintText, remainingRouteTime(deadline), CORRIDOR_PULSE_MS);
