@@ -48,3 +48,26 @@ test("390px Living World panel stays compact without hiding its actions", () => 
   assert.match(styles, /\.living-npc-actions\s*\{[\s\S]*flex-wrap:\s*nowrap;[\s\S]*overflow-x:\s*auto;[\s\S]*scroll-snap-type:\s*x proximity;/);
   assert.match(styles, /\.living-npc-actions button\s*\{[\s\S]*flex:\s*0 0 auto;[\s\S]*white-space:\s*nowrap;/);
 });
+
+test("coarse-pointer landscape keeps touch controls and dialogue playable above 700px", () => {
+  assert.match(
+    touchFeedbackStyles,
+    /@media \(min-width: 701px\) and \(max-width: 900px\) and \(any-pointer: coarse\)[\s\S]*#touch-controls\s*\{[\s\S]*display:\s*grid;/
+  );
+  assert.match(
+    touchFeedbackStyles,
+    /@media \(min-width: 701px\) and \(max-width: 900px\) and \(any-pointer: coarse\)[\s\S]*#touch-controls button\s*\{[\s\S]*min-width:\s*48px;[\s\S]*min-height:\s*48px;/
+  );
+  assert.match(
+    touchFeedbackStyles,
+    /@media \(min-width: 701px\) and \(max-width: 900px\) and \(any-pointer: coarse\)[\s\S]*#touch-controls button\[data-pressed="true"\][\s\S]*background:\s*#65d5d9;/
+  );
+  assert.match(
+    touchFeedbackStyles,
+    /@media \(min-width: 701px\) and \(max-width: 900px\) and \(any-pointer: coarse\)[\s\S]*#dialogue\s*\{[\s\S]*position:\s*fixed;[\s\S]*max-height:\s*calc\(100dvh - 16px - env\(safe-area-inset-bottom\)\);/
+  );
+  assert.match(
+    touchFeedbackStyles,
+    /@media \(min-width: 701px\) and \(max-width: 900px\) and \(any-pointer: coarse\)[\s\S]*\.dialogue-actions button\s*\{[\s\S]*min-height:\s*44px;/
+  );
+});
