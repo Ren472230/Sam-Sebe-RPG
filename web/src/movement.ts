@@ -13,6 +13,7 @@ export type HeldMovementKey = {
 type HeldMovementState = {
   consumedMs: number;
   lastTimeDown?: number;
+  releaseConsumed: boolean;
 };
 
 const heldMovementState = new WeakMap<object, HeldMovementState>();
@@ -22,20 +23,23 @@ function monotonicNowMs(): number {
 }
 
 function observedHeldDurationMs(key: HeldMovementKey, nowMs: number): number {
-  const timeDown = Number.isFinite(key.timeDown) ? key.timeDown : undefined;
-  if (key.isDown && timeDown !== undefined && Number.isFinite(nowMs)) {
-    const wallHeldMs = nowMs - timeDown;
-    if (wallHeldMs >= 0) return wallHeldMs;
-  }
-
-  if (!key.isDown) {
-    if (Number.isFinite(key.duration) && Number(key.duration) >= 0) return Number(key.duration);
-    if (timeDown !== undefined && Number.isFinite(key.timeUp) && Number(key.timeUp) >= timeDown) {
-      return Number(key.timeUp) - timeDown;
+  const timeDown = Number.isFinite(key.timeDown) ? Number(key.timeDown) : undefined;
+  if (key.isDown) {
+    if (timeDown !== undefined && timeDown > 0 && Number.isFinite(nowMs)) {
+      const wallHeldMs = nowMs - timeDown;
+      if (wallHeldMs >= 0) return wallHeldMs;
     }
+    return key.getDuration();
   }
 
-  return key.getDuration();
+  // Phaser updates timeUp/duration even for an extra keyup event while the key is
+  // already up. A release can therefore be trusted only when it belongs to a real
+  // physical press with a positive timeDown. Replay protection lives in
+  // effectiveHeldDelta so a later synthetic keyup cannot extend the same press.
+  if (timeDown === undefined || timeDown <= 0) return 0;
+  const timeUp = Number.isFinite(key.timeUp) ? Number(key.timeUp) : undefined;
+  if (timeUp === undefined || timeUp < timeDown) return 0;
+  return timeUp - timeDown;
 }
 
 export function effectiveHeldDelta(
@@ -44,21 +48,31 @@ export function effectiveHeldDelta(
   nowMs = monotonicNowMs()
 ): number {
   if (!key || !Number.isFinite(deltaMs) || deltaMs <= 0) return 0;
-  const heldMs = observedHeldDurationMs(key, nowMs);
-  if (!Number.isFinite(heldMs) || heldMs <= 0) return 0;
 
-  const timeDown = Number.isFinite(key.timeDown) ? key.timeDown : undefined;
+  const timeDown = Number.isFinite(key.timeDown) ? Number(key.timeDown) : undefined;
   const previousState = heldMovementState.get(key as object);
   const isNewPress = !previousState
-    || (timeDown !== undefined && previousState.lastTimeDown !== undefined && timeDown !== previousState.lastTimeDown);
+    || (timeDown !== undefined && previousState.lastTimeDown !== timeDown);
   const state: HeldMovementState = isNewPress
-    ? { consumedMs: 0, lastTimeDown: timeDown }
+    ? { consumedMs: 0, lastTimeDown: timeDown, releaseConsumed: false }
     : previousState;
+
+  if (!key.isDown && state.releaseConsumed) return 0;
+
+  const heldMs = observedHeldDurationMs(key, nowMs);
+  if (!Number.isFinite(heldMs) || heldMs <= 0) {
+    if (!key.isDown && timeDown !== undefined && timeDown > 0) {
+      state.releaseConsumed = true;
+      heldMovementState.set(key as object, state);
+    }
+    return 0;
+  }
 
   const remainingMs = Math.max(0, heldMs - state.consumedMs);
   const appliedMs = Math.min(remainingMs, MAX_MOVEMENT_CATCHUP_MS);
   state.consumedMs += appliedMs;
   state.lastTimeDown = timeDown;
+  if (!key.isDown) state.releaseConsumed = true;
   heldMovementState.set(key as object, state);
   return appliedMs;
 }
