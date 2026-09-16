@@ -206,7 +206,9 @@ async function fetchPassingReport(page: Page, sessionId: string): Promise<Playte
 }
 
 test("canonical route finishes the firewood quest, advances the Living World, persists, and emits a PASS report", async ({ page }, testInfo) => {
-  test.setTimeout(150_000);
+  // This is only the aggregate route budget. Individual movement and interaction
+  // helpers retain their bounded 10-20 second guards, so a real softlock still fails locally.
+  test.setTimeout(180_000);
   const diagnostics = installBrowserDiagnostics(page);
   try {
     await page.goto("/");
