@@ -6,8 +6,8 @@ const touchSource = readFileSync(new URL("../src/touchControls.ts", import.meta.
 const feedbackStyles = readFileSync(new URL("../src/touchFeedback.css", import.meta.url), "utf8");
 
 test("interaction hint mirrors the contextual action state used by touch controls", () => {
+  assert.match(touchSource, /button\.dataset\.contextual = nextContext === DEFAULT_ACTION_CONTEXT \? "false" : "true"/);
   assert.match(touchSource, /const isContextual = nextContext !== DEFAULT_ACTION_CONTEXT/);
-  assert.match(touchSource, /button\.dataset\.contextual = isContextual \? "true" : "false"/);
   assert.match(touchSource, /hint\.dataset\.contextual = isContextual \? "true" : "false"/);
   assert.match(touchSource, /hint\.setAttribute\("aria-label", isContextual \? `Доступно действие: \$\{nextContext\}` : "Подсказка управления"\)/);
 });
