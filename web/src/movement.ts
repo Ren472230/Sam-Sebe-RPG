@@ -45,14 +45,11 @@ export function effectiveHeldDelta(
     : previousState;
 
   if (key.isDown) {
-    const heldMs = key.getDuration();
-    if (!Number.isFinite(heldMs) || heldMs <= 0) return 0;
-    const unconsumedHeldMs = Math.max(0, heldMs - state.consumedMs);
-    const appliedMs = Math.min(deltaMs, unconsumedHeldMs, MAX_MOVEMENT_CATCHUP_MS);
+    const appliedMs = Math.min(deltaMs, MAX_MOVEMENT_CATCHUP_MS);
     state.consumedMs += appliedMs;
     state.lastTimeDown = timeDown;
     state.releaseConsumed = false;
-    state.observedWhileDown = state.observedWhileDown || appliedMs > 0;
+    state.observedWhileDown = true;
     heldMovementState.set(key as object, state);
     return appliedMs;
   }

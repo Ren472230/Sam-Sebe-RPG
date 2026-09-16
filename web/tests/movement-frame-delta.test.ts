@@ -61,28 +61,24 @@ test("a key pulse completed entirely between render frames is preserved", () => 
 
 
 test("a short tap completes its small release tail after a live frame", () => {
-  let currentDuration = 16;
-  const key = { isDown: true, timeDown: 100, timeUp: 0, duration: 0, getDuration: () => currentDuration };
+  const key = { isDown: true, timeDown: 100, timeUp: 0, duration: 0, getDuration: () => 16 };
 
   assert.equal(effectiveHeldDelta(16, key, 116), 16);
   key.isDown = false;
   key.timeUp = 180;
   key.duration = 80;
-  currentDuration = 0;
   assert.equal(effectiveHeldDelta(16, key, 196), 64);
   assert.equal(effectiveHeldDelta(16, key, 212), 0);
 });
 
 
 test("release after live movement never replays a wall-clock tail", () => {
-  let currentDuration = 16;
-  const key = { isDown: true, timeDown: 100, timeUp: 0, duration: 0, getDuration: () => currentDuration };
+  const key = { isDown: true, timeDown: 100, timeUp: 0, duration: 0, getDuration: () => 16 };
 
   assert.equal(effectiveHeldDelta(16, key, 116), 16);
   key.isDown = false;
   key.timeUp = 580;
   key.duration = 480;
-  currentDuration = 0;
   assert.equal(effectiveHeldDelta(16, key, 600), 0);
   assert.equal(effectiveHeldDelta(16, key, 616), 0);
 });
@@ -106,18 +102,26 @@ test("a repeated key-up for an already released press does not replay stale move
 
 
 test("a new physical press clears consumed time from the previous hold", () => {
-  let currentDuration = 800;
-  const key = { isDown: true, timeDown: 100, timeUp: 0, duration: 0, getDuration: () => currentDuration };
+  const key = { isDown: true, timeDown: 100, timeUp: 0, duration: 0, getDuration: () => 800 };
 
   assert.equal(effectiveHeldDelta(16, key, 900), 16);
+  key.isDown = false;
+  key.timeUp = 900;
+  assert.equal(effectiveHeldDelta(16, key, 916), 0);
+  key.isDown = true;
   key.timeDown = 1000;
-  currentDuration = 25;
-  assert.equal(effectiveHeldDelta(800, key, 1025), 25);
+  assert.equal(effectiveHeldDelta(25, key, 1025), 25);
 });
 
 
-test("live movement remains frame-bounded when DOM and Phaser clocks are incomparable", () => {
-  const key = { isDown: true, timeDown: 1_700_000_000_000, timeUp: 0, duration: 0, getDuration: () => 37 };
+test("live movement follows frame delta when DOM key timestamps and the game clock are incomparable", () => {
+  const key = {
+    isDown: true,
+    timeDown: 1_700_000_000_000,
+    timeUp: 0,
+    duration: 0,
+    getDuration: () => -1_699_999_999_100
+  };
 
   assert.equal(effectiveHeldDelta(16, key, 900), 16);
 });
