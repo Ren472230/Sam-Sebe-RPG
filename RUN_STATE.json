@@ -16,11 +16,11 @@
     "merged": false
   },
   "phase": "gameplay_spatial_navigation_stability_verification",
-  "current_objective": "SESSION_OBJECTIVE: preserve and verify the current HUD/mobile/dialogue visual surface while fresh browser-bearing required gates are red, and avoid visual production changes until shared physical-navigation stabilization is green on one exact validation SHA.",
-  "next_action": "GAMEPLAY: use the fresh PR #56 browser diagnostics on validation head 711d6bfbecab4f64b654295c2d2b9ef517fa8964 to stabilize Mira approach and tavern entry on one exact SHA; VISUAL then reruns the existing 390px and desktop browser/screenshot checks before evidence-driven polish.",
+  "current_objective": "SESSION_OBJECTIVE: stabilize shared real-keyboard spatial navigation so the canonical Mira interaction and tavern entry routes stop oscillating across target coordinates and the browser-bearing required gates can converge on one exact validation SHA.",
+  "next_action": "Implement one-direction-per-axis steering for moveTowardInteraction and one-way crossing semantics for moveAxisTo, then validate the exact implementation SHA through PR #56 before any broader gameplay work.",
   "blockers": [
-    "Fresh PR #56 validation head 711d6bfbecab4f64b654295c2d2b9ef517fa8964 keeps Visual Forge, Release Reproducibility and Windows Compatibility green, while Stream Slice, Prototype Web CI, Living World Integration and Playable Candidate remain red in real-browser physical navigation.",
-    "The latest failures are in web/tests/helpers/spatial-navigation.ts: Mira approach can miss the talk interaction and tavern entry can stop short or overshoot x=825. Web/UI contracts and production build remain green, so creating a new visual product SHA would invalidate stabilization evidence without addressing the current blocker."
+    "PR #56 validation head 711d6bfbecab4f64b654295c2d2b9ef517fa8964 keeps Stream Slice, Prototype Web CI, Living World Integration and Playable Candidate red in real-browser physical navigation.",
+    "Fresh Stream Slice diagnostics prove moveTowardInteraction reverses the x key after crossing Mira's target: A+W moves (330,455)->(290,437)->(218,409), then D+W reverses x to (339,354) and loses the requested interaction. The same pulse/reversal pattern can destabilize tavern x=825 steering."
   ],
   "active_run": {
     "run_id": "2026-09-16-gameplay-navigation-stability-2",
