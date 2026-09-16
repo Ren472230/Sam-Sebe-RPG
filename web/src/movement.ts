@@ -18,24 +18,8 @@ type HeldMovementState = {
 
 const heldMovementState = new WeakMap<object, HeldMovementState>();
 
-function monotonicNowMs(): number {
-  return typeof performance === "undefined" ? Number.NaN : performance.now();
-}
-
-function observedHeldDurationMs(key: HeldMovementKey, nowMs: number): number {
+function releasedHeldDurationMs(key: HeldMovementKey): number {
   const timeDown = Number.isFinite(key.timeDown) ? Number(key.timeDown) : undefined;
-  if (key.isDown) {
-    if (timeDown !== undefined && timeDown > 0 && Number.isFinite(nowMs)) {
-      const wallHeldMs = nowMs - timeDown;
-      if (wallHeldMs >= 0) return wallHeldMs;
-    }
-    return key.getDuration();
-  }
-
-  // Phaser updates timeUp/duration even for an extra keyup event while the key is
-  // already up. A release can therefore be trusted only when it belongs to a real
-  // physical press with a positive timeDown. Replay protection lives in
-  // effectiveHeldDelta so a later synthetic keyup cannot extend the same press.
   if (timeDown === undefined || timeDown <= 0) return 0;
   const timeUp = Number.isFinite(key.timeUp) ? Number(key.timeUp) : undefined;
   if (timeUp === undefined || timeUp < timeDown) return 0;
@@ -45,7 +29,7 @@ function observedHeldDurationMs(key: HeldMovementKey, nowMs: number): number {
 export function effectiveHeldDelta(
   deltaMs: number,
   key: HeldMovementKey | null,
-  nowMs = monotonicNowMs()
+  _nowMs = Number.NaN
 ): number {
   if (!key || !Number.isFinite(deltaMs) || deltaMs <= 0) return 0;
 
@@ -57,11 +41,22 @@ export function effectiveHeldDelta(
     ? { consumedMs: 0, lastTimeDown: timeDown, releaseConsumed: false }
     : previousState;
 
-  if (!key.isDown && state.releaseConsumed) return 0;
+  if (key.isDown) {
+    const heldMs = key.getDuration();
+    if (!Number.isFinite(heldMs) || heldMs <= 0) return 0;
+    const unconsumedHeldMs = Math.max(0, heldMs - state.consumedMs);
+    const appliedMs = Math.min(deltaMs, unconsumedHeldMs, MAX_MOVEMENT_CATCHUP_MS);
+    state.consumedMs += appliedMs;
+    state.lastTimeDown = timeDown;
+    state.releaseConsumed = false;
+    heldMovementState.set(key as object, state);
+    return appliedMs;
+  }
 
-  const heldMs = observedHeldDurationMs(key, nowMs);
+  if (state.releaseConsumed) return 0;
+  const heldMs = releasedHeldDurationMs(key);
   if (!Number.isFinite(heldMs) || heldMs <= 0) {
-    if (!key.isDown && timeDown !== undefined && timeDown > 0) {
+    if (timeDown !== undefined && timeDown > 0) {
       state.releaseConsumed = true;
       heldMovementState.set(key as object, state);
     }
@@ -72,7 +67,7 @@ export function effectiveHeldDelta(
   const appliedMs = Math.min(remainingMs, MAX_MOVEMENT_CATCHUP_MS);
   state.consumedMs += appliedMs;
   state.lastTimeDown = timeDown;
-  if (!key.isDown) state.releaseConsumed = true;
+  state.releaseConsumed = true;
   heldMovementState.set(key as object, state);
   return appliedMs;
 }
