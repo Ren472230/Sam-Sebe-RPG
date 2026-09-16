@@ -120,10 +120,9 @@ async function pulseKeys(
   const start = await playerPosition(page);
   for (const key of uniqueKeys) await page.keyboard.down(key);
   try {
-    // Keeping a real key down across this awaited interval is intentional. If the
-    // external Playwright controller is delayed, the browser continues rendering
-    // physical movement. Once control resumes we release the keys, re-read the real
-    // position and steer back toward the target instead of trusting a stale crossing.
+    // Keep real keys down across the awaited interval. If the external controller
+    // is delayed, the independently rendering browser can continue physical movement.
+    // When control resumes we release, observe the real position and correct course.
     await page.waitForTimeout(pulseMs);
   } finally {
     if (!page.isClosed()) {
@@ -191,9 +190,8 @@ async function movePastVillageWell(page: Page, deadline: number): Promise<void> 
     if (before.x >= VILLAGE_WELL_CLEAR_X) return;
 
     const keys: MovementKey[] = ["d"];
-    // The well occupies x=435..540 and y=330..420. Use the real S key only until
-    // the avatar is on the collision-free lower lane, then continue right. This
-    // follows traversable geometry while keeping the canonical world untouched.
+    // The well occupies x=435..540 and y=330..420. Use the real S key until the
+    // avatar is on the collision-free lower lane, then keep moving right.
     if (before.y < VILLAGE_LOWER_LANE_Y) keys.push("s");
     const { start, end } = await pulseKeys(page, keys);
     await recordPulse(page, keys, VILLAGE_WELL_CLEAR_X, VILLAGE_LOWER_LANE_Y, start, end);
@@ -220,6 +218,18 @@ export async function moveTowardInteraction(
   const deadline = Date.now() + timeout;
   let stagnantPulses = 0;
 
+  // A direct target-aware tavern approach can start on the workshop side of the
+  // village well. Route that long crossing through the same lower physical lane
+  // used by the canonical tavern helper before fine target steering begins.
+  const initial = await playerPosition(page);
+  if (
+    targetX >= 700
+    && targetY <= 360
+    && initial.x < VILLAGE_WELL_CLEAR_X
+  ) {
+    await movePastVillageWell(page, deadline);
+  }
+
   try {
     while (Date.now() < deadline) {
       const snapshot = await interactionSnapshot(page, hintText);
@@ -234,10 +244,9 @@ export async function moveTowardInteraction(
       if (Math.abs(dy) > TARGET_TOLERANCE) keys.push(movementKey("y", y, targetY));
 
       if (keys.length === 0) {
-        // The supplied target is an approach point rather than canonical state. A
-        // tiny physical probe lets an interaction radius update before we give up.
-        const probe: MovementKey = y >= targetY ? "w" : "s";
-        keys.push(probe);
+        // The supplied coordinate is an approach point. Probe one physical step so
+        // a nearby interaction radius can refresh before declaring failure.
+        keys.push(y >= targetY ? "w" : "s");
       }
 
       const { start, end } = await pulseKeys(page, keys);
