@@ -183,29 +183,30 @@ export async function moveAxisTo(
   }
   if (Math.abs(initialValue - target) <= tolerance) return;
 
+  const key = movementKey(axis, initialValue, target);
   let stagnantPulses = 0;
   let pulses = 0;
   while (Date.now() < deadline && pulses < 96) {
     const currentValue = current[axis];
     if (!Number.isFinite(currentValue)) break;
     const gap = Math.abs(target - currentValue);
-    if (gap <= tolerance) return;
+    if (reachedOrCrossedTarget(key, currentValue, target, tolerance)) return;
 
-    const key = movementKey(axis, currentValue, target);
     const duration = axisPulseDuration(gap, pulseMs);
     const { start, end } = await pulseKeys(page, [key], duration);
     await recordAxisTrace(page, { axis, target, reached: start, released: end });
     const endValue = end[axis];
     if (!Number.isFinite(endValue)) break;
-    if (Math.abs(endValue - target) <= tolerance) return;
+    if (reachedOrCrossedTarget(key, endValue, target, tolerance)) return;
 
     const progress = Math.abs(endValue - start[axis]);
     stagnantPulses = progress < 1 ? stagnantPulses + 1 : 0;
     if (stagnantPulses >= 6) break;
 
-    // A blocked Playwright controller can leave a real key held long enough to cross
-    // the target. Re-sample and steer back on the next pulse instead of waiting out a
-    // long page.waitForFunction timeout or accepting a far overshoot as success.
+    // Keep the initial physical direction for this leg. A delayed browser can release
+    // a real key after the target has already been crossed; that crossing is success,
+    // so reversing toward an exact coordinate only adds oscillation and consumes the
+    // shared route budget without improving the interaction condition.
     current = end;
     pulses += 1;
   }
@@ -213,7 +214,7 @@ export async function moveAxisTo(
   await releaseMovementKeys(page);
   const end = await playerPosition(page);
   throw new Error(
-    `player did not settle near ${axis}=${target}; last=${JSON.stringify(end)} `
+    `player did not reach or cross ${axis}=${target}; last=${JSON.stringify(end)} `
       + `distance=${Math.round(Math.abs(end[axis] - target))} pulses=${pulses}`
   );
 }
