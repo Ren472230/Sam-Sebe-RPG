@@ -15,11 +15,11 @@
     "draft": true,
     "merged": false
   },
-  "phase": "visual_interaction_feedback_verified",
-  "current_objective": "SESSION_OBJECTIVE COMPLETE: interaction feedback now reads as one coherent visual system across desktop and 390px mobile, with an accessible neutral/contextual interaction ribbon, matching touch-action state, durable pressed feedback and bounded mobile layout, while gameplay rules and spatial-navigation mechanics remain unchanged.",
-  "next_action": "VISUAL: use the next independent session to inspect the 390px Living World / journal information hierarchy and reduce visual density only where browser evidence shows a real readability or reachability problem.",
+  "phase": "gameplay_navigation_stabilization_session",
+  "current_objective": "SESSION_OBJECTIVE: stabilize the real physical village route around the well and tavern so the navigation-stability checks and canonical vertical-slice browser route pass from one exact SHA without changing collisions, gameplay speed, canonical state or real keyboard semantics.",
+  "next_action": "GAMEPLAY: use the fresh 74200fb browser evidence to prove why movePastVillageWell and post-well target steering stop before the tavern interaction, apply the smallest controller/test-harness correction, then validate the affected browser gates on one exact SHA.",
   "blockers": [
-    "The active server-backed release line still has a separate GAMEPLAY-owned shared physical-navigation blocker in Mira/tavern real-browser routes; this visual session did not alter that controller.",
+    "Fresh exact-head validation 74200fb has red browser-bearing required gates caused by real physical navigation: the slow/stalled controller can stop before clearing the village well and the canonical route can stop at x=660,y=334 before the tavern interaction hint appears.",
     "A real human aesthetic judgment remains a later product gate after technical stabilization."
   ],
   "active_run": {
@@ -38,7 +38,7 @@
     "verification": [
       "Working visual result HEAD before state handoff: 220d1306f1342f759be1f788d8a2aa56d9e004f9 on agent/autonomy-pilot-v0.1.",
       "Exact validation PR #56 head: 74200fb113395577ed04ada5961122ed99618658.",
-      "Prototype Web CI run 35056361713 on 74200fb: web/UI contracts SUCCESS 53/53; production build SUCCESS; startup-controls browser acceptance SUCCESS; dedicated interaction-feedback desktop/390px browser acceptance SUCCESS.",
+      "Prototype Web CI run 35056361713 on 74200fb: web/UI contracts SUCCESS 53/53; production build SUCCESS; startup-controls browser test and dedicated desktop/390px interaction-feedback browser acceptance SUCCESS.",
       "Dedicated mobile acceptance verifies no horizontal overflow, stable touch action label/context, durable pressed feedback and captures interaction-feedback-mobile-390.png.",
       "Visual Forge Gate run 35056361800 on 74200fb: SUCCESS.",
       "No gameplay rule, reward, quest condition, NPC causality, save format or spatial-navigation mechanic was changed by this session."
@@ -57,12 +57,12 @@
   "pilot_validation_at_work_head": {
     "work_head_sha": "74200fb113395577ed04ada5961122ed99618658",
     "visual_forge_gate": {"run_id": 35056361800, "status": "success"},
-    "prototype_web_ci": {"run_id": 35056361713, "status": "in_progress_after_visual_acceptance", "verified_scope": "53/53 web/UI contracts, production build, startup-controls browser test and dedicated desktop/390px interaction-feedback browser acceptance are green; later long browser route is separate gameplay evidence"},
-    "release_reproducibility_gate": {"run_id": 35056361710, "status": "in_progress_at_handoff"},
-    "windows_compatibility_gate": {"run_id": 35056361781, "status": "in_progress_at_handoff"},
-    "stream_slice_gate": {"run_id": 35056361899, "status": "in_progress_at_handoff"},
-    "living_world_integration_gate": {"run_id": 35056361753, "status": "in_progress_at_handoff"},
-    "playable_candidate_gate": {"run_id": 35056361757, "status": "in_progress_at_handoff"}
+    "prototype_web_ci": {"run_id": 35056361713, "status": "completed_with_later_browser_failure", "verified_scope": "53/53 web/UI contracts, production build, startup-controls browser test and dedicated desktop/390px interaction-feedback browser acceptance are green; later gameplay browser route remains red"},
+    "release_reproducibility_gate": {"run_id": 35056361710, "status": "completed_status_to_reconcile"},
+    "windows_compatibility_gate": {"run_id": 35056361781, "status": "completed_status_to_reconcile"},
+    "stream_slice_gate": {"run_id": 35056361899, "status": "completed_status_to_reconcile"},
+    "living_world_integration_gate": {"run_id": 35056361753, "status": "failure", "failure_scope": "real browser critical route: two village-well clearing failures plus canonical tavern-entry failure"},
+    "playable_candidate_gate": {"run_id": 35056361757, "status": "failure", "failure_scope": "browser-bearing job failure; backend + Living World job green"}
   },
   "standalone_experiment": {
     "branch": "experiment/standalone-html-v1",
@@ -87,9 +87,9 @@
     "github_releases": "none"
   },
   "known_limitations": [
-    "Shared physical-navigation stability remains a GAMEPLAY-owned release blocker independent of this verified visual interaction-feedback slice.",
+    "Shared physical-navigation stability remains a GAMEPLAY-owned release blocker independent of the verified visual interaction-feedback slice.",
     "The complete SVG stream pack remains temporary production-facing art rather than final production art.",
     "A real human experience and aesthetic check remains required after technical stabilization."
   ],
-  "current_blocker": "Visual interaction-feedback objective is complete and independently verified. The remaining active project blocker is GAMEPLAY-owned real-browser spatial navigation on Mira/tavern routes."
+  "current_blocker": "Fresh 74200fb required browser evidence is red on real physical navigation around the village well and tavern; this gameplay session owns that stabilization."
 }
