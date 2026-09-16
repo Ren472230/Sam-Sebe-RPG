@@ -3,27 +3,146 @@
   "project": "Ren472230/Sam-Sebe-RPG",
   "quality_contract": "docs/autonomy/QUALITY_CONTRACT.md",
   "project_status": "IN_DEVELOPMENT",
-  "quality_score": null,
+  "quality_score": 60,
   "technical_ready_threshold": 90,
-  "last_evaluated_sha": null,
-  "last_evaluated_at_utc": null,
+  "last_evaluated_sha": "8402e77367bb0bb8ac28b1acd5ebcf485b3c9eb1",
+  "last_evaluated_at_utc": "2026-09-16T14:04:59Z",
   "hard_gates": {
-    "RQ-H01": {"name": "Seven Required Release Gates on One SHA", "status": "UNKNOWN", "evidence": null},
-    "RQ-H02": {"name": "Repeated Browser Route Stability", "status": "UNKNOWN", "evidence": null},
-    "RQ-H03": {"name": "Canonical Vertical Slice Completion", "status": "UNKNOWN", "evidence": null},
-    "RQ-H04": {"name": "Living Systems Integrity", "status": "UNKNOWN", "evidence": null},
-    "RQ-H05": {"name": "Persistence / Reload Integrity", "status": "UNKNOWN", "evidence": null},
-    "RQ-H06": {"name": "Runtime Integrity / No Critical Blockers", "status": "UNKNOWN", "evidence": null},
-    "RQ-H07": {"name": "Visual / Input Usability", "status": "UNKNOWN", "evidence": null},
-    "RQ-H08": {"name": "Reproducibility and Supported Environment", "status": "UNKNOWN", "evidence": null},
-    "RQ-H09": {"name": "Human Experience Gate", "status": "PENDING_HUMAN", "evidence": null}
+    "RQ-H01": {
+      "name": "Seven Required Release Gates on One SHA",
+      "status": "UNKNOWN",
+      "evidence": {
+        "candidate_sha": "8402e77367bb0bb8ac28b1acd5ebcf485b3c9eb1",
+        "green": {
+          "Visual Forge Gate": 35105180925,
+          "Stream Slice Gate": 35105180810,
+          "Windows Compatibility Gate": 35105180809,
+          "Release Reproducibility Gate": 35105180847
+        },
+        "in_progress": {
+          "Prototype Web CI": 35105180802,
+          "Playable Candidate Gate": 35105180818,
+          "Living World Integration Gate": 35105180835
+        },
+        "note": "The four completed required gates are GREEN on the same PR head. Three browser-bearing required gates were still running when this evaluation was recorded."
+      }
+    },
+    "RQ-H02": {
+      "name": "Repeated Browser Route Stability",
+      "status": "UNKNOWN",
+      "evidence": {
+        "candidate_sha": "8402e77367bb0bb8ac28b1acd5ebcf485b3c9eb1",
+        "confirmed_stream_slice_passes": 1,
+        "run_ids": [35105180810],
+        "note": "Dedicated Stream Slice Gate is GREEN. Prototype Web CI and Playable Candidate contain additional same-candidate Stream Slice acceptance executions but those steps had not completed yet."
+      }
+    },
+    "RQ-H03": {
+      "name": "Canonical Vertical Slice Completion",
+      "status": "GREEN",
+      "evidence": {
+        "candidate_sha": "8402e77367bb0bb8ac28b1acd5ebcf485b3c9eb1",
+        "prototype_web_ci_run": 35105180802,
+        "prototype_vertical_slice_step": "SUCCESS",
+        "stream_slice_gate_run": 35105180810,
+        "stream_slice_chromium": "3 passed",
+        "note": "Fresh canonical browser vertical slice completed successfully after the bounded aggregate timeout correction. Fresh Stream Slice acceptance also completed all real-spatial causal/hospitality/persistence scenarios."
+      }
+    },
+    "RQ-H04": {
+      "name": "Living Systems Integrity",
+      "status": "GREEN",
+      "evidence": {
+        "candidate_sha": "8402e77367bb0bb8ac28b1acd5ebcf485b3c9eb1",
+        "stream_slice_gate_run": 35105180810,
+        "profile_python_tests": "22 passed",
+        "stream_slice_browser_tests": "3 passed",
+        "preflight": {
+          "integrity": "ok",
+          "foreign_key_errors": 0,
+          "wayfarer_arrivals": 1,
+          "oren_bread_requests": 1,
+          "road_fact_knowers": ["npc_oren", "npc_wayfarer_1"]
+        },
+        "note": "The exact candidate proves Living World causality, Mira/Kaspar contact-gated propagation, Talen-to-Oren road knowledge and hospitality through real spatial controls."
+      }
+    },
+    "RQ-H05": {
+      "name": "Persistence / Reload Integrity",
+      "status": "GREEN",
+      "evidence": {
+        "candidate_sha": "8402e77367bb0bb8ac28b1acd5ebcf485b3c9eb1",
+        "stream_slice_gate_run": 35105180810,
+        "stream_slice_reload_test": "PASS",
+        "reopen_tick": 20,
+        "sqlite_integrity": "ok",
+        "foreign_key_errors": 0,
+        "note": "Fresh Stream Slice reload verification preserves hospitality/causal knowledge and preflight proves SQLite reopen integrity."
+      }
+    },
+    "RQ-H06": {
+      "name": "Runtime Integrity / No Critical Blockers",
+      "status": "UNKNOWN",
+      "evidence": {
+        "candidate_sha": "8402e77367bb0bb8ac28b1acd5ebcf485b3c9eb1",
+        "known_failures_on_completed_fresh_checks": 0,
+        "note": "Canonical vertical slice and dedicated Stream Slice are green with bounded local movement guards, but three required browser-bearing workflows were still running, so zero-P0/P1/uncaught-error status is not yet declared."
+      }
+    },
+    "RQ-H07": {
+      "name": "Visual / Input Usability",
+      "status": "UNKNOWN",
+      "evidence": {
+        "candidate_sha": "8402e77367bb0bb8ac28b1acd5ebcf485b3c9eb1",
+        "visual_forge_gate_run": 35105180925,
+        "visual_forge_gate": "GREEN",
+        "note": "GAMEPLAY stream does not close the visual gate. VISUAL evidence and final responsive/screenshot reconciliation remain required."
+      }
+    },
+    "RQ-H08": {
+      "name": "Reproducibility and Supported Environment",
+      "status": "GREEN",
+      "evidence": {
+        "candidate_sha": "8402e77367bb0bb8ac28b1acd5ebcf485b3c9eb1",
+        "windows_compatibility_run": 35105180809,
+        "release_reproducibility_run": 35105180847,
+        "windows": "SUCCESS",
+        "release_reproducibility": "SUCCESS",
+        "note": "Fresh Windows clean install/full Python/preflight/web contracts/build/SQLite/backend API contour and both Windows/Linux reproducibility jobs are green."
+      }
+    },
+    "RQ-H09": {
+      "name": "Human Experience Gate",
+      "status": "PENDING_HUMAN",
+      "evidence": null
+    }
   },
   "score_categories": {
-    "reliability": {"max": 30, "score": null},
-    "core_gameplay": {"max": 25, "score": null},
-    "living_world_causality": {"max": 20, "score": null},
-    "ux_visual": {"max": 15, "score": null},
-    "persistence_compatibility": {"max": 10, "score": null}
+    "reliability": {
+      "max": 30,
+      "score": 5,
+      "evidence": "Fresh canonical and Stream Slice routes complete without softlock or direct state substitution; seven-gate and three-pass requirements are still incomplete at this checkpoint."
+    },
+    "core_gameplay": {
+      "max": 25,
+      "score": 25,
+      "evidence": "Fresh canonical vertical slice and Stream Slice cover physical village/tavern navigation, TAKE/GIVE/WAIT, Oren firewood quest, Mira/Kaspar contact and Talen hospitality."
+    },
+    "living_world_causality": {
+      "max": 20,
+      "score": 20,
+      "evidence": "22 profile Python tests plus 3 Stream Slice Chromium tests and deterministic preflight prove Living World/NPC/Social/Living Conversation causal boundaries."
+    },
+    "ux_visual": {
+      "max": 15,
+      "score": 0,
+      "evidence": "Reserved for VISUAL evidence; GAMEPLAY does not self-award this category."
+    },
+    "persistence_compatibility": {
+      "max": 10,
+      "score": 10,
+      "evidence": "Fresh reload/SQLite reopen evidence plus green Windows Compatibility and Release Reproducibility gates."
+    }
   },
   "rules": {
     "unknown_scores_zero_until_evidence": true,
@@ -32,5 +151,5 @@
     "v1_done_requires_explicit_owner_confirmation": true,
     "autonomous_threshold_reduction_forbidden": true
   },
-  "bootstrap_note": "Canonical bootstrap copy created on config/v1-quality-contract because agent/autonomy-pilot-v0.1 had an active run lease. First future RPG automation that safely owns the lease should copy QUALITY_CONTRACT.md and QUALITY_STATE.json into the working branch unchanged before normal quality-state updates."
+  "bootstrap_note": "Canonical V1 quality contract/state were copied unchanged from config/v1-quality-contract after legal lease acquisition. This file now contains the first evidence-backed evaluation on validation candidate 8402e77367bb0bb8ac28b1acd5ebcf485b3c9eb1."
 }
