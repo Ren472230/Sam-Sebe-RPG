@@ -20,8 +20,10 @@ const VILLAGE_WELL_CLEAR_X = 560;
 const VILLAGE_LOWER_LANE_Y = 455;
 const STEERING_PULSE_MS = 80;
 const CORRIDOR_PULSE_MS = 180;
+const FAR_AXIS_HOLD_MIN_GAP = 60;
 const TARGET_TOLERANCE = 7;
 const INTERACTION_AXIS_MARGIN = 30;
+const TAVERN_CORRIDOR_X_MARGIN = 70;
 const TAVERN_SAFE_X_MARGIN = 20;
 const TAVERN_SAFE_Y_MIN = 320;
 const TAVERN_SAFE_Y_MAX = 333;
@@ -191,6 +193,11 @@ export async function moveAxisTo(
     throw new Error(`player position is invalid before ${axis}=${target}; start=${JSON.stringify(current)}`);
   }
   if (Math.abs(initialValue - target) <= tolerance) return;
+
+  if (Math.abs(initialValue - target) >= FAR_AXIS_HOLD_MIN_GAP) {
+    await holdAxisUntilTarget(page, axis, target, tolerance, timeout);
+    return;
+  }
 
   const key = movementKey(axis, initialValue, target);
   let stagnantPulses = 0;
@@ -488,8 +495,8 @@ async function steerTavernApproachToHint(
     await moveAxisIntoBand(
       page,
       "x",
-      targetX - TAVERN_SAFE_X_MARGIN,
-      targetX + TAVERN_SAFE_X_MARGIN,
+      targetX - TAVERN_CORRIDOR_X_MARGIN,
+      targetX + TAVERN_CORRIDOR_X_MARGIN,
       deadline
     );
     snapshot = await interactionSnapshot(page, hintText);
