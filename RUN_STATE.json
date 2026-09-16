@@ -24,11 +24,11 @@
     "RQ-H07 is now GREEN from exact-candidate responsive/browser evidence and ux_visual is 15/15. No proven visual overflow, overlap, hidden-control, modal or desktop-keyboard regression remains for VISUAL to patch while the higher-priority required-gate failures are unresolved."
   ],
   "active_run": {
-    "run_id": "2026-09-16-gameplay-frame-delta-recovery-2",
+    "run_id": "2026-09-16-gameplay-frame-delta-recovery-3",
     "status": "running",
-    "started_at_utc": "2026-09-16T16:50:52Z",
-    "lease_expires_at_utc": "2026-09-16T18:20:52Z",
-    "base_sha": "53b5324553cbd2c7b52ae80f9605f58c18e839a2",
+    "started_at_utc": "2026-09-16T18:51:17Z",
+    "lease_expires_at_utc": "2026-09-16T20:21:17Z",
+    "base_sha": "d04f59b9228c8f1c7870b4dbdc6111f87d6f611b",
     "working_branch": "agent/autonomy-pilot-v0.1"
   },
   "last_handoff": {
