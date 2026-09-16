@@ -159,6 +159,12 @@ async function recordPulse(
   }
 }
 
+function axisPulseDuration(gap: number, pulseMs: number): number {
+  if (gap < 24) return 25;
+  if (gap < 60) return Math.min(pulseMs, 45);
+  return pulseMs;
+}
+
 export async function moveAxisTo(
   page: Page,
   axis: "x" | "y",
@@ -169,77 +175,83 @@ export async function moveAxisTo(
 ): Promise<void> {
   await installNavigationDiagnostics(page);
   await releaseMovementKeys(page);
-  const initial = await playerPosition(page);
-  const initialValue = initial[axis];
+  const deadline = Date.now() + timeout;
+  let current = await playerPosition(page);
+  const initialValue = current[axis];
   if (!Number.isFinite(initialValue)) {
-    throw new Error(`player position is invalid before ${axis}=${target}; start=${JSON.stringify(initial)}`);
+    throw new Error(`player position is invalid before ${axis}=${target}; start=${JSON.stringify(current)}`);
   }
   if (Math.abs(initialValue - target) <= tolerance) return;
 
-  void pulseMs;
-  const key = movementKey(axis, initialValue, target);
-  let waitError: unknown = null;
+  let stagnantPulses = 0;
+  let pulses = 0;
+  while (Date.now() < deadline && pulses < 96) {
+    const currentValue = current[axis];
+    if (!Number.isFinite(currentValue)) break;
+    const gap = Math.abs(target - currentValue);
+    if (gap <= tolerance) return;
 
-  await page.keyboard.down(key);
-  try {
-    await page.waitForFunction(
-      ({ axis, target, tolerance, key }) => {
-        const current = Number(axis === "x" ? document.body.dataset.playerX : document.body.dataset.playerY);
-        if (!Number.isFinite(current)) return false;
-        if (Math.abs(current - target) <= tolerance) return true;
-        return key === "d" || key === "s" ? current >= target : current <= target;
-      },
-      { axis, target, tolerance, key },
-      { timeout }
-    );
-  } catch (error) {
-    waitError = error;
-  } finally {
-    if (!page.isClosed()) await page.keyboard.up(key);
+    const key = movementKey(axis, currentValue, target);
+    const duration = axisPulseDuration(gap, pulseMs);
+    const { start, end } = await pulseKeys(page, [key], duration);
+    await recordAxisTrace(page, { axis, target, reached: start, released: end });
+    const endValue = end[axis];
+    if (!Number.isFinite(endValue)) break;
+    if (Math.abs(endValue - target) <= tolerance) return;
+
+    const progress = Math.abs(endValue - start[axis]);
+    stagnantPulses = progress < 1 ? stagnantPulses + 1 : 0;
+    if (stagnantPulses >= 6) break;
+
+    // A blocked Playwright controller can leave a real key held long enough to cross
+    // the target. Re-sample and steer back on the next pulse instead of waiting out a
+    // long page.waitForFunction timeout or accepting a far overshoot as success.
+    current = end;
+    pulses += 1;
   }
 
-  await waitForBrowserFrame(page);
+  await releaseMovementKeys(page);
   const end = await playerPosition(page);
-  await recordAxisTrace(page, { axis, target, reached: initial, released: end });
-  if (reachedOrCrossedTarget(key, end[axis], target, tolerance)) return;
-
-  const reason = waitError instanceof Error ? ` wait=${JSON.stringify(waitError.message)}` : "";
-  throw new Error(`player did not reach ${axis}=${target}; last=${JSON.stringify(end)}${reason}`);
+  throw new Error(
+    `player did not settle near ${axis}=${target}; last=${JSON.stringify(end)} `
+      + `distance=${Math.round(Math.abs(end[axis] - target))} pulses=${pulses}`
+  );
 }
 
 async function movePastVillageWell(page: Page, deadline: number): Promise<void> {
-  const start = await playerPosition(page);
+  let start = await playerPosition(page);
   if (!Number.isFinite(start.x) || !Number.isFinite(start.y)) {
     throw new Error(`physical route has invalid start before village well; start=${JSON.stringify(start)}`);
   }
   if (start.x >= VILLAGE_WELL_CLEAR_X) return;
 
-  const keys: MovementKey[] = ["d"];
-  if (start.y < VILLAGE_LOWER_LANE_Y) keys.push("s");
-  let waitError: unknown = null;
-
-  for (const key of keys) await page.keyboard.down(key);
-  try {
-    await page.waitForFunction(
-      ({ clearX }) => Number(document.body.dataset.playerX) >= clearX,
-      { clearX: VILLAGE_WELL_CLEAR_X },
-      { timeout: remainingRouteTime(deadline) }
+  // Move onto the collision-free lower lane before crossing the well. Closed-loop
+  // pulses recover after a delayed controller releases an over-held key.
+  if (start.y < VILLAGE_LOWER_LANE_Y - TARGET_TOLERANCE) {
+    await moveAxisTo(
+      page,
+      "y",
+      VILLAGE_LOWER_LANE_Y,
+      10,
+      remainingRouteTime(deadline),
+      STEERING_PULSE_MS
     );
-  } catch (error) {
-    waitError = error;
-  } finally {
-    if (!page.isClosed()) {
-      for (const key of [...keys].reverse()) await page.keyboard.up(key);
-    }
+    start = await playerPosition(page);
   }
 
-  await waitForBrowserFrame(page);
+  await moveAxisTo(
+    page,
+    "x",
+    VILLAGE_WELL_CLEAR_X,
+    10,
+    remainingRouteTime(deadline),
+    CORRIDOR_PULSE_MS
+  );
   const end = await playerPosition(page);
-  await recordPulse(page, keys, VILLAGE_WELL_CLEAR_X, VILLAGE_LOWER_LANE_Y, start, end);
-  if (end.x >= VILLAGE_WELL_CLEAR_X) return;
+  await recordPulse(page, ["d"], VILLAGE_WELL_CLEAR_X, VILLAGE_LOWER_LANE_Y, start, end);
+  if (end.x >= VILLAGE_WELL_CLEAR_X - 10) return;
 
-  const reason = waitError instanceof Error ? ` wait=${JSON.stringify(waitError.message)}` : "";
-  throw new Error(`physical route did not clear village well; last=${JSON.stringify(end)}${reason}`);
+  throw new Error(`physical route did not clear village well; last=${JSON.stringify(end)}`);
 }
 
 function remainingRouteTime(deadline: number): number {
@@ -292,7 +304,7 @@ async function steerTavernApproachToHint(
   hintText: string,
   deadline: number
 ): Promise<void> {
-  const corridorY = targetY + INTERACTION_AXIS_MARGIN;
+  const corridorY = VILLAGE_LOWER_LANE_Y;
   try {
     let snapshot = await interactionSnapshot(page, hintText);
     if (snapshot.hintReady) return;
@@ -300,19 +312,19 @@ async function steerTavernApproachToHint(
       throw new Error(`tavern approach has invalid start; start=${JSON.stringify(snapshot.position)}`);
     }
 
-    // Approach the tavern through a lower collision-safe corridor first. Driving the
-    // Y axis directly at the interaction point can overshoot by one frame to y=315;
-    // at that height the player's collision box overlaps the tavern facade and D
-    // stalls near x=676. The existing interaction margin keeps the horizontal leg
-    // safely below the facade without changing collision geometry or gameplay speed.
+    // Stay on the lower collision-free lane while aligning with the tavern entrance.
+    // A previous y=360 waypoint could consume the shared route budget when the browser
+    // was CPU-throttled or the Playwright controller stalled, leaving only 1s for X.
+    // Closed-loop pulses now correct real overshoot and keep the facade out of the
+    // horizontal leg without changing game collision geometry or movement speed.
     if (Math.abs(snapshot.position.y - corridorY) > TARGET_TOLERANCE) {
-      await moveAxisTo(page, "y", corridorY, 8, remainingRouteTime(deadline));
+      await moveAxisTo(page, "y", corridorY, 10, remainingRouteTime(deadline));
     }
     snapshot = await interactionSnapshot(page, hintText);
     if (snapshot.hintReady) return;
 
     if (Math.abs(snapshot.position.x - targetX) > TARGET_TOLERANCE) {
-      await moveAxisTo(page, "x", targetX, 8, remainingRouteTime(deadline));
+      await moveAxisTo(page, "x", targetX, 8, remainingRouteTime(deadline), CORRIDOR_PULSE_MS);
     }
     snapshot = await interactionSnapshot(page, hintText);
     if (snapshot.hintReady) return;
@@ -350,9 +362,9 @@ async function moveToTavernInteraction(
   if (start.x < VILLAGE_WELL_CLEAR_X) await movePastVillageWell(page, deadline);
   if ((await interactionSnapshot(page, hintText)).hintReady) return;
 
-  // Once the well is clear, use a collision-safe lower corridor to pass the tavern
-  // facade, align X, then let the interaction hint terminate the final vertical leg.
-  // The hint remains the only success condition.
+  // Once the well is clear, stay on the lower lane, align X, then let the existing
+  // interaction hint terminate the final vertical leg. The hint remains the only
+  // success condition.
   await steerTavernApproachToHint(page, targetX, targetY, hintText, deadline);
 }
 
