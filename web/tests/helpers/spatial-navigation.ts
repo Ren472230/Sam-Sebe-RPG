@@ -214,10 +214,6 @@ export async function moveAxisTo(
     stagnantPulses = progress < 1 ? stagnantPulses + 1 : 0;
     if (stagnantPulses >= 6) break;
 
-    // Keep the initial physical direction for this leg. A delayed browser can release
-    // a real key after the target has already been crossed; that crossing is success,
-    // so reversing toward an exact coordinate only adds oscillation and consumes the
-    // shared route budget without improving the interaction condition.
     current = end;
   }
 
@@ -230,6 +226,51 @@ export async function moveAxisTo(
   );
 }
 
+async function holdAxisUntilTarget(
+  page: Page,
+  axis: "x" | "y",
+  target: number,
+  tolerance: number,
+  timeout: number
+): Promise<PlayerPosition> {
+  const start = await playerPosition(page);
+  const startValue = start[axis];
+  if (!Number.isFinite(startValue)) {
+    throw new Error(`player position is invalid before held ${axis}=${target}; start=${JSON.stringify(start)}`);
+  }
+  if (Math.abs(startValue - target) <= tolerance) return start;
+
+  const key = movementKey(axis, startValue, target);
+  let waitError: unknown = null;
+  await page.keyboard.down(key);
+  try {
+    await page.waitForFunction(
+      ({ axis, target, key, tolerance }) => {
+        const value = Number(axis === "x" ? document.body.dataset.playerX : document.body.dataset.playerY);
+        if (!Number.isFinite(value)) return false;
+        if (Math.abs(value - target) <= tolerance) return true;
+        return key === "d" || key === "s" ? value >= target : value <= target;
+      },
+      { axis, target, key, tolerance },
+      { timeout }
+    );
+  } catch (error) {
+    waitError = error;
+  } finally {
+    if (!page.isClosed()) await page.keyboard.up(key);
+  }
+
+  const end = await playerPositionAfterBrowserFrame(page);
+  await recordAxisTrace(page, { axis, target, reached: start, released: end });
+  if (reachedOrCrossedTarget(key, end[axis], target, tolerance)) return end;
+
+  const reason = waitError instanceof Error ? ` wait=${JSON.stringify(waitError.message)}` : "";
+  throw new Error(
+    `held movement ${key} did not reach or cross ${axis}=${target}; `
+      + `last=${JSON.stringify(end)} distance=${Math.round(Math.abs(end[axis] - target))}${reason}`
+  );
+}
+
 async function movePastVillageWell(page: Page, deadline: number): Promise<void> {
   let start = await playerPosition(page);
   if (!Number.isFinite(start.x) || !Number.isFinite(start.y)) {
@@ -237,8 +278,6 @@ async function movePastVillageWell(page: Page, deadline: number): Promise<void> 
   }
   if (start.x >= VILLAGE_WELL_CLEAR_X) return;
 
-  // Move onto the collision-free lower lane before crossing the well. Closed-loop
-  // pulses recover after a delayed controller releases an over-held key.
   if (start.y < VILLAGE_LOWER_LANE_Y - TARGET_TOLERANCE) {
     await moveAxisTo(
       page,
@@ -251,16 +290,13 @@ async function movePastVillageWell(page: Page, deadline: number): Promise<void> 
     start = await playerPosition(page);
   }
 
-  await moveAxisTo(
+  const end = await holdAxisUntilTarget(
     page,
     "x",
     VILLAGE_WELL_CLEAR_X,
     10,
-    remainingRouteTime(deadline),
-    CORRIDOR_PULSE_MS
+    remainingRouteTime(deadline)
   );
-  const end = await playerPosition(page);
-  await recordPulse(page, ["d"], VILLAGE_WELL_CLEAR_X, VILLAGE_LOWER_LANE_Y, start, end);
   if (end.x >= VILLAGE_WELL_CLEAR_X - 10) return;
 
   throw new Error(`physical route did not clear village well; last=${JSON.stringify(end)}`);
@@ -309,6 +345,65 @@ async function moveInteractionAxis(
   return after.hintReady;
 }
 
+async function steerInteractionToHint(
+  page: Page,
+  targetX: number,
+  targetY: number,
+  hintText: string,
+  deadline: number
+): Promise<void> {
+  let stagnantPulses = 0;
+  let pulses = 0;
+  try {
+    while (Date.now() < deadline && pulses < 48) {
+      const snapshot = await interactionSnapshot(page, hintText);
+      if (snapshot.hintReady) return;
+      if (!Number.isFinite(snapshot.position.x) || !Number.isFinite(snapshot.position.y)) break;
+
+      const dx = targetX - snapshot.position.x;
+      const dy = targetY - snapshot.position.y;
+      const keys: MovementKey[] = [];
+      if (Math.abs(dx) > INTERACTION_AXIS_MARGIN) {
+        keys.push(movementKey("x", snapshot.position.x, targetX));
+      }
+      if (Math.abs(dy) > INTERACTION_AXIS_MARGIN) {
+        keys.push(movementKey("y", snapshot.position.y, targetY));
+      }
+
+      if (keys.length === 0) {
+        if (Math.abs(dx) > TARGET_TOLERANCE && Math.abs(dx) >= Math.abs(dy)) {
+          keys.push(movementKey("x", snapshot.position.x, targetX));
+        } else if (Math.abs(dy) > TARGET_TOLERANCE) {
+          keys.push(movementKey("y", snapshot.position.y, targetY));
+        } else {
+          await waitForBrowserFrame(page);
+          if ((await interactionSnapshot(page, hintText)).hintReady) return;
+          break;
+        }
+      }
+
+      const gap = Math.max(Math.abs(dx), Math.abs(dy));
+      const duration = axisPulseDuration(gap, STEERING_PULSE_MS);
+      const { start, end } = await pulseKeys(page, keys, duration, snapshot.position);
+      await recordPulse(page, keys, targetX, targetY, start, end);
+      pulses += 1;
+
+      const progress = Math.hypot(end.x - start.x, end.y - start.y);
+      stagnantPulses = progress < 1 ? stagnantPulses + 1 : 0;
+      if (stagnantPulses >= 6) break;
+    }
+  } finally {
+    await releaseMovementKeys(page);
+  }
+
+  const snapshot = await interactionSnapshot(page, hintText);
+  if (snapshot.hintReady) return;
+  throw new Error(
+    `target-aware steering did not reach ${JSON.stringify(hintText)}; `
+      + `end=${JSON.stringify(snapshot.position)} hint=${JSON.stringify(snapshot.hint)} pulses=${pulses}`
+  );
+}
+
 async function steerTavernApproachToHint(
   page: Page,
   targetX: number,
@@ -331,19 +426,12 @@ async function steerTavernApproachToHint(
     if (snapshot.hintReady) return;
 
     if (Math.abs(snapshot.position.x - targetX) > TARGET_TOLERANCE) {
-      await moveAxisTo(page, "x", targetX, 8, remainingRouteTime(deadline), CORRIDOR_PULSE_MS);
+      await holdAxisUntilTarget(page, "x", targetX, 8, remainingRouteTime(deadline));
     }
     snapshot = await interactionSnapshot(page, hintText);
     if (snapshot.hintReady) return;
 
-    const finalKey = movementKey("y", snapshot.position.y, targetY);
-    await moveWithConcurrentKeysUntilHint(
-      page,
-      [finalKey],
-      hintText,
-      remainingRouteTime(deadline),
-      STEERING_PULSE_MS
-    );
+    await steerInteractionToHint(page, targetX, targetY, hintText, deadline);
   } finally {
     await releaseMovementKeys(page);
   }
