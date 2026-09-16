@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { MAX_MOVEMENT_CATCHUP_MS, applyMovementDelta, effectiveHeldDelta } from "../src/movement.ts";
+import { MAX_MOVEMENT_CATCHUP_MS, PLAYER_SPEED_PX_PER_MS, applyMovementDelta, effectiveHeldDelta } from "../src/movement.ts";
 
 
 test("movement delta preserves elapsed distance while splitting long frames", () => {
@@ -42,13 +42,26 @@ test("a held key never expands one rendered frame into a wall-clock catch-up bur
 
 
 test("live held movement keeps normal frame speed and collision-safe substeps", () => {
-  const key = { isDown: true, timeDown: 100, timeUp: 0, duration: 0, getDuration: () => 125 };
+  const key = { isDown: true, timeDown: 100, timeUp: 0, duration: 0, getDuration: () => 16 };
   const steps: number[] = [];
 
-  applyMovementDelta(effectiveHeldDelta(125, key, 225), (distance) => steps.push(distance));
+  applyMovementDelta(effectiveHeldDelta(16, key, 116), (distance) => steps.push(distance));
 
-  assert.equal(steps.reduce((total, distance) => total + distance, 0), 125 * 0.22);
+  assert.equal(steps.reduce((total, distance) => total + distance, 0), 16 * PLAYER_SPEED_PX_PER_MS);
   assert.ok(steps.every((distance) => distance <= 11));
+});
+
+
+test("one slow rendered update cannot cross the smallest interaction radius", () => {
+  const key = { isDown: true, timeDown: 100, timeUp: 0, duration: 0, getDuration: () => 800 };
+  const appliedMs = effectiveHeldDelta(400, key, 900);
+  const steps: number[] = [];
+
+  applyMovementDelta(appliedMs, (distance) => steps.push(distance));
+
+  assert.equal(appliedMs, MAX_MOVEMENT_CATCHUP_MS);
+  assert.equal(steps.reduce((total, distance) => total + distance, 0), MAX_MOVEMENT_CATCHUP_MS * PLAYER_SPEED_PX_PER_MS);
+  assert.ok(MAX_MOVEMENT_CATCHUP_MS * PLAYER_SPEED_PX_PER_MS < 52);
 });
 
 
