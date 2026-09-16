@@ -1,6 +1,6 @@
 export const PLAYER_SPEED_PX_PER_MS = 0.22;
 export const MAX_MOVEMENT_SUBSTEP_MS = 50;
-export const MAX_MOVEMENT_CATCHUP_MS = 200;
+export const MAX_MOVEMENT_CATCHUP_MS = MAX_MOVEMENT_SUBSTEP_MS;
 
 export type HeldMovementKey = {
   isDown: boolean;
