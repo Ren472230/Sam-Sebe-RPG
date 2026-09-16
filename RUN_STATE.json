@@ -15,57 +15,56 @@
     "draft": true,
     "merged": false
   },
-  "phase": "visual_coarse_pointer_landscape_session",
-  "current_objective": "SESSION_OBJECTIVE: keep coarse-pointer mobile/tablet landscape widths from 701px through 900px fully playable by preserving touch movement, contextual interaction feedback and bounded dialogue while keeping keyboard input and all gameplay semantics unchanged.",
-  "next_action": "VISUAL: validate the coarse-pointer landscape controls and 844x390 browser route on exact validation SHA 0238c520df32cf6cb126b04bdb79da8f55cbf746, then make only evidence-backed layout corrections required by that focused result.",
+  "phase": "gameplay_navigation_stability_proof_next",
+  "current_objective": "Make physical village navigation to the tavern deterministic under normal and CPU-throttled browser execution using real keyboard input, then prove the same exact gameplay SHA across the affected browser gates without changing collisions, movement speed, interaction radius, game rules or global timeouts.",
+  "next_action": "GAMEPLAY: use the fresh exact validation evidence to continue fixing shared physical tavern navigation on the existing working line; keep the interaction hint as the success condition and avoid changing game collisions, speed, interaction radius or global timeouts.",
   "blockers": [
-    "The latest completed pre-session validation SHA 349f3f7d57f557758d6b97c0a0ce0c6bb350a3b4 keeps 55/55 web contracts and production build green, but Stream Slice, Prototype Web CI, Living World Integration and Playable Candidate remain red in shared physical tavern navigation. The Living World browser route fails at x=667/y=315 and the canonical vertical slice at x=671/y=315 while trying to reach x=825; browser console and page errors are empty. This is a GAMEPLAY/test-controller blocker, not a visual rendering failure.",
-    "Exact visual validation SHA 0238c520df32cf6cb126b04bdb79da8f55cbf746 is currently running the required gates for the coarse-pointer landscape change; Visual Forge is already green and the other gates are still pending/in progress.",
+    "Latest completed pre-session validation SHA 349f3f7d57f557758d6b97c0a0ce0c6bb350a3b4 kept 55/55 web contracts and production build green but still failed shared physical tavern navigation in browser-bearing required gates. The Living World browser route ended near x=667,y=315 and the canonical vertical slice near x=671,y=315 while trying to reach x=825, with no console or page errors.",
+    "Exact visual validation SHA 0238c520df32cf6cb126b04bdb79da8f55cbf746 is still running the long browser-bearing gates. Visual Forge, Windows Compatibility and Release Reproducibility are already green; Prototype Web CI has green web contracts, production build, startup controls and focused desktop/mobile interaction feedback before entering the long browser route.",
     "A real human aesthetic and play-feel judgment remains a later product gate after technical stabilization."
   ],
   "active_run": {
-    "run_id": "2026-09-16-visual-mobile-evidence-1",
-    "status": "running",
-    "started_at_utc": "2026-09-16T08:19:02Z",
-    "lease_expires_at_utc": "2026-09-16T09:49:02Z",
-    "base_sha": "2d25251618d324a0a2a8dbfe4ceeab8a9cea4e14",
+    "run_id": null,
+    "status": "idle",
+    "started_at_utc": null,
+    "lease_expires_at_utc": null,
+    "base_sha": null,
     "working_branch": "agent/autonomy-pilot-v0.1"
   },
   "last_handoff": {
-    "completed_at_utc": "2026-09-16T06:28:06Z",
-    "result": "SESSION_OBJECTIVE: make the 390px first-run presentation feel like a compact playable game without changing gameplay semantics. CHECKPOINT 1: reconciled the fresh required-gate state before visual work; prior exact validation SHA d07f6c9a8b86624577b02db88959e2e243aa1938 had six required gates green and Prototype Web CI red only in the broad physical-navigation route, while its UI contracts/build/desktop+390px interaction checks were green. CHECKPOINT 2: working commit 162c091b1dc98f5bca95a46983f5cdfa7184e22e compacts the <=700px Living World panel: tighter spacing, bounded event history, two-column wait controls, 44px touch targets and a horizontal scroll rail for all dynamic Living World actions, preserving every action and desktop layout. CHECKPOINT 3: working commit f1978e9c51b9c4d3e64ad8942574ba4d44cbd5e1 moves the mobile touch controls directly after the interaction hint and before playtest-report tools, so movement/action controls stay adjacent to the game while desktop behavior and keyboard E/WASD semantics remain unchanged. CHECKPOINT 4: working commit b0d0db5baacebdba0a5cff7a139cfd424e7d04cd adds deterministic contracts for the compact Living World layout and mobile control hierarchy. CHECKPOINT 5: the exact validation branch mirrors only the three intended visual/test files on SHA 82aaf49a24759eef1f766b481a865d4bb6baf0a1; compare from d07f6c9a shows only web/src/styles.css (+74), web/src/touchControls.ts (+3/-1) and web/tests/touch-visual-contract.test.ts (+15). CHECKPOINT 6: exact-SHA validation already proves Visual Forge Gate 35063761278 SUCCESS, Release Reproducibility Gate 35063761349 SUCCESS, Windows Compatibility Gate 35063761366 SUCCESS, and Prototype Web CI 35063761292 has green web contracts, production build, startup controls and desktop/390px interaction-feedback checks. The broad canonical browser route and other long gates were still running, so no release-wide all-green claim is made. STOP_REASON: OBJECTIVE_COMPLETE. Owner decision is not required.",
-    "head_sha": "b0d0db5baacebdba0a5cff7a139cfd424e7d04cd",
-    "work_head_sha": "b0d0db5baacebdba0a5cff7a139cfd424e7d04cd",
+    "completed_at_utc": null,
+    "result": "SESSION_OBJECTIVE: keep coarse-pointer mobile/tablet landscape widths from 701px through 900px fully playable by preserving touch movement, contextual interaction feedback and bounded dialogue while keeping keyboard input and all gameplay semantics unchanged. CHECKPOINT 1: recovered the expired GAMEPLAY lease from base 6b386f80c89aea039d186f264c36f5ce6624cbaa by reconciling the actual working branch through 2d25251618d324a0a2a8dbfe4ceeab8a9cea4e14, then acquired and confirmed the visual lease according to the existing runbook. CHECKPOINT 2: working commit 63da591ecc9885038a59b9aea940bcffb7c5ab0a adds an explicit 701-900px any-pointer: coarse presentation: touch controls stay visible, movement/action targets are at least 48px, contextual/pressed/focus feedback is preserved, and dialogue becomes a bounded safe-area-aware modal. CHECKPOINT 3: working commit 747ff47f1f2a840ef8b3327ecb01749b32067c86 adds deterministic visual contracts for the coarse-pointer landscape rules. CHECKPOINT 4: working commit 42b07a3fb9038e17450cc0ca2604d243f57b0ff3 adds a real 844x390 touch-browser route that requires coarse-pointer media matching, no horizontal overflow, reachable controls, >=48px targets, pressed feedback, real player movement and a screenshot. CHECKPOINT 5: exact validation branch PR #56 mirrors the visual CSS/contracts/browser test on SHA 0238c520df32cf6cb126b04bdb79da8f55cbf746. On that SHA Visual Forge Gate 35073769654, Windows Compatibility Gate 35073769670 and Release Reproducibility Gate 35073769707 are SUCCESS. Prototype Web CI 35073769779 has already passed web contracts, production build, startup controls and focused desktop/mobile interaction feedback, then entered the long full browser route. The remaining browser-bearing gates were still in progress when the lease was released, so the dedicated 844x390 Playwright result was not yet available as final log evidence. STOP_REASON: EXECUTION_LIMIT. Owner decision is not required.",
+    "head_sha": "42b07a3fb9038e17450cc0ca2604d243f57b0ff3",
+    "work_head_sha": "42b07a3fb9038e17450cc0ca2604d243f57b0ff3",
     "verification": [
-      "Working visual result HEAD before state handoff: b0d0db5baacebdba0a5cff7a139cfd424e7d04cd on agent/autonomy-pilot-v0.1.",
-      "Exact visual validation PR #56 HEAD: 82aaf49a24759eef1f766b481a865d4bb6baf0a1; compare against d07f6c9a shows only web/src/styles.css, web/src/touchControls.ts and web/tests/touch-visual-contract.test.ts changed.",
-      "Visual Forge Gate run 35063761278 on 82aaf49a: SUCCESS.",
-      "Release Reproducibility Gate run 35063761349 on 82aaf49a: SUCCESS.",
-      "Windows Compatibility Gate run 35063761366 on 82aaf49a: SUCCESS.",
-      "Prototype Web CI run 35063761292 on 82aaf49a: SUCCESS after handoff.",
-      "Stream Slice Gate run 35063761211 on 82aaf49a: SUCCESS after handoff.",
-      "Living World Integration Gate run 35063761201 on 82aaf49a: FAILURE in real browser physical navigation; backend/persistence, web contracts and production build are green.",
-      "Playable Candidate Gate run 35063761199 on 82aaf49a: FAILURE.",
-      "No reward, price, quest condition, NPC behavior, causality, save format, collision map, movement speed or gameplay action semantics changed in the visual session.",
-      "main remains unchanged; PR #49 was not merged; PR #56 remains a draft validation surface."
+      "Working visual result HEAD before state handoff: 42b07a3fb9038e17450cc0ca2604d243f57b0ff3 on agent/autonomy-pilot-v0.1.",
+      "Exact visual validation PR #56 HEAD: 0238c520df32cf6cb126b04bdb79da8f55cbf746.",
+      "Visual Forge Gate run 35073769654 on 0238c520: SUCCESS.",
+      "Windows Compatibility Gate run 35073769670 on 0238c520: SUCCESS.",
+      "Release Reproducibility Gate run 35073769707 on 0238c520: SUCCESS.",
+      "Prototype Web CI run 35073769779 on 0238c520: web contract tests SUCCESS, production build SUCCESS, startup-controls browser check SUCCESS, focused desktop/mobile interaction-feedback browser check SUCCESS; full browser route still in progress at handoff.",
+      "Living World Integration run 35073769629 on 0238c520: backend/persistence SUCCESS, client contracts SUCCESS and production build SUCCESS; real browser critical route still in progress at handoff.",
+      "The 844x390 coarse-pointer Playwright test is included in the full browser suite but had no final completed job log yet at handoff, so it is not claimed as passed.",
+      "No reward, price, quest condition, NPC behavior, causality, save format, collision map, movement speed or gameplay action semantics changed in this visual session.",
+      "main remains unchanged; PR #49 was not merged; PR #56 remains draft validation only."
     ],
-    "next_action": "VISUAL: after GAMEPLAY stabilizes the shared physical navigation helper, reconcile exact-SHA mobile/desktop evidence and make only screenshot-backed polish.",
+    "next_action": "VISUAL: on the next visual run, read the completed exact-SHA results for 0238c520df32cf6cb126b04bdb79da8f55cbf746. If the 844x390 coarse-pointer test passed, close this objective and use its screenshot evidence for the next polish decision; if it failed, fix only the evidenced landscape-layout defect.",
     "owner_decision_required": false,
-    "stop_reason": "OBJECTIVE_COMPLETE"
+    "stop_reason": "EXECUTION_LIMIT"
   },
   "human_gate": {
     "required": false,
     "reason": null
   },
   "verified_gates_at_authoritative_head": {
-    "note": "The authoritative integration PR #53 remains unchanged. Current visual work stays isolated on agent/autonomy-pilot-v0.1 and is mirrored only to draft validation PR #56."
+    "note": "The authoritative integration PR #53 remains unchanged. Current visual work is isolated on agent/autonomy-pilot-v0.1 and mirrored only to draft validation PR #56."
   },
   "pilot_validation_at_work_head": {
     "work_head_sha": "0238c520df32cf6cb126b04bdb79da8f55cbf746",
     "visual_forge_gate": {"run_id": 35073769654, "status": "success"},
     "prototype_web_ci": {"run_id": 35073769779, "status": "in_progress"},
-    "release_reproducibility_gate": {"run_id": 35073769707, "status": "in_progress"},
-    "windows_compatibility_gate": {"run_id": 35073769670, "status": "in_progress"},
+    "release_reproducibility_gate": {"run_id": 35073769707, "status": "success"},
+    "windows_compatibility_gate": {"run_id": 35073769670, "status": "success"},
     "stream_slice_gate": {"run_id": 35073769683, "status": "in_progress"},
     "living_world_integration_gate": {"run_id": 35073769629, "status": "in_progress"},
     "playable_candidate_gate": {"run_id": 35073769634, "status": "in_progress"}
@@ -93,11 +92,11 @@
     "github_releases": "none"
   },
   "known_limitations": [
+    "The dedicated 844x390 coarse-pointer browser test was still inside an in-progress full browser job when this session released its lease; the next visual run must reconcile its exact result before claiming the landscape objective complete.",
     "Shared physical tavern navigation remains unstable on the latest completed validation evidence and belongs to the GAMEPLAY/test-controller stream.",
-    "Current exact visual validation SHA 0238c520df32cf6cb126b04bdb79da8f55cbf746 is still running most required gates.",
     "An isolated temporary branch agent/autonomy-pilot-validation-v0.1-tmp-unused at 12c4e83c40121cf92dc7007e78ec3e4de424880a was accidentally created during connector operations; it does not affect main, the working branch or PR #56 and should be deleted when branch-ref deletion capability is available.",
     "The complete SVG stream pack remains temporary production-facing art rather than final production art.",
     "A real human experience and aesthetic check remains required after technical stabilization."
   ],
-  "current_blocker": "GAMEPLAY/test-controller physical tavern navigation remains red on the latest completed exact validation evidence. Current visual validation SHA 0238c520df32cf6cb126b04bdb79da8f55cbf746 is running and must prove the new coarse-pointer landscape surface before this visual objective is closed."
+  "current_blocker": "GAMEPLAY/test-controller physical tavern navigation remains the current project-level blocker on the latest completed browser evidence. The visual coarse-pointer landscape objective has implementation plus contract/build evidence, with final exact browser evidence pending on validation SHA 0238c520df32cf6cb126b04bdb79da8f55cbf746."
 }
