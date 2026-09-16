@@ -23,11 +23,11 @@
     "Fresh Stream Slice diagnostics prove moveTowardInteraction reverses the x key after crossing Mira's target: A+W moves (330,455)->(290,437)->(218,409), then D+W reverses x to (339,354) and loses the requested interaction. The same pulse/reversal pattern can destabilize tavern x=825 steering."
   ],
   "active_run": {
-    "run_id": "2026-09-16-gameplay-navigation-stability-2",
+    "run_id": "2026-09-16-visual-interaction-feedback-1",
     "status": "running",
-    "started_at_utc": "2026-09-16T02:49:15Z",
-    "lease_expires_at_utc": "2026-09-16T04:19:15Z",
-    "base_sha": "f805ae86875f9624ba154e7aeba8c968aba3f2e9",
+    "started_at_utc": "2026-09-16T04:20:22Z",
+    "lease_expires_at_utc": "2026-09-16T05:50:22Z",
+    "base_sha": "dbfd49963546395e39394cf03e5ba6d42266d6cc",
     "working_branch": "agent/autonomy-pilot-v0.1"
   },
   "last_handoff": {
@@ -83,7 +83,7 @@
     "web_lockfile": "web/package-lock.json",
     "python_constraints": "constraints/python-3.12.txt",
     "ci_install_policy": "current release/browser workflows use npm ci and constrained pip installs",
-    "windows_launcher": "uses constrained pip and npm ci when the lockfile exists; npm install fallback only if missing",
+    "windows_launcher": "uses constrained pip and npm ci when lockfile exists; npm install fallback only if missing",
     "repository_hygiene": "root .gitignore covers generated caches, environments, browser reports, local SQLite state, environment files, secrets and editor/OS debris",
     "github_releases": "none"
   },
