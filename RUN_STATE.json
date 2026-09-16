@@ -24,11 +24,11 @@
     "RQ-H07 remains owned by VISUAL evidence and is intentionally UNKNOWN in QUALITY_STATE; GAMEPLAY does not self-award visual usability."
   ],
   "active_run": {
-    "run_id": null,
-    "status": "idle",
-    "started_at_utc": null,
-    "lease_expires_at_utc": null,
-    "base_sha": null,
+    "run_id": "2026-09-16-visual-rq-h07-evidence-1",
+    "status": "running",
+    "started_at_utc": "2026-09-16T14:21:50Z",
+    "lease_expires_at_utc": "2026-09-16T15:51:50Z",
+    "base_sha": "60d05814e8d15d55e921616eaf37b0c5e57fe544",
     "working_branch": "agent/autonomy-pilot-v0.1"
   },
   "last_handoff": {
