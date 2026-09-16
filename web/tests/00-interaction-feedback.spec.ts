@@ -1,47 +1,38 @@
 import { expect, test } from "@playwright/test";
 
-async function setContextualHint(page: import("@playwright/test").Page, text: string): Promise<void> {
-  await page.locator("#interaction-hint").evaluate((element, nextText) => {
-    element.textContent = nextText;
-  }, text);
-}
-
-test("desktop interaction ribbon exposes a distinct contextual action state", async ({ page }) => {
+test("desktop interaction ribbon renders the live neutral action surface clearly", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 820 });
   await page.goto("/");
 
   const hint = page.locator("#interaction-hint");
+  await expect(hint).toBeVisible();
   await expect(hint).toHaveAttribute("role", "status");
   await expect(hint).toHaveAttribute("aria-live", "polite");
+  await expect(hint).toHaveAttribute("aria-atomic", "true");
   await expect(hint).toHaveAttribute("data-contextual", "false");
-
-  await setContextualHint(page, "Действие – поговорить с Ореном");
-  await expect(hint).toHaveAttribute("data-contextual", "true");
-  await expect(hint).toHaveAttribute("aria-label", "Доступно действие: поговорить с Ореном");
+  await expect(hint).toHaveAttribute("aria-label", "Подсказка управления");
 
   const presentation = await hint.evaluate((element) => ({
     label: getComputedStyle(element, "::before").content,
-    border: getComputedStyle(element).borderLeftColor
+    border: getComputedStyle(element).borderLeftColor,
+    minHeight: element.getBoundingClientRect().height
   }));
-  expect(presentation.label).toContain("Действие");
-  expect(presentation.border).toBe("rgb(225, 59, 63)");
+  expect(presentation.label).toContain("Подсказка");
+  expect(presentation.border).toBe("rgb(101, 213, 217)");
+  expect(presentation.minHeight).toBeGreaterThanOrEqual(40);
 });
 
-test("390px interaction ribbon and touch action share context without horizontal overflow", async ({ page }) => {
+test("390px interaction ribbon and touch action stay bounded with durable pressed feedback", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/");
 
   const hint = page.locator("#interaction-hint");
   const action = page.getByRole("button", { name: "Взаимодействовать", exact: true });
+  await expect(hint).toBeVisible();
   await expect(action).toBeVisible();
+  await expect(hint).toHaveAttribute("data-contextual", "false");
   await expect(action).toHaveAttribute("data-contextual", "false");
   await expect(action.locator(".touch-action-context")).toHaveText("взаимодействие");
-
-  await setContextualHint(page, "Действие – подобрать дрова");
-  await expect(hint).toHaveAttribute("data-contextual", "true");
-  await expect(action).toHaveAttribute("data-contextual", "true");
-  await expect(action.locator(".touch-action-context")).toHaveText("подобрать дрова");
-  await expect(action).toHaveAttribute("aria-label", "Взаимодействовать");
 
   const layout = await page.evaluate(() => ({
     viewportWidth: window.innerWidth,
@@ -55,8 +46,19 @@ test("390px interaction ribbon and touch action share context without horizontal
     label: getComputedStyle(element, "::before").content,
     overflowWrap: getComputedStyle(element).overflowWrap
   }));
-  expect(presentation.label).toContain("Действие");
+  expect(presentation.label).toContain("Подсказка");
   expect(presentation.overflowWrap).toBe("anywhere");
+
+  await action.dispatchEvent("pointerdown", { pointerId: 91, pointerType: "touch", isPrimary: true });
+  await expect(action).toHaveAttribute("data-pressed", "true");
+  const pressed = await action.evaluate((element) => ({
+    background: getComputedStyle(element).backgroundColor,
+    borderLeft: getComputedStyle(element).borderLeftColor
+  }));
+  expect(pressed.background).toBe("rgb(101, 213, 217)");
+  expect(pressed.borderLeft).toBe("rgb(225, 59, 63)");
+  await page.dispatchEvent("body", "pointerup", { pointerId: 91, pointerType: "touch", isPrimary: true });
+  await expect(action).toHaveAttribute("data-pressed", "false");
 
   await page.screenshot({ path: "test-results/interaction-feedback-mobile-390.png", fullPage: true });
 });
