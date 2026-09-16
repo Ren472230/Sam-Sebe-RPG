@@ -172,7 +172,6 @@ export async function moveAxisTo(
 ): Promise<void> {
   await installNavigationDiagnostics(page);
   await releaseMovementKeys(page);
-  const deadline = Date.now() + timeout;
   const initial = await playerPosition(page);
   const initialValue = initial[axis];
   if (!Number.isFinite(initialValue)) {
@@ -180,32 +179,43 @@ export async function moveAxisTo(
   }
   if (Math.abs(initialValue - target) <= tolerance) return;
 
-  // Pick one physical direction for this axis and keep it for the whole approach.
-  // A delayed key release may carry the avatar past the exact coordinate, so crossing
-  // the target is success. Reversing after a crossing creates the oscillation seen in CI.
+  // One-axis corridor steering is collision-free on the routes that use this helper.
+  // Keep the real movement key held while the browser itself watches the authoritative
+  // player coordinate. This removes Playwright command round-trips from the movement
+  // budget under CPU throttling without changing WASD events, collisions or game speed.
+  // Keep pulseMs in the public helper signature for existing callers while axis travel
+  // no longer depends on controller pulse cadence.
+  void pulseMs;
   const key = movementKey(axis, initialValue, target);
-  let stagnantPulses = 0;
+  let waitError: unknown = null;
 
+  await page.keyboard.down(key);
   try {
-    while (Date.now() < deadline) {
-      const before = await playerPosition(page);
-      const value = before[axis];
-      if (reachedOrCrossedTarget(key, value, target, tolerance)) return;
-      if (!Number.isFinite(value)) break;
-
-      const { start, end } = await pulseKeys(page, [key], pulseMs);
-      await recordAxisTrace(page, { axis, target, reached: start, released: end });
-      if (reachedOrCrossedTarget(key, end[axis], target, tolerance)) return;
-
-      const progress = Math.abs(end[axis] - start[axis]);
-      stagnantPulses = progress < 1 ? stagnantPulses + 1 : 0;
-      if (stagnantPulses >= 5) break;
-    }
+    await page.waitForFunction(
+      ({ axis, target, tolerance, key }) => {
+        const current = Number(axis === "x" ? document.body.dataset.playerX : document.body.dataset.playerY);
+        if (!Number.isFinite(current)) return false;
+        if (Math.abs(current - target) <= tolerance) return true;
+        return key === "d" || key === "s" ? current >= target : current <= target;
+      },
+      { axis, target, tolerance, key },
+      { timeout }
+    );
+  } catch (error) {
+    waitError = error;
   } finally {
-    await releaseMovementKeys(page);
+    if (!page.isClosed()) await page.keyboard.up(key);
   }
 
-  throw new Error(`player did not reach ${axis}=${target}; last=${JSON.stringify(await playerPosition(page))}`);
+  await waitForBrowserFrame(page);
+  const end = await playerPosition(page);
+  await recordAxisTrace(page, { axis, target, reached: initial, released: end });
+  if (reachedOrCrossedTarget(key, end[axis], target, tolerance)) return;
+
+  const reason = waitError instanceof Error ? ` wait=${JSON.stringify(waitError.message)}` : "";
+  throw new Error(
+    `player did not reach ${axis}=${target}; last=${JSON.stringify(end)}${reason}`
+  );
 }
 
 async function movePastVillageWell(page: Page, deadline: number): Promise<void> {
