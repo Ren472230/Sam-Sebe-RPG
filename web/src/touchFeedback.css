@@ -1,4 +1,52 @@
+#interaction-hint {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 42px;
+  border-top: 0;
+  border-left: 4px solid #65d5d9;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .45);
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+
+#interaction-hint::before {
+  content: "Подсказка";
+  flex: 0 0 auto;
+  padding: 4px 7px;
+  background: #202326;
+  color: #eee8dc;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+#interaction-hint[data-contextual="true"] {
+  border-left-color: #e13b3f;
+  box-shadow: inset 0 -3px 0 rgba(101, 213, 217, .55);
+}
+
+#interaction-hint[data-contextual="true"]::before {
+  content: "Действие";
+  background: #e13b3f;
+  color: #fff;
+}
+
 @media (max-width: 700px) {
+  #interaction-hint {
+    min-height: 40px;
+    gap: 8px;
+    padding: 7px 10px;
+    font-size: 12px;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+  }
+
+  #interaction-hint::before {
+    padding: 4px 6px;
+    font-size: 9px;
+  }
+
   #touch-controls button[data-pressed="true"] {
     background: #65d5d9;
     border-color: #65d5d9;

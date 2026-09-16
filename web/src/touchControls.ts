@@ -106,10 +106,18 @@ function bindActionContext(button: HTMLButtonElement): void {
   const context = button.querySelector<HTMLElement>(".touch-action-context");
   if (!hint || !context) return;
 
+  hint.setAttribute("role", "status");
+  hint.setAttribute("aria-live", "polite");
+  hint.setAttribute("aria-atomic", "true");
+
   const sync = (): void => {
     const nextContext = actionContextFromHint(hint.textContent ?? "");
+    const isContextual = nextContext !== DEFAULT_ACTION_CONTEXT;
     context.textContent = nextContext;
-    button.dataset.contextual = nextContext === DEFAULT_ACTION_CONTEXT ? "false" : "true";
+    button.dataset.contextual = isContextual ? "true" : "false";
+    button.setAttribute("aria-label", isContextual ? `Действие: ${nextContext}` : "Взаимодействовать");
+    hint.dataset.contextual = isContextual ? "true" : "false";
+    hint.setAttribute("aria-label", isContextual ? `Доступно действие: ${nextContext}` : "Подсказка управления");
   };
 
   sync();
