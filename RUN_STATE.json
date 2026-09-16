@@ -16,37 +16,35 @@
     "merged": false
   },
   "phase": "gameplay_spatial_navigation_stability_verification",
-  "current_objective": "SESSION_OBJECTIVE: stabilize the real-keyboard village-to-tavern route across all required browser gates on one exact SHA, using only physically traversable paths and resilient browser-frame monitoring while preserving gameplay physics, collisions, interaction radii, timeouts and canonical world semantics.",
-  "next_action": "Verify work SHA c6a6b59aa91487e37ce3284a78e96687dbf2af0b through the existing validation PR required browser gates; if any route remains red, use its fresh diagnostics as the next subtask under the same SESSION_OBJECTIVE.",
+  "current_objective": "SESSION_OBJECTIVE: preserve and verify the current HUD/mobile/dialogue visual surface while fresh browser-bearing required gates are red, and avoid visual production changes until shared physical-navigation stabilization is green on one exact validation SHA.",
+  "next_action": "GAMEPLAY: use the fresh PR #56 browser diagnostics on validation head 711d6bfbecab4f64b654295c2d2b9ef517fa8964 to stabilize Mira approach and tavern entry on one exact SHA; VISUAL then reruns the existing 390px and desktop browser/screenshot checks before evidence-driven polish.",
   "blockers": [
-    "Prior exact-SHA evidence at 15b6e77b42af0e87ec82db2fc6f1eb9d973c9d2b proved two navigation defects: a deterministic lateral route at y=422 collided with the well and stopped at x=418, and a target-aware approach could yield prematurely after a scheduler-delayed browser frame.",
-    "The current work SHA c6a6b59aa91487e37ce3284a78e96687dbf2af0b now routes tavern entry through the canonical outdoor y=455 lane before the lateral approach and requires repeated stationary samples plus 900 ms no-progress before declaring a steering stall. Fresh exact-SHA CI evidence is pending."
+    "Fresh PR #56 validation head 711d6bfbecab4f64b654295c2d2b9ef517fa8964 keeps Visual Forge, Release Reproducibility and Windows Compatibility green, while Stream Slice, Prototype Web CI, Living World Integration and Playable Candidate remain red in real-browser physical navigation.",
+    "The latest failures are in web/tests/helpers/spatial-navigation.ts: Mira approach can miss the talk interaction and tavern entry can stop short or overshoot x=825. Web/UI contracts and production build remain green, so creating a new visual product SHA would invalidate stabilization evidence without addressing the current blocker."
   ],
   "active_run": {
-    "run_id": "2026-09-16-visual-verification-session-6",
-    "status": "running",
-    "started_at_utc": "2026-09-16T02:21:30Z",
-    "lease_expires_at_utc": "2026-09-16T03:51:30Z",
-    "base_sha": "31cfb217626c241445523f9b1067d78559a88696",
+    "run_id": null,
+    "status": "idle",
+    "started_at_utc": null,
+    "lease_expires_at_utc": null,
+    "base_sha": null,
     "working_branch": "agent/autonomy-pilot-v0.1"
   },
   "last_handoff": {
-    "completed_at_utc": "2026-09-15T22:28:00Z",
-    "result": "SESSION_OBJECTIVE: preserve and verify the current HUD/mobile/dialogue visual surface while reconciling fresh exact-SHA required-gate evidence, and only resume visual implementation when the blocking physical-navigation contour is green. CHECKPOINT 1: on work SHA 15b6e77b42af0e87ec82db2fc6f1eb9d973c9d2b all 50 web/UI contracts passed, including HUD hierarchy, bounded mobile layout, touch interaction labels, held-touch feedback and 390px dialogue/touch target constraints. Production TypeScript/Vite build passed and bundle budget remained green at 1,149,931 / 1,200,000 bytes. CHECKPOINT 2: real Chromium UI evidence on the same SHA passed the localized first-run goal/title, downloadable session report, 390px touch-control reachability, 390px village firewood action label, 390px tavern Oren action label, desktop Mira interaction with Russian input, held-touch feedback, dialogue metadata flow and other unaffected UI routes. CHECKPOINT 3: fresh required gates settled after the previous handoff. Stream Slice Gate run 35029225654 is green. Visual Forge Gate run 35029225620, Release Reproducibility Gate run 35029225815 and Windows Compatibility Gate run 35029225686 are green. Prototype Web CI run 35029225640 is red because the canonical vertical slice one-way D movement toward tavern x=825 stopped from {x:165,y:422} at {x:418,y:422}. Living World Integration run 35029225615 is red on the same navigation failure. Playable Candidate run 35029225747 is red with two physical-navigation failures: target-aware recovery stopped at {x:851,y:389}, distance 64 from target (825,330), without the tavern interaction hint and with canonicalMutations=0; the canonical vertical slice also stopped at x=418 while targeting x=825. CHECKPOINT 4: the failures belong to the shared physical-navigation/gameplay test helper and occur after green visual contracts/build/mobile checks, with no browser console or page errors in the canonical vertical-slice failure. No visual production code was changed in this session, because doing so would create another product SHA while a fresh required gameplay gate is red and would invalidate the exact-SHA stabilization evidence without addressing the cause. VISUAL_NEXT_PRIORITY: after GAMEPLAY produces one exact SHA with the browser-bearing required gates green, rerun the existing 390px and desktop visual browser checks, inspect their screenshots, then make only evidence-driven HUD/mobile/dialogue polish. STOP_REASON: EXTERNAL_BLOCKER. Owner decision is not required.",
-    "head_sha": "15b6e77b42af0e87ec82db2fc6f1eb9d973c9d2b",
-    "work_head_sha": "15b6e77b42af0e87ec82db2fc6f1eb9d973c9d2b",
+    "completed_at_utc": "2026-09-16T02:23:17Z",
+    "result": "SESSION_OBJECTIVE: preserve and verify the current HUD/mobile/dialogue visual surface against the newest exact validation evidence, and resume interface implementation only when the blocking shared physical-navigation contour is green. CHECKPOINT 1: the previous GAMEPLAY lease had expired at 2026-09-16T02:18:13Z after partial work advanced the working branch code through 31cfb217626c241445523f9b1067d78559a88696; recovery was read-only until this VISUAL run acquired the existing RUN_STATE lease, and no gameplay source file was changed by VISUAL. CHECKPOINT 2: PR #56 currently validates head 711d6bfbecab4f64b654295c2d2b9ef517fa8964 (merge SHA 17ef4d6a3490d9741700c80b549e8bad96ac2af9). Visual Forge run 35042977850, Release Reproducibility run 35042977852 and Windows Compatibility run 35042977853 are green. CHECKPOINT 3: Stream Slice run 35042977849 is red only after 22 Python tests, preflight, all 50 web/UI contracts and production build pass; Chromium fails the real Mira approach with last position {x:339,y:354}, distance 90, generic movement hint and canonicalMutations=0. CHECKPOINT 4: Prototype Web CI run 35042977887 also has all 50 contracts and production build green; browser evidence passes first-run clarity, report access, 390px touch reachability and contextual touch labels, then fails shared spatial navigation. CHECKPOINT 5: Living World Integration run 35042977844 has backend/persistence, client contract and production build green and fails only its real-browser critical route. Playable Candidate run 35042978024 has Backend + Living World green, all 50 web/UI contracts and build green, but the integrated browser route records four physical-navigation failures including Mira interaction and tavern x=825 movement; browser console/page errors are absent in the canonical route failure. CHECKPOINT 6: no visual production code was changed because the current UI evidence is green and a new visual SHA would restart exact-SHA stabilization without addressing the required-gate cause. VISUAL_NEXT_PRIORITY: after GAMEPLAY produces one exact validation SHA with browser-bearing required gates green, rerun the existing 390px and desktop visual browser checks, inspect screenshots, then apply only evidence-driven HUD/mobile/dialogue polish. STOP_REASON: EXTERNAL_BLOCKER. Owner decision is not required.",
+    "head_sha": "31cfb217626c241445523f9b1067d78559a88696",
+    "work_head_sha": "31cfb217626c241445523f9b1067d78559a88696",
     "verification": [
-      "Exact work SHA 15b6e77b42af0e87ec82db2fc6f1eb9d973c9d2b: 50/50 web/UI contract tests passed in fresh Prototype Web CI and Playable Candidate runs, including HUD and 390px touch/dialogue visual contracts.",
-      "Exact work SHA 15b6e77b42af0e87ec82db2fc6f1eb9d973c9d2b: production TypeScript/Vite build passed; bundle budget passed at 1,149,931 bytes against 1,200,000 bytes.",
-      "Exact work SHA 15b6e77b42af0e87ec82db2fc6f1eb9d973c9d2b: Chromium UI checks for first-run clarity, session-report access, 390px touch reachability, village/tavern contextual touch labels, Russian dialogue input and touch pressed feedback passed before the later navigation failures.",
-      "Stream Slice Gate run 35029225654 completed successfully on the exact work SHA.",
-      "Visual Forge Gate run 35029225620, Release Reproducibility Gate run 35029225815 and Windows Compatibility Gate run 35029225686 completed successfully on the exact work SHA.",
-      "Prototype Web CI run 35029225640 failed in browser vertical slice: one-way D movement toward tavern x=825 started at {x:165,y:422} and ended at {x:418,y:422}; 16/17 browser tests passed, and the visual/mobile checks before the failure were green.",
-      "Living World Integration run 35029225615 failed in the real browser critical route on the same one-way D movement toward tavern x=825; backend/persistence, client contract and production build were green.",
-      "Playable Candidate run 35029225747 failed in real browser integrated route: target-aware interaction stopped at {x:851,y:389}, distance 64 from tavern target (825,330), with no requested interaction hint and canonicalMutations=0; canonical vertical slice also failed one-way D movement to x=825. Backend/Living World, 50 web contracts and production build were green.",
-      "No new visual implementation commit was created in that visual session. The exact visual surface under review remains work SHA 15b6e77b42af0e87ec82db2fc6f1eb9d973c9d2b."
+      "Working branch code before VISUAL lease/state commits: 31cfb217626c241445523f9b1067d78559a88696; latest source change is shared spatial-navigation helper work, not visual production code.",
+      "PR #56 validation head 711d6bfbecab4f64b654295c2d2b9ef517fa8964: Visual Forge Gate 35042977850 SUCCESS, Release Reproducibility Gate 35042977852 SUCCESS, Windows Compatibility Gate 35042977853 SUCCESS.",
+      "PR #56 validation head: Stream Slice Gate 35042977849 FAILURE after 22/22 Stream Slice Python tests, preflight, 50/50 web/UI contracts and production build pass; Chromium misses Mira interaction near (250,365), last {x:339,y:354}, canonicalMutations=0.",
+      "PR #56 validation head: Prototype Web CI 35042977887 FAILURE in shared physical navigation; 50/50 web/UI contracts and production build pass, and the early 390px first-run/touch/contextual-label UI routes pass before navigation failures.",
+      "PR #56 validation head: Living World Integration 35042977844 has Backend + persistence SUCCESS and client contract/build SUCCESS; Real browser critical route FAILURE.",
+      "PR #56 validation head: Playable Candidate 35042978024 has Backend + Living World SUCCESS, 50/50 web/UI contracts SUCCESS and production build SUCCESS; real browser integrated route FAILS with Mira/tavern physical-navigation errors while unrelated browser routes continue to pass.",
+      "No visual production commit was created in this session. The visual surface remains unchanged while GAMEPLAY owns the required-gate blocker."
     ],
-    "next_action": "GAMEPLAY: repair and verify the fresh physical-navigation failures on one exact SHA; VISUAL resumes by rerunning existing 390px/desktop browser and screenshot evidence on that green SHA before making further interface changes.",
+    "next_action": "GAMEPLAY: stabilize the fresh Mira/tavern physical-navigation failures on one exact validation SHA; VISUAL resumes with 390px/desktop browser and screenshot review only after those required browser gates are green.",
     "owner_decision_required": false,
     "stop_reason": "EXTERNAL_BLOCKER"
   },
@@ -55,17 +53,17 @@
     "reason": null
   },
   "verified_gates_at_authoritative_head": {
-    "note": "The active server-backed line is under physical browser-navigation stabilization on validation PR #56."
+    "note": "The active server-backed line remains under physical browser-navigation stabilization on validation PR #56."
   },
   "pilot_validation_at_work_head": {
-    "work_head_sha": "15b6e77b42af0e87ec82db2fc6f1eb9d973c9d2b",
-    "visual_forge_gate": {"run_id": 35029225620, "status": "success"},
-    "release_reproducibility_gate": {"run_id": 35029225815, "status": "success"},
-    "windows_compatibility_gate": {"run_id": 35029225686, "status": "success"},
-    "stream_slice_gate": {"run_id": 35029225654, "status": "success", "same_sha_successes": 1},
-    "prototype_web_ci": {"run_id": 35029225640, "status": "failure", "failure_scope": "browser vertical slice: one-way D movement toward tavern x=825 stopped from {x:165,y:422} at {x:418,y:422}"},
-    "living_world_integration_gate": {"run_id": 35029225615, "status": "failure", "failure_scope": "real browser critical route: one-way D movement toward tavern x=825 stopped from {x:165,y:422} at {x:418,y:422}"},
-    "playable_candidate_gate": {"run_id": 35029225747, "status": "failure", "failure_scope": "target-aware tavern interaction recovery and canonical vertical-slice one-way D navigation failed"}
+    "work_head_sha": "711d6bfbecab4f64b654295c2d2b9ef517fa8964",
+    "visual_forge_gate": {"run_id": 35042977850, "status": "success"},
+    "release_reproducibility_gate": {"run_id": 35042977852, "status": "success"},
+    "windows_compatibility_gate": {"run_id": 35042977853, "status": "success"},
+    "stream_slice_gate": {"run_id": 35042977849, "status": "failure", "failure_scope": "real Chromium Stream Slice route misses Mira interaction after all Python/preflight/web-contract/build checks pass"},
+    "prototype_web_ci": {"run_id": 35042977887, "status": "failure", "failure_scope": "real browser suite has shared spatial-navigation failures; 50/50 web/UI contracts and production build pass"},
+    "living_world_integration_gate": {"run_id": 35042977844, "status": "failure", "failure_scope": "real browser critical route fails after backend/persistence, client contract and production build pass"},
+    "playable_candidate_gate": {"run_id": 35042978024, "status": "failure", "failure_scope": "real browser integrated route has Mira/tavern spatial-navigation failures; backend/Living World, 50 web contracts and production build pass"}
   },
   "standalone_experiment": {
     "branch": "experiment/standalone-html-v1",
@@ -85,14 +83,14 @@
     "web_lockfile": "web/package-lock.json",
     "python_constraints": "constraints/python-3.12.txt",
     "ci_install_policy": "current release/browser workflows use npm ci and constrained pip installs",
-    "windows_launcher": "uses constrained pip and npm ci when the lockfile exists; npm install fallback only if missing",
+    "windows_launcher": "uses constrained pip and npm ci when the lockfile exists; npm install is a local fallback only if missing",
     "repository_hygiene": "root .gitignore covers generated caches, environments, browser reports, local SQLite state, environment files, secrets and editor/OS debris",
     "github_releases": "none"
   },
   "known_limitations": [
-    "Fresh required-gate verification is pending on work SHA c6a6b59aa91487e37ce3284a78e96687dbf2af0b.",
+    "Required browser-bearing gates remain red on PR #56 validation head 711d6bfbecab4f64b654295c2d2b9ef517fa8964 because shared physical navigation is still unstable.",
     "The complete SVG stream pack remains temporary production-facing art rather than final production art.",
     "A real human experience check remains required after technical stabilization."
   ],
-  "current_blocker": "Verification pending for the repaired physical village-to-tavern browser route on work SHA c6a6b59aa91487e37ce3284a78e96687dbf2af0b."
+  "current_blocker": "Shared physical-navigation instability on PR #56 validation head 711d6bfbecab4f64b654295c2d2b9ef517fa8964 keeps Stream Slice, Prototype Web CI, Living World Integration and Playable Candidate red despite green visual contracts/build/mobile checks."
 }
