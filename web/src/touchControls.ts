@@ -115,7 +115,6 @@ function bindActionContext(button: HTMLButtonElement): void {
     context.textContent = nextContext;
     button.dataset.contextual = nextContext === DEFAULT_ACTION_CONTEXT ? "false" : "true";
     const isContextual = nextContext !== DEFAULT_ACTION_CONTEXT;
-    button.setAttribute("aria-label", isContextual ? `Действие: ${nextContext}` : "Взаимодействовать");
     hint.dataset.contextual = isContextual ? "true" : "false";
     hint.setAttribute("aria-label", isContextual ? `Доступно действие: ${nextContext}` : "Подсказка управления");
   };
