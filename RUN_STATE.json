@@ -16,42 +16,43 @@
     "merged": false
   },
   "phase": "gameplay_navigation_stability_proof_next",
-  "current_objective": "Restore deterministic real-keyboard spatial navigation across Mira and tavern routes by honoring directional crossing instead of exact-coordinate settling, then prove Stream Slice and dependent browser navigation stable on one exact gameplay SHA.",
-  "next_action": "GAMEPLAY: reconcile Stream Slice rerun attempt 2 on validation SHA ec5720e7fd8e71d27cadc908bffd705486e96c84. If it is green, run a third consecutive Stream Slice attempt on the same SHA; then require the related gameplay navigation-bearing browser gates to be green before closing the navigation-stability step.",
+  "current_objective": "Restore deterministic real-keyboard spatial navigation across Mira and tavern routes, while keeping the corrected coarse-pointer visual controls stable, then prove the browser-critical candidate on one exact validation SHA.",
+  "next_action": "GAMEPLAY: reconcile the browser-bearing gates already running on validation SHA fa4c713f2cbaf0054d37be8df3b46c02d6051233. If the current Stream Slice run is green, accumulate the remaining same-SHA Stream Slice successes required by the roadmap and reconcile Prototype Web CI, Living World Integration and Playable Candidate before closing navigation stabilization.",
   "blockers": [
-    "The code-level navigation defect is no longer reproduced by Stream Slice attempt 1 on validation SHA ec5720e7fd8e71d27cadc908bffd705486e96c84: all three Chromium Stream Slice tests passed. Stability proof is still incomplete because the roadmap requires at least three consecutive Stream Slice successes on one SHA.",
-    "Stream Slice attempt 2 on the same validation SHA was in progress at handoff; its backend install, 22 profile Python tests, preflight, 56 web contracts, production build and Chromium installation were already green before the Chromium acceptance phase started.",
-    "Prototype Web CI, Living World Integration and Playable Candidate browser-bearing jobs on the same validation SHA were still executing their long browser routes at handoff, so their final navigation result is not claimed yet.",
+    "The previous exact validation candidate ec5720e7 exposed a real visual regression at 844x390 coarse-pointer landscape: #touch-controls existed but was hidden by a later equal-specificity #touch-controls { display: none } rule. The working fix is c72ce9dba33c921b6a723fdbf5ef8b382ad3746e and is mirrored to validation SHA fa4c713f2cbaf0054d37be8df3b46c02d6051233.",
+    "On validation SHA fa4c713f2cbaf0054d37be8df3b46c02d6051233, web contracts, production build, startup controls and focused desktop/390px interaction feedback are green; the full browser vertical-slice step containing the direct 844x390 coarse-pointer regression is still in progress, so that exact browser proof is not yet claimed.",
+    "Navigation stability still needs the required repeated same-SHA proof on the new validation SHA fa4c713f2cbaf0054d37be8df3b46c02d6051233; Stream Slice Chromium and the long browser routes in Prototype Web CI, Living World Integration and Playable Candidate were still running at this handoff.",
     "A real human aesthetic and play-feel judgment remains a later product gate after technical stabilization."
   ],
   "active_run": {
-    "run_id": "2026-09-16-visual-coarse-touch-cascade-1",
-    "status": "running",
-    "started_at_utc": "2026-09-16T11:22:13Z",
-    "lease_expires_at_utc": "2026-09-16T12:52:13Z",
-    "base_sha": "eac670161575e8b10daea45f97d89f66bc1531f6",
+    "run_id": null,
+    "status": "idle",
+    "started_at_utc": null,
+    "lease_expires_at_utc": null,
+    "base_sha": null,
     "working_branch": "agent/autonomy-pilot-v0.1"
   },
   "last_handoff": {
-    "completed_at_utc": "2026-09-16T11:13:38Z",
-    "result": "SESSION_OBJECTIVE: restore deterministic real-keyboard spatial navigation across Mira and tavern routes and prove stability on one exact gameplay SHA. CHECKPOINT 1: fresh pre-session failures showed delayed real-key release crossing target coordinates and the controller reversing toward exact coordinates, causing oscillation or route-budget exhaustion while canonical state and browser console remained healthy. CHECKPOINT 2: working commit c00a0e84dbb29ee448afab9d85ab370de3eb4572 fixed direction per movement leg and treats directional target crossing as success, matching the approved technical plan without changing collisions, movement speed, interaction radius, game rules or global timeouts. CHECKPOINT 3: validation SHA 0a4b3bb70b712c66e15c4d2dbface0747862ce42 made Stream Slice green, but Prototype Web CI exposed remaining slow-browser/controller-stall failures caused by controller round-trip overhead consuming the existing 20-second physical-route budget. CHECKPOINT 4: working commit e905f1f05f2f9f7fdb682c71d46c6d7a84691049 reduced test-controller round trips by reusing known positions, combining post-release frame+position reads and removing per-pulse diagnostic writes while preserving real keyboard input and the unchanged route deadline. CHECKPOINT 5: exact validation SHA ec5720e7fd8e71d27cadc908bffd705486e96c84 has Visual Forge, Windows Compatibility and Release Reproducibility green. Stream Slice attempt 1 is SUCCESS with 22 Python tests, preflight invariants, 56/56 web contracts, production build and 3/3 Chromium tests passing in 3.4 minutes. CHECKPOINT 6: a second Stream Slice run was started on the exact same SHA; all non-browser steps were green and Chromium acceptance was in progress at handoff. Prototype Web CI, Living World Integration and Playable Candidate were also still in long browser execution on that same SHA. STOP_REASON: EXECUTION_LIMIT. Owner decision is not required.",
-    "head_sha": "e905f1f05f2f9f7fdb682c71d46c6d7a84691049",
-    "work_head_sha": "e905f1f05f2f9f7fdb682c71d46c6d7a84691049",
+    "completed_at_utc": "2026-09-16T11:32:37Z",
+    "result": "SESSION_OBJECTIVE: restore the broken 844x390 coarse-pointer landscape control surface without touching gameplay semantics, and lock the CSS cascade so the regression cannot silently return. CHECKPOINT 1: the fresh required Prototype Web CI evidence on ec5720e7 showed 56/56 contracts and production build green but `00-coarse-touch-landscape.spec.ts` failed because #touch-controls was hidden. Source reconciliation proved the cause: touchControls imports touchFeedback.css before main imports styles.css; touchFeedback.css used #touch-controls { display: grid } inside the 701-900 coarse media query, while later styles.css used equal-specificity #touch-controls { display: none }, so source order won above 700px. CHECKPOINT 2: working commit c56824e3ab2a39d6f436ed5b9ad391d0defb59fb strengthened the deterministic touch visual contract to require a cascade-safe selector. Working commit c72ce9dba33c921b6a723fdbf5ef8b382ad3746e changed only the coarse media selector to body #touch-controls, raising specificity without !important, script reordering, breakpoint changes or gameplay changes. CHECKPOINT 3: the two visual commits were mirrored to draft validation PR #56, exact validation SHA fa4c713f2cbaf0054d37be8df3b46c02d6051233. Fresh CI on that SHA has Visual Forge, Windows Compatibility and Release Reproducibility green. Prototype Web CI has web contracts, production build, startup-controls and focused desktop/390px interaction feedback green; its full browser vertical-slice step, which contains the direct 844x390 coarse-pointer test, was still running at handoff. Stream Slice had all non-browser steps green and Chromium acceptance running; related browser routes in Living World Integration and Playable Candidate were also running. STOP_REASON: EXECUTION_LIMIT. Owner decision is not required. NEXT_VISUAL_PRIORITY: on the next visual cycle first reconcile the exact 844x390 browser result on fa4c713; if green, perform screenshot QA of 844x390 landscape, 390px portrait and desktop key surfaces and polish only observed visual defects after gameplay navigation is stable.",
+    "head_sha": "c72ce9dba33c921b6a723fdbf5ef8b382ad3746e",
+    "work_head_sha": "c72ce9dba33c921b6a723fdbf5ef8b382ad3746e",
     "verification": [
-      "Working gameplay result HEAD before state handoff: e905f1f05f2f9f7fdb682c71d46c6d7a84691049 on agent/autonomy-pilot-v0.1.",
-      "Exact validation PR #56 HEAD: ec5720e7fd8e71d27cadc908bffd705486e96c84; PR remains draft and unmerged.",
-      "Stream Slice Gate run 35088622542 attempt 1: SUCCESS. Stream Slice Python tests 22 passed; preflight PASS with SQLite integrity ok, 0 foreign-key errors, tick/reopen tick 20, one wayfarer arrival, one Oren bread request and road fact knowers limited to npc_oren and npc_wayfarer_1; web contracts 56/56 passed; production build PASS; Chromium acceptance 3/3 passed in 3.4 minutes.",
-      "Stream Slice Gate run 35088622542 attempt 2, job 104770599522: in progress at handoff. Backend install, 22 Stream Slice Python tests, preflight, web contracts, production build and Chromium install were SUCCESS; Chromium acceptance began at 2026-09-16T11:12:42Z.",
-      "Windows Compatibility Gate run 35088622333 on ec5720e7: SUCCESS, including full Python suite, Stream Slice preflight, web contracts, production build, fresh SQLite/timezone preflight and backend/API boot on Windows.",
-      "Release Reproducibility Gate run 35088622336 on ec5720e7: SUCCESS on both ubuntu-latest and windows-latest clean dependency/build jobs.",
-      "Visual Forge Gate run 35088622332 on ec5720e7: SUCCESS.",
-      "Living World Integration run 35088622349 on ec5720e7: backend+persistence job SUCCESS; client/build job had contracts/build green and real browser critical route still in progress at handoff.",
-      "Playable Candidate run 35088622313 on ec5720e7: backend+Living World job SUCCESS; web/browser job had web contracts/build green and real browser integrated route still in progress at handoff.",
-      "Prototype Web CI run 35088622320 on ec5720e7: web contracts, production build, startup-controls check and focused desktop/mobile interaction feedback were SUCCESS; full browser vertical slice was still in progress at handoff.",
-      "No reward, price, quest condition, NPC behavior, causal world rule, save format, collision map, movement speed, interaction radius or global timeout changed in this gameplay session.",
-      "main remains unchanged; PR #49 was not merged; PR #56 remains draft validation only."
+      "Working visual result HEAD before state handoff: c72ce9dba33c921b6a723fdbf5ef8b382ad3746e on agent/autonomy-pilot-v0.1.",
+      "Visual contract commit c56824e3ab2a39d6f436ed5b9ad391d0defb59fb adds an assertion requiring body #touch-controls display:grid inside the 701-900 coarse-pointer media query.",
+      "Visual implementation commit c72ce9dba33c921b6a723fdbf5ef8b382ad3746e changes only the coarse-pointer selector from #touch-controls to body #touch-controls, resolving the later equal-specificity display:none cascade without changing control semantics.",
+      "Exact validation PR #56 HEAD: fa4c713f2cbaf0054d37be8df3b46c02d6051233; PR remains draft and unmerged.",
+      "Prototype Web CI run 35090398491 on fa4c713: web contracts SUCCESS, production build SUCCESS, startup controls SUCCESS, focused desktop/390px interaction feedback SUCCESS; full browser vertical slice was still in progress at handoff, so direct 844x390 coarse-pointer browser acceptance is pending.",
+      "Visual Forge Gate run 35090398488 on fa4c713: SUCCESS.",
+      "Windows Compatibility Gate run 35090398512 on fa4c713: SUCCESS, including full Python suite, preflight, web contracts, production build, SQLite/timezone checks and backend/API boot.",
+      "Release Reproducibility Gate run 35090398529 on fa4c713: SUCCESS on ubuntu-latest and windows-latest clean dependency/build jobs.",
+      "Stream Slice Gate run 35090398468 on fa4c713: backend install, 22 profile Python tests, preflight, web contracts, production build and Chromium install SUCCESS; Stream Slice Chromium acceptance was still in progress at handoff.",
+      "Living World Integration run 35090398554 on fa4c713: backend+persistence SUCCESS; client contract/build SUCCESS and real browser critical route still in progress at handoff.",
+      "Playable Candidate run 35090398475 on fa4c713: backend+Living World SUCCESS; web contracts/build SUCCESS and real browser integrated route still in progress at handoff.",
+      "No reward, price, quest condition, NPC behavior, causal world rule, save format, collision map, movement speed, interaction radius or global timeout changed in this visual session.",
+      "main remains unchanged; PR #49 was not merged; PR #55 and PR #56 remain draft/unmerged."
     ],
-    "next_action": "GAMEPLAY: reconcile Stream Slice attempt 2 on ec5720e7fd8e71d27cadc908bffd705486e96c84; if green, trigger and require a third consecutive same-SHA Stream Slice success, then reconcile related navigation-bearing browser gates before moving to telemetry integration.",
+    "next_action": "VISUAL: reconcile Prototype Web CI run 35090398491 on fa4c713f2cbaf0054d37be8df3b46c02d6051233 and confirm the direct 844x390 coarse-pointer browser test. If it is green, run screenshot QA on 844x390 landscape, 390px portrait and desktop after gameplay navigation stabilization, then fix only observed visual defects.",
     "owner_decision_required": false,
     "stop_reason": "EXECUTION_LIMIT"
   },
@@ -60,17 +61,17 @@
     "reason": null
   },
   "verified_gates_at_authoritative_head": {
-    "note": "The authoritative integration PR #53 remains unchanged. Current gameplay stabilization is isolated on agent/autonomy-pilot-v0.1 and mirrored only to draft validation PR #56."
+    "note": "The authoritative integration PR #53 remains unchanged. Current gameplay/visual stabilization is isolated on agent/autonomy-pilot-v0.1 and mirrored only to draft validation PR #56."
   },
   "pilot_validation_at_work_head": {
-    "work_head_sha": "ec5720e7fd8e71d27cadc908bffd705486e96c84",
-    "visual_forge_gate": {"run_id": 35088622332, "status": "success"},
-    "prototype_web_ci": {"run_id": 35088622320, "status": "in_progress"},
-    "release_reproducibility_gate": {"run_id": 35088622336, "status": "success"},
-    "windows_compatibility_gate": {"run_id": 35088622333, "status": "success"},
-    "stream_slice_gate": {"run_id": 35088622542, "status": "attempt_1_success_attempt_2_in_progress"},
-    "living_world_integration_gate": {"run_id": 35088622349, "status": "in_progress"},
-    "playable_candidate_gate": {"run_id": 35088622313, "status": "in_progress"}
+    "work_head_sha": "fa4c713f2cbaf0054d37be8df3b46c02d6051233",
+    "visual_forge_gate": {"run_id": 35090398488, "status": "success"},
+    "prototype_web_ci": {"run_id": 35090398491, "status": "contracts_build_focused_visual_success_full_browser_in_progress"},
+    "release_reproducibility_gate": {"run_id": 35090398529, "status": "success"},
+    "windows_compatibility_gate": {"run_id": 35090398512, "status": "success"},
+    "stream_slice_gate": {"run_id": 35090398468, "status": "non_browser_success_chromium_in_progress"},
+    "living_world_integration_gate": {"run_id": 35090398554, "status": "backend_success_browser_in_progress"},
+    "playable_candidate_gate": {"run_id": 35090398475, "status": "backend_success_browser_in_progress"}
   },
   "standalone_experiment": {
     "branch": "experiment/standalone-html-v1",
@@ -95,8 +96,9 @@
     "github_releases": "none"
   },
   "known_limitations": [
-    "Three consecutive same-SHA Stream Slice successes required by the roadmap have not yet been completed; attempt 2 was still running at this handoff.",
-    "Related browser-bearing gates on exact validation SHA ec5720e7fd8e71d27cadc908bffd705486e96c84 were still executing their long routes and must be reconciled before declaring navigation stabilization complete.",
+    "Direct browser proof for the 844x390 coarse-pointer regression on validation SHA fa4c713f2cbaf0054d37be8df3b46c02d6051233 was still running when this visual session ended; static contract, build and focused interaction checks are green.",
+    "Three consecutive same-SHA Stream Slice successes required by the roadmap have not yet been completed on the new validation SHA fa4c713f2cbaf0054d37be8df3b46c02d6051233.",
+    "Related browser-bearing gates on fa4c713 were still executing their long routes and must be reconciled before declaring navigation stabilization complete.",
     "An isolated temporary branch agent/autonomy-pilot-validation-v0.1-tmp-unused at 12c4e83c40121cf92dc7007e78ec3e4de424880a was accidentally created during earlier connector operations; it does not affect main, the working branch or PR #56 and should be deleted when branch-ref deletion capability is available.",
     "The complete SVG stream pack remains temporary production-facing art rather than final production art.",
     "A real human experience and aesthetic check remains required after technical stabilization."
