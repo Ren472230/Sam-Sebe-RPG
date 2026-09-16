@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "project": "Ren472230/Sam-Sebe-RPG",
+  "quality_contract": "docs/autonomy/QUALITY_CONTRACT.md",
+  "project_status": "IN_DEVELOPMENT",
+  "quality_score": null,
+  "technical_ready_threshold": 90,
+  "last_evaluated_sha": null,
+  "last_evaluated_at_utc": null,
+  "hard_gates": {
+    "RQ-H01": {"name": "Seven Required Release Gates on One SHA", "status": "UNKNOWN", "evidence": null},
+    "RQ-H02": {"name": "Repeated Browser Route Stability", "status": "UNKNOWN", "evidence": null},
+    "RQ-H03": {"name": "Canonical Vertical Slice Completion", "status": "UNKNOWN", "evidence": null},
+    "RQ-H04": {"name": "Living Systems Integrity", "status": "UNKNOWN", "evidence": null},
+    "RQ-H05": {"name": "Persistence / Reload Integrity", "status": "UNKNOWN", "evidence": null},
+    "RQ-H06": {"name": "Runtime Integrity / No Critical Blockers", "status": "UNKNOWN", "evidence": null},
+    "RQ-H07": {"name": "Visual / Input Usability", "status": "UNKNOWN", "evidence": null},
+    "RQ-H08": {"name": "Reproducibility and Supported Environment", "status": "UNKNOWN", "evidence": null},
+    "RQ-H09": {"name": "Human Experience Gate", "status": "PENDING_HUMAN", "evidence": null}
+  },
+  "score_categories": {
+    "reliability": {"max": 30, "score": null},
+    "core_gameplay": {"max": 25, "score": null},
+    "living_world_causality": {"max": 20, "score": null},
+    "ux_visual": {"max": 15, "score": null},
+    "persistence_compatibility": {"max": 10, "score": null}
+  },
+  "rules": {
+    "unknown_scores_zero_until_evidence": true,
+    "red_or_unknown_hard_gate_blocks_technical_ready": true,
+    "technically_ready_forbids_scope_expansion": true,
+    "v1_done_requires_explicit_owner_confirmation": true,
+    "autonomous_threshold_reduction_forbidden": true
+  },
+  "bootstrap_note": "Canonical bootstrap copy created on config/v1-quality-contract because agent/autonomy-pilot-v0.1 had an active run lease. First future RPG automation that safely owns the lease should copy QUALITY_CONTRACT.md and QUALITY_STATE.json into the working branch unchanged before normal quality-state updates."
+}
