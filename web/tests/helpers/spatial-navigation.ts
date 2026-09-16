@@ -35,6 +35,15 @@ async function waitForBrowserFrame(page: Page): Promise<void> {
   await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => resolve())));
 }
 
+async function playerPositionAfterBrowserFrame(page: Page): Promise<PlayerPosition> {
+  return page.evaluate(() => new Promise<PlayerPosition>((resolve) => {
+    requestAnimationFrame(() => resolve({
+      x: Number(document.body.dataset.playerX),
+      y: Number(document.body.dataset.playerY)
+    }));
+  }));
+}
+
 export async function releaseMovementKeys(page: Page): Promise<void> {
   if (page.isClosed()) return;
   for (const key of MOVEMENT_KEYS) {
@@ -45,7 +54,6 @@ export async function releaseMovementKeys(page: Page): Promise<void> {
       throw error;
     }
   }
-  await waitForBrowserFrame(page);
 }
 
 async function installNavigationDiagnostics(page: Page): Promise<void> {
@@ -55,10 +63,10 @@ async function installNavigationDiagnostics(page: Page): Promise<void> {
       __navKeyTrace?: string[];
       __navCanonicalMutations?: number;
     };
-    debugWindow.__navKeyTrace = [];
-    debugWindow.__navCanonicalMutations = 0;
     if (debugWindow.__navDebugInstalled) return;
     debugWindow.__navDebugInstalled = true;
+    debugWindow.__navKeyTrace = [];
+    debugWindow.__navCanonicalMutations = 0;
 
     const pushKey = (phase: "down" | "up", event: KeyboardEvent): void => {
       const trace = debugWindow.__navKeyTrace ?? [];
@@ -127,10 +135,11 @@ function reachedOrCrossedTarget(
 async function pulseKeys(
   page: Page,
   keys: MovementKey[],
-  pulseMs = STEERING_PULSE_MS
+  pulseMs = STEERING_PULSE_MS,
+  knownStart?: PlayerPosition
 ): Promise<{ start: PlayerPosition; end: PlayerPosition }> {
   const uniqueKeys = [...new Set(keys)];
-  const start = await playerPosition(page);
+  const start = knownStart ?? await playerPosition(page);
   for (const key of uniqueKeys) await page.keyboard.down(key);
   try {
     await page.waitForTimeout(pulseMs);
@@ -139,8 +148,7 @@ async function pulseKeys(
       for (const key of [...uniqueKeys].reverse()) await page.keyboard.up(key);
     }
   }
-  await waitForBrowserFrame(page);
-  return { start, end: await playerPosition(page) };
+  return { start, end: await playerPositionAfterBrowserFrame(page) };
 }
 
 async function recordPulse(
@@ -173,8 +181,6 @@ export async function moveAxisTo(
   timeout = 10_000,
   pulseMs = STEERING_PULSE_MS
 ): Promise<void> {
-  await installNavigationDiagnostics(page);
-  await releaseMovementKeys(page);
   const deadline = Date.now() + timeout;
   let current = await playerPosition(page);
   const initialValue = current[axis];
@@ -186,6 +192,7 @@ export async function moveAxisTo(
   const key = movementKey(axis, initialValue, target);
   let stagnantPulses = 0;
   let pulses = 0;
+  let lastTrace: AxisTrace | null = null;
   while (Date.now() < deadline && pulses < 96) {
     const currentValue = current[axis];
     if (!Number.isFinite(currentValue)) break;
@@ -193,11 +200,15 @@ export async function moveAxisTo(
     if (reachedOrCrossedTarget(key, currentValue, target, tolerance)) return;
 
     const duration = axisPulseDuration(gap, pulseMs);
-    const { start, end } = await pulseKeys(page, [key], duration);
-    await recordAxisTrace(page, { axis, target, reached: start, released: end });
+    const { start, end } = await pulseKeys(page, [key], duration, current);
+    lastTrace = { axis, target, reached: start, released: end };
+    pulses += 1;
     const endValue = end[axis];
     if (!Number.isFinite(endValue)) break;
-    if (reachedOrCrossedTarget(key, endValue, target, tolerance)) return;
+    if (reachedOrCrossedTarget(key, endValue, target, tolerance)) {
+      await recordAxisTrace(page, lastTrace);
+      return;
+    }
 
     const progress = Math.abs(endValue - start[axis]);
     stagnantPulses = progress < 1 ? stagnantPulses + 1 : 0;
@@ -208,9 +219,9 @@ export async function moveAxisTo(
     // so reversing toward an exact coordinate only adds oscillation and consumes the
     // shared route budget without improving the interaction condition.
     current = end;
-    pulses += 1;
   }
 
+  if (lastTrace) await recordAxisTrace(page, lastTrace);
   await releaseMovementKeys(page);
   const end = await playerPosition(page);
   throw new Error(
@@ -313,11 +324,6 @@ async function steerTavernApproachToHint(
       throw new Error(`tavern approach has invalid start; start=${JSON.stringify(snapshot.position)}`);
     }
 
-    // Stay on the lower collision-free lane while aligning with the tavern entrance.
-    // A previous y=360 waypoint could consume the shared route budget when the browser
-    // was CPU-throttled or the Playwright controller stalled, leaving only 1s for X.
-    // Closed-loop pulses now correct real overshoot and keep the facade out of the
-    // horizontal leg without changing game collision geometry or movement speed.
     if (Math.abs(snapshot.position.y - corridorY) > TARGET_TOLERANCE) {
       await moveAxisTo(page, "y", corridorY, 10, remainingRouteTime(deadline));
     }
@@ -363,9 +369,6 @@ async function moveToTavernInteraction(
   if (start.x < VILLAGE_WELL_CLEAR_X) await movePastVillageWell(page, deadline);
   if ((await interactionSnapshot(page, hintText)).hintReady) return;
 
-  // Once the well is clear, stay on the lower lane, align X, then let the existing
-  // interaction hint terminate the final vertical leg. The hint remains the only
-  // success condition.
   await steerTavernApproachToHint(page, targetX, targetY, hintText, deadline);
 }
 
