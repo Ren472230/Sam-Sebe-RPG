@@ -24,11 +24,11 @@
     "A real human aesthetic and play-feel judgment remains a later product gate after technical stabilization."
   ],
   "active_run": {
-    "run_id": "2026-09-16-gameplay-tavern-nav-session-2",
+    "run_id": "2026-09-16-gameplay-navigation-recovery-session-3",
     "status": "running",
-    "started_at_utc": "2026-09-16T08:51:37Z",
-    "lease_expires_at_utc": "2026-09-16T10:21:37Z",
-    "base_sha": "3f58d0638ebf2c13e2d84e4004f8bf47717b2ba9",
+    "started_at_utc": "2026-09-16T10:57:00Z",
+    "lease_expires_at_utc": "2026-09-16T12:27:00Z",
+    "base_sha": "30094331faae5de8cd7f8a3e0ebd1bb9aac40102",
     "working_branch": "agent/autonomy-pilot-v0.1"
   },
   "last_handoff": {
@@ -87,7 +87,7 @@
     "web_lockfile": "web/package-lock.json",
     "python_constraints": "constraints/python-3.12.txt",
     "ci_install_policy": "current release/browser workflows use npm ci and constrained pip installs",
-    "windows_launcher": "uses constrained pip and npm ci when lockfile exists; npm install fallback only if missing",
+    "windows_launcher": "uses constrained pip and npm ci when the lockfile exists; npm install fallback only if missing",
     "repository_hygiene": "root .gitignore covers generated caches, environments, browser reports, local SQLite state, environment files, secrets and editor/OS debris",
     "github_releases": "none"
   },
