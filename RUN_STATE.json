@@ -24,16 +24,16 @@
     "RQ-H07 is now GREEN from exact-candidate responsive/browser evidence and ux_visual is 15/15. No proven visual overflow, overlap, hidden-control, modal or desktop-keyboard regression remains for VISUAL to patch while the higher-priority required-gate failures are unresolved."
   ],
   "active_run": {
-    "run_id": "2026-09-16-gameplay-frame-delta-recovery-4",
+    "run_id": "2026-09-16-gameplay-navigation-throughput-1",
     "status": "running",
-    "started_at_utc": "2026-09-16T20:51:00Z",
-    "lease_expires_at_utc": "2026-09-16T22:21:00Z",
-    "base_sha": "a9373971836bca5f883c56afc8c483a5b15e262a",
+    "started_at_utc": "2026-09-16T22:52:00Z",
+    "lease_expires_at_utc": "2026-09-17T00:22:00Z",
+    "base_sha": "7b52fa7f3a52f86c885829ccedc2d0d990bdeb4a",
     "working_branch": "agent/autonomy-pilot-v0.1"
   },
   "last_handoff": {
     "completed_at_utc": "2026-09-16T14:27:22Z",
-    "result": "SESSION_OBJECTIVE: RQ-H07 – close Visual / Input Usability on exact V1 candidate 8402e77367bb0bb8ac28b1acd5ebcf485b3c9eb1 without adding cosmetic scope while fresh required-gate evidence is red. CHECKPOINT 1: reconciled the completed required workflows before visual closure. Prototype Web CI 35105180802 is GREEN including browser vertical slice and separate Stream Slice acceptance. Playable Candidate 35105180818 and Living World Integration 35105180835 are RED because their canonical browser route exhausts the 180000ms aggregate test budget at the Living World WAIT phase; both attach no browser-console or page errors. CHECKPOINT 2: exact-candidate visual/input evidence is independently GREEN: Visual Forge 35105180925 success; 56/56 web/UI contracts and production build pass in both fresh browser-bearing runs; desktop first-run clarity, desktop Mira spatial dialogue with Russian input, desktop interaction ribbon, 390x844 touch reachability/contextual actions/interaction ribbon/pressed feedback, and 844x390 coarse-pointer landscape usability all pass. Prototype Web CI also proves the canonical browser vertical slice can complete on this same SHA. CHECKPOINT 3: docs/autonomy/QUALITY_STATE.json was updated at commit eb21cce2b54eab3945ab7a53ffba705580c602aa: RQ-H07 GREEN, ux_visual 15/15, overall score 75; RQ-H01 and RQ-H06 RED from the two required-gate failures; RQ-H02 remains UNKNOWN with two confirmed same-candidate Stream Slice passes and the third skipped after Playable Candidate's preceding canonical-route failure. No product/UI code was changed. STOP_REASON: EXTERNAL_BLOCKER. Owner decision is not required.",
+    "result": "SESSION_OBJECTIVE: RQ-H07 – close Visual / Input Usability on exact V1 candidate 8402e77367bb0bb8ac28b1acd5ebcf485b3c9eb1 without adding cosmetic scope while fresh required-gate evidence is red. CHECKPOINT 1: reconciled the completed required workflows before visual closure. Prototype Web CI 35105180802 is GREEN including browser vertical slice and separate Stream Slice acceptance. Playable Candidate 35105180818 and Living World Integration 35105180835 are RED because their canonical browser route exhausts the 180000ms aggregate test budget at the Living World WAIT phase; both attach no browser-console or page errors. CHECKPOINT 2: exact-candidate visual/input evidence is independently GREEN: Visual Forge 35105180925 success; 56/56 web/UI contracts and production build pass in both fresh browser-bearing runs; desktop first-run clarity, desktop Mira spatial dialogue with Russian input, desktop interaction ribbon, 390x844 touch reachability/contextual actions/interaction ribbon/pressed feedback, and 844x390 coarse-pointer landscape usability all pass. CHECKPOINT 3: docs/autonomy/QUALITY_STATE.json was updated at commit eb21cce2b54eab3945ab7a53ffba705580c602aa: RQ-H07 GREEN, ux_visual 15/15, overall score 75; RQ-H01 and RQ-H06 RED from the two required-gate failures; RQ-H02 remains UNKNOWN with two confirmed same-candidate Stream Slice passes and the third skipped after Playable Candidate's preceding canonical-route failure. No product/UI code was changed. STOP_REASON: EXTERNAL_BLOCKER. Owner decision is not required.",
     "head_sha": "eb21cce2b54eab3945ab7a53ffba705580c602aa",
     "work_head_sha": "8402e77367bb0bb8ac28b1acd5ebcf485b3c9eb1",
     "verification": [
