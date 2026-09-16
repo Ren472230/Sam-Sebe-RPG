@@ -1,6 +1,8 @@
 export const PLAYER_SPEED_PX_PER_MS = 0.22;
 export const MAX_MOVEMENT_SUBSTEP_MS = 50;
-export const MAX_MOVEMENT_CATCHUP_MS = 400;
+// Keep one rendered update below the smallest interaction radius so low-FPS
+// catch-up cannot jump across an interaction before the scene evaluates hints.
+export const MAX_MOVEMENT_CATCHUP_MS = 100;
 const MAX_SHORT_RELEASE_TOTAL_MS = 200;
 
 export type HeldMovementKey = {
