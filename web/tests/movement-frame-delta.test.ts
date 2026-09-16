@@ -60,6 +60,20 @@ test("a key pulse completed entirely between render frames is preserved", () => 
 });
 
 
+test("a short tap completes its small release tail after a live frame", () => {
+  let currentDuration = 16;
+  const key = { isDown: true, timeDown: 100, timeUp: 0, duration: 0, getDuration: () => currentDuration };
+
+  assert.equal(effectiveHeldDelta(16, key, 116), 16);
+  key.isDown = false;
+  key.timeUp = 180;
+  key.duration = 80;
+  currentDuration = 0;
+  assert.equal(effectiveHeldDelta(16, key, 196), 64);
+  assert.equal(effectiveHeldDelta(16, key, 212), 0);
+});
+
+
 test("release after live movement never replays a wall-clock tail", () => {
   let currentDuration = 16;
   const key = { isDown: true, timeDown: 100, timeUp: 0, duration: 0, getDuration: () => currentDuration };
