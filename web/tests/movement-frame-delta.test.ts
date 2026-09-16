@@ -34,14 +34,16 @@ test("movement delta ignores invalid or non-positive frame durations", () => {
 });
 
 
-test("held movement charges only observable key time and bounds unrendered catch-up", () => {
+test("held movement charges only observable key time without discarding a continuously held stalled frame", () => {
   const justPressed = { isDown: true, getDuration: () => 25 };
   const normallyHeld = { isDown: true, getDuration: () => 500 };
-  const stalledFrame = { isDown: true, getDuration: () => 900 };
+  const heldAcrossStall = { isDown: true, getDuration: () => 900 };
+  const newlyPressedAfterStall = { isDown: true, getDuration: () => 25 };
   const released = { isDown: false, getDuration: () => 500 };
 
   assert.equal(effectiveHeldDelta(125, justPressed), 25);
   assert.equal(effectiveHeldDelta(125, normallyHeld), 125);
-  assert.equal(effectiveHeldDelta(800, stalledFrame), 200);
+  assert.equal(effectiveHeldDelta(800, heldAcrossStall), 800);
+  assert.equal(effectiveHeldDelta(800, newlyPressedAfterStall), 25);
   assert.equal(effectiveHeldDelta(125, released), 0);
 });
