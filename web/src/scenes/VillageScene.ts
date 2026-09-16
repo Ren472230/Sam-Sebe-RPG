@@ -2,6 +2,7 @@ import Phaser from "phaser";
 
 import { requestId, type VisibleActor } from "../api";
 import { actionControlHint, movementControlHint } from "../controlHints";
+import { applyMovementDelta } from "../movement";
 import {
   createProductionFirewood,
   createProductionPlayer,
@@ -93,15 +94,11 @@ export class VillageScene extends Phaser.Scene {
   update(_time: number, delta: number): void {
     if (isTextEntryActive()) return;
 
-    // A long browser frame must not teleport the player through narrow collision/interaction bands.
-    const speed = 0.22 * Math.min(delta, 50);
-    let dx = 0;
-    let dy = 0;
-    if (this.keys.A.isDown) dx -= speed;
-    if (this.keys.D.isDown) dx += speed;
-    if (this.keys.W.isDown) dy -= speed;
-    if (this.keys.S.isDown) dy += speed;
-    this.movePlayer(dx, dy);
+    const directionX = Number(this.keys.D.isDown) - Number(this.keys.A.isDown);
+    const directionY = Number(this.keys.S.isDown) - Number(this.keys.W.isDown);
+    applyMovementDelta(delta, (distance) => {
+      this.movePlayer(directionX * distance, directionY * distance);
+    });
     this.publishPlayerPosition();
     this.updateHint();
   }
