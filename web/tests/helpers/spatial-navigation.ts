@@ -285,9 +285,58 @@ async function moveInteractionAxis(
   return after.hintReady;
 }
 
+async function steerTavernApproachToHint(
+  page: Page,
+  targetX: number,
+  targetY: number,
+  hintText: string,
+  deadline: number
+): Promise<void> {
+  let stagnantPulses = 0;
+  try {
+    while (Date.now() < deadline) {
+      const snapshot = await interactionSnapshot(page, hintText);
+      if (snapshot.hintReady) return;
+      if (!Number.isFinite(snapshot.position.x) || !Number.isFinite(snapshot.position.y)) break;
+
+      const keys: MovementKey[] = [];
+      if (Math.abs(snapshot.position.x - targetX) > TARGET_TOLERANCE) {
+        keys.push(movementKey("x", snapshot.position.x, targetX));
+      }
+      if (Math.abs(snapshot.position.y - targetY) > TARGET_TOLERANCE) {
+        keys.push(movementKey("y", snapshot.position.y, targetY));
+      }
+
+      if (keys.length === 0) {
+        await waitForBrowserFrame(page);
+        if ((await interactionSnapshot(page, hintText)).hintReady) return;
+        break;
+      }
+
+      const { start, end } = await pulseKeys(page, keys, STEERING_PULSE_MS);
+      await recordPulse(page, keys, targetX, targetY, start, end);
+      const progress = Math.hypot(end.x - start.x, end.y - start.y);
+      stagnantPulses = progress < 1 ? stagnantPulses + 1 : 0;
+      if (stagnantPulses >= 6) break;
+    }
+  } finally {
+    await releaseMovementKeys(page);
+  }
+
+  const snapshot = await interactionSnapshot(page, hintText);
+  if (snapshot.hintReady) return;
+  const diagnostics = await page.evaluate(() => document.body.dataset.movementTrace ?? null);
+  throw new Error(
+    `closed-loop tavern approach did not reach ${JSON.stringify(hintText)}; `
+      + `end=${JSON.stringify(snapshot.position)} hint=${JSON.stringify(snapshot.hint)} `
+      + `movementTrace=${JSON.stringify(diagnostics)}`
+  );
+}
+
 async function moveToTavernInteraction(
   page: Page,
   targetX: number,
+  targetY: number,
   hintText: string,
   deadline: number
 ): Promise<void> {
@@ -295,13 +344,11 @@ async function moveToTavernInteraction(
   if (start.x < VILLAGE_WELL_CLEAR_X) await movePastVillageWell(page, deadline);
   if ((await interactionSnapshot(page, hintText)).hintReady) return;
 
-  // Center the lower-lane approach on the tavern hotspot before moving north.
-  // The previous targetX - 20 / ±18 band could stop around x=810,y=334,
-  // which is just outside the real <85px interaction radius around (825,250).
-  await moveAxisTo(page, "x", targetX, 8, remainingRouteTime(deadline), CORRIDOR_PULSE_MS);
-  if ((await interactionSnapshot(page, hintText)).hintReady) return;
-
-  await moveWithConcurrentKeysUntilHint(page, ["w"], hintText, remainingRouteTime(deadline), CORRIDOR_PULSE_MS);
+  // Once the well is clear, steer both axes in short real-key pulses. The requested
+  // interaction hint remains the success condition while the target coordinates only
+  // guide correction. This prevents a throttled browser from turning one overshoot
+  // into an open-loop miss just outside the tavern interaction radius.
+  await steerTavernApproachToHint(page, targetX, targetY, hintText, deadline);
 }
 
 export async function moveTowardInteraction(
@@ -316,7 +363,7 @@ export async function moveTowardInteraction(
   const deadline = Date.now() + timeout;
 
   if (targetX >= 700 && targetY <= 360 && hintText.includes("войти в таверну")) {
-    await moveToTavernInteraction(page, targetX, hintText, deadline);
+    await moveToTavernInteraction(page, targetX, targetY, hintText, deadline);
     return;
   }
 
