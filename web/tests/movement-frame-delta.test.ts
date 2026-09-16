@@ -34,12 +34,14 @@ test("movement delta ignores invalid or non-positive frame durations", () => {
 });
 
 
-test("new key presses cannot inherit frame time from before the key went down", () => {
+test("held movement charges only observable key time and bounds unrendered catch-up", () => {
   const justPressed = { isDown: true, getDuration: () => 25 };
-  const heldLongerThanFrame = { isDown: true, getDuration: () => 500 };
+  const normallyHeld = { isDown: true, getDuration: () => 500 };
+  const stalledFrame = { isDown: true, getDuration: () => 900 };
   const released = { isDown: false, getDuration: () => 500 };
 
   assert.equal(effectiveHeldDelta(125, justPressed), 25);
-  assert.equal(effectiveHeldDelta(125, heldLongerThanFrame), 125);
+  assert.equal(effectiveHeldDelta(125, normallyHeld), 125);
+  assert.equal(effectiveHeldDelta(800, stalledFrame), 200);
   assert.equal(effectiveHeldDelta(125, released), 0);
 });
