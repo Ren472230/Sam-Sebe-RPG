@@ -403,6 +403,36 @@ async function moveWithConcurrentKeysUntilHint(
 ): Promise<void> {
   await installNavigationDiagnostics(page);
   await releaseMovementKeys(page);
+
+  // A single open-axis leg should keep one real movement key held while the browser
+  // itself watches the requested interaction surface. This avoids spending the
+  // remaining route budget on repeated Playwright key down/up round-trips under CPU
+  // throttling, while preserving the exact WASD event, collision and gameplay speed.
+  if (keys.length === 1) {
+    const key = keys[0];
+    let waitError: unknown = null;
+    await page.keyboard.down(key);
+    try {
+      await page.waitForFunction(
+        ({ hintText }) => (document.getElementById("interaction-hint")?.textContent ?? "").includes(hintText),
+        { hintText },
+        { timeout }
+      );
+    } catch (error) {
+      waitError = error;
+    } finally {
+      if (!page.isClosed()) await page.keyboard.up(key);
+    }
+    await waitForBrowserFrame(page);
+    const snapshot = await interactionSnapshot(page, hintText);
+    if (snapshot.hintReady) return;
+    const reason = waitError instanceof Error ? ` wait=${JSON.stringify(waitError.message)}` : "";
+    throw new Error(
+      `movement ${key} did not reach ${JSON.stringify(hintText)}; `
+        + `end=${JSON.stringify(snapshot.position)} hint=${JSON.stringify(snapshot.hint)}${reason}`
+    );
+  }
+
   const deadline = Date.now() + timeout;
   let stagnantPulses = 0;
 
