@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { applyMovementDelta, effectiveHeldDelta } from "../src/movement.ts";
+import { MAX_MOVEMENT_CATCHUP_MS, applyMovementDelta, effectiveHeldDelta } from "../src/movement.ts";
 
 
 test("movement delta preserves elapsed distance while splitting long frames", () => {
@@ -35,44 +35,54 @@ test("movement delta ignores invalid or non-positive frame durations", () => {
 
 
 test("held movement uses wall-clock hold time when Phaser loop duration is smoothed", () => {
-  const key = { isDown: true, timeDown: 100, getDuration: () => 16 };
+  const key = { isDown: true, timeDown: 100, timeUp: 0, duration: 0, getDuration: () => 16 };
 
-  assert.equal(effectiveHeldDelta(16, key, 900), 200);
-  assert.equal(effectiveHeldDelta(16, key, 916), 200);
-  assert.equal(effectiveHeldDelta(16, key, 932), 200);
-  assert.equal(effectiveHeldDelta(16, key, 948), 200);
+  assert.equal(effectiveHeldDelta(16, key, 900), MAX_MOVEMENT_CATCHUP_MS);
 });
 
 
-test("held movement drains a wall-clock stall through collision-safe substeps", () => {
-  const key = { isDown: true, timeDown: 100, getDuration: () => 16 };
+test("held movement drains catch-up through collision-safe substeps", () => {
+  const key = { isDown: true, timeDown: 100, timeUp: 0, duration: 0, getDuration: () => 16 };
   const steps: number[] = [];
 
   applyMovementDelta(effectiveHeldDelta(16, key, 900), (distance) => steps.push(distance));
 
-  assert.deepEqual(steps, [11, 11, 11, 11]);
-  assert.equal(steps.reduce((total, distance) => total + distance, 0), 44);
+  assert.equal(steps.reduce((total, distance) => total + distance, 0), MAX_MOVEMENT_CATCHUP_MS * 0.22);
+  assert.ok(steps.every((distance) => distance <= 11));
 });
 
 
-test("a short new press after a stall is charged only for its real hold duration", () => {
-  const key = { isDown: true, timeDown: 820, getDuration: () => 16 };
+test("a key pulse completed entirely between render frames is preserved", () => {
+  const key = { isDown: false, timeDown: 100, timeUp: 180, duration: 80, getDuration: () => 80 };
 
-  assert.equal(effectiveHeldDelta(800, key, 900), 80);
+  assert.equal(effectiveHeldDelta(16, key, 900), 80);
+  assert.equal(effectiveHeldDelta(16, key, 916), 0);
+});
+
+
+test("a release applies only the unconsumed remainder of the same physical press", () => {
+  const key = { isDown: true, timeDown: 100, timeUp: 0, duration: 0, getDuration: () => 40 };
+
+  assert.equal(effectiveHeldDelta(16, key, 140), 40);
+  key.isDown = false;
+  key.timeUp = 180;
+  key.duration = 80;
+  assert.equal(effectiveHeldDelta(16, key, 200), 40);
+  assert.equal(effectiveHeldDelta(16, key, 216), 0);
 });
 
 
 test("a new physical press clears leftover catch-up from the previous hold", () => {
-  const key = { isDown: true, timeDown: 100, getDuration: () => 16 };
+  const key = { isDown: true, timeDown: 100, timeUp: 0, duration: 0, getDuration: () => 16 };
 
-  assert.equal(effectiveHeldDelta(16, key, 900), 200);
+  assert.equal(effectiveHeldDelta(16, key, 900), MAX_MOVEMENT_CATCHUP_MS);
   key.timeDown = 1000;
   assert.equal(effectiveHeldDelta(800, key, 1025), 25);
 });
 
 
 test("held movement falls back to Phaser duration when DOM and performance clocks are incomparable", () => {
-  const key = { isDown: true, timeDown: 1_700_000_000_000, getDuration: () => 37 };
+  const key = { isDown: true, timeDown: 1_700_000_000_000, timeUp: 0, duration: 0, getDuration: () => 37 };
 
   assert.equal(effectiveHeldDelta(16, key, 900), 37);
 });
