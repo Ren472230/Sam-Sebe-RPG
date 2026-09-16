@@ -54,6 +54,9 @@ jobs:
       - name: Verify startup controls before the full route
         run: npm run test:e2e -- tests/world-pulse.spec.ts -g "time controls wait for initial state"
 
+      - name: Verify interaction feedback on desktop and mobile
+        run: npm run test:e2e -- tests/00-interaction-feedback.spec.ts
+
       - name: Run browser vertical slice
         run: npm run test:e2e
 
