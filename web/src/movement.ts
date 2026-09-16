@@ -22,14 +22,13 @@ export function effectiveHeldDelta(deltaMs: number, key: HeldMovementKey | null)
   if (!Number.isFinite(heldMs) || heldMs <= 0) return 0;
 
   const timeDown = Number.isFinite(key.timeDown) ? key.timeDown : undefined;
-  let state = heldMovementState.get(key as object);
-  const isNewPress = !state
-    || (timeDown !== undefined && state.lastTimeDown !== undefined && timeDown !== state.lastTimeDown)
-    || heldMs < (state?.lastDurationMs ?? 0);
-
-  if (isNewPress) {
-    state = { backlogMs: 0, lastDurationMs: 0, lastTimeDown: timeDown };
-  }
+  const previousState = heldMovementState.get(key as object);
+  const isNewPress = !previousState
+    || (timeDown !== undefined && previousState.lastTimeDown !== undefined && timeDown !== previousState.lastTimeDown)
+    || heldMs < (previousState?.lastDurationMs ?? 0);
+  const state: HeldMovementState = isNewPress
+    ? { backlogMs: 0, lastDurationMs: 0, lastTimeDown: timeDown }
+    : previousState;
 
   state.backlogMs += Math.min(deltaMs, heldMs);
   state.lastDurationMs = heldMs;
