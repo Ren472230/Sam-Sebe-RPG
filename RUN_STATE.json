@@ -16,10 +16,10 @@
     "merged": false
   },
   "phase": "gameplay_navigation_stability_proof_next",
-  "current_objective": "SESSION_OBJECTIVE: make the 390px first-run presentation feel like a compact playable game by reducing Living World UI vertical overhead and strengthening mobile information hierarchy, while preserving every existing game action, desktop behavior, visual canon and gameplay semantics.",
-  "next_action": "VISUAL: after the current exact validation runs on 82aaf49a24759eef1f766b481a865d4bb6baf0a1 settle, inspect the fresh 390px/desktop browser evidence and make only screenshot-backed visual corrections; preserve any spatial-navigation failure as GAMEPLAY-owned rather than masking it in UI code.",
+  "current_objective": "SESSION_OBJECTIVE: make physical village navigation to the tavern deterministic under normal and CPU-throttled browser execution using real keyboard input, then prove the same exact gameplay SHA across the affected browser gates without changing collisions, movement speed, interaction radius, game rules or global timeouts.",
+  "next_action": "GAMEPLAY: replace the tavern final open-loop north hold with closed-loop interaction steering that continuously corrects horizontal drift toward the existing tavern target while keeping the interaction hint as the only success condition, then validate the focused slow-browser navigation route before dependent gates.",
   "blockers": [
-    "Prototype Web CI run 35061481673 was red on prior validation SHA d07f6c9a8b86624577b02db88959e2e243aa1938 because the broad canonical vertical-slice route timed out inside movePastVillageWell/moveToTavernInteraction. The visual session analyzed that failure as GAMEPLAY-owned: browser console/page errors were absent and the visual contracts/build/desktop+390px interaction checks were green. On the new exact visual validation SHA 82aaf49a24759eef1f766b481a865d4bb6baf0a1, the replacement Prototype Web CI run 35063761292 has already passed web contracts, production build, startup controls and desktop/390px interaction feedback; its broad browser route was still in progress at handoff.",
+    "Latest exact validation SHA 82aaf49a24759eef1f766b481a865d4bb6baf0a1 has Stream Slice Gate 35063761211 SUCCESS and Prototype Web CI 35063761292 SUCCESS, but Living World Integration Gate 35063761201 and Playable Candidate Gate 35063761199 are FAILURE. In Living World Integration, backend/persistence, 55/55 web contracts and production build are green; the browser job fails only in physical navigation. The slow-browser tavern test ends at x=843,y=334 with the tavern hint absent, about one pixel outside the strict existing interaction radius after horizontal overshoot, and the canonical vertical slice later times out in movePastVillageWell/moveToTavernInteraction with no console or page errors.",
     "A real human aesthetic and play-feel judgment remains a later product gate after technical stabilization."
   ],
   "active_run": {
@@ -37,16 +37,18 @@
     "work_head_sha": "b0d0db5baacebdba0a5cff7a139cfd424e7d04cd",
     "verification": [
       "Working visual result HEAD before state handoff: b0d0db5baacebdba0a5cff7a139cfd424e7d04cd on agent/autonomy-pilot-v0.1.",
-      "Exact visual validation PR #56 HEAD: 82aaf49a24759eef1f766b481a865d4bb6baf0a1; compare against d07f6c9a8b86624577b02db88959e2e243aa1938 is two commits changing only web/src/styles.css (+74), web/src/touchControls.ts (+3/-1) and web/tests/touch-visual-contract.test.ts (+15).",
+      "Exact visual validation PR #56 HEAD: 82aaf49a24759eef1f766b481a865d4bb6baf0a1; compare against d07f6c9a shows only web/src/styles.css, web/src/touchControls.ts and web/tests/touch-visual-contract.test.ts changed.",
       "Visual Forge Gate run 35063761278 on 82aaf49a: SUCCESS.",
       "Release Reproducibility Gate run 35063761349 on 82aaf49a: SUCCESS.",
       "Windows Compatibility Gate run 35063761366 on 82aaf49a: SUCCESS.",
-      "Prototype Web CI run 35063761292 on 82aaf49a: web contract tests SUCCESS; production build SUCCESS; startup-controls browser check SUCCESS; desktop/390px interaction-feedback browser check SUCCESS; broad canonical browser vertical-slice step was still in progress at handoff.",
-      "Stream Slice Gate run 35063761211, Living World Integration Gate run 35063761201 and Playable Candidate Gate run 35063761199 were still in progress on 82aaf49a at handoff; their partial results are not promoted to success.",
-      "No reward, price, quest condition, NPC behavior, causality, save format, collision map, movement speed or gameplay action semantics changed in this visual session.",
+      "Prototype Web CI run 35063761292 on 82aaf49a: SUCCESS after handoff.",
+      "Stream Slice Gate run 35063761211 on 82aaf49a: SUCCESS after handoff.",
+      "Living World Integration Gate run 35063761201 on 82aaf49a: FAILURE in real browser physical navigation; backend/persistence, web contracts and production build are green.",
+      "Playable Candidate Gate run 35063761199 on 82aaf49a: FAILURE.",
+      "No reward, price, quest condition, NPC behavior, causality, save format, collision map, movement speed or gameplay action semantics changed in the visual session.",
       "main remains unchanged; PR #49 was not merged; PR #56 remains a draft validation surface."
     ],
-    "next_action": "VISUAL: reconcile the completed exact-SHA 82aaf49a validation results and inspect its fresh mobile/desktop browser evidence; if the visual checks stay green, make only screenshot-backed polish rather than speculative layout changes.",
+    "next_action": "VISUAL: after GAMEPLAY stabilizes the shared physical navigation helper, reconcile exact-SHA mobile/desktop evidence and make only screenshot-backed polish.",
     "owner_decision_required": false,
     "stop_reason": "OBJECTIVE_COMPLETE"
   },
@@ -60,12 +62,12 @@
   "pilot_validation_at_work_head": {
     "work_head_sha": "82aaf49a24759eef1f766b481a865d4bb6baf0a1",
     "visual_forge_gate": {"run_id": 35063761278, "status": "success"},
-    "prototype_web_ci": {"run_id": 35063761292, "status": "in_progress", "verified_scope": "web contracts, production build, startup-controls browser check and desktop/390px interaction-feedback browser check are green; broad canonical browser route still running at handoff"},
+    "prototype_web_ci": {"run_id": 35063761292, "status": "success"},
     "release_reproducibility_gate": {"run_id": 35063761349, "status": "success"},
     "windows_compatibility_gate": {"run_id": 35063761366, "status": "success"},
-    "stream_slice_gate": {"run_id": 35063761211, "status": "in_progress"},
-    "living_world_integration_gate": {"run_id": 35063761201, "status": "in_progress"},
-    "playable_candidate_gate": {"run_id": 35063761199, "status": "in_progress"}
+    "stream_slice_gate": {"run_id": 35063761211, "status": "success"},
+    "living_world_integration_gate": {"run_id": 35063761201, "status": "failure", "failure_scope": "real browser physical navigation: slow tavern entry and canonical vertical-slice route"},
+    "playable_candidate_gate": {"run_id": 35063761199, "status": "failure"}
   },
   "standalone_experiment": {
     "branch": "experiment/standalone-html-v1",
@@ -90,10 +92,10 @@
     "github_releases": "none"
   },
   "known_limitations": [
-    "The broad Prototype Web CI browser route on the latest visual validation SHA 82aaf49a24759eef1f766b481a865d4bb6baf0a1 was still running at handoff. The previous validation SHA d07f6c9a8b86624577b02db88959e2e243aa1938 failed that broad route in GAMEPLAY-owned spatial navigation even though targeted visual checks were green.",
+    "The latest exact validation SHA 82aaf49a24759eef1f766b481a865d4bb6baf0a1 still has red browser-bearing required gates in shared physical navigation even though Stream Slice and Prototype Web CI are green.",
     "An isolated temporary branch agent/autonomy-pilot-validation-v0.1-tmp-unused at 12c4e83c40121cf92dc7007e78ec3e4de424880a was accidentally created during connector operations; it does not affect main, the working branch or PR #56 and should be deleted when branch-ref deletion capability is available.",
     "The complete SVG stream pack remains temporary production-facing art rather than final production art.",
     "A real human experience and aesthetic check remains required after technical stabilization."
   ],
-  "current_blocker": "The prior Prototype Web CI navigation timeout remains the known GAMEPLAY-owned blocker until the broad browser route on latest exact validation SHA 82aaf49a24759eef1f766b481a865d4bb6baf0a1 completes; targeted visual checks on that SHA are already green."
+  "current_blocker": "Living World Integration Gate 35063761201 and Playable Candidate Gate 35063761199 are red on latest exact validation SHA 82aaf49a24759eef1f766b481a865d4bb6baf0a1 due to shared physical browser navigation; fix the test controller without changing game collisions, speed, interaction radius or global timeouts."
 }
