@@ -133,9 +133,6 @@ async function pulseKeys(
   const start = await playerPosition(page);
   for (const key of uniqueKeys) await page.keyboard.down(key);
   try {
-    // Keep real keys down across the awaited interval. If the external controller
-    // is delayed, the independently rendering browser can continue physical movement.
-    // When control resumes we release, observe the real position and correct course.
     await page.waitForTimeout(pulseMs);
   } finally {
     if (!page.isClosed()) {
@@ -179,12 +176,6 @@ export async function moveAxisTo(
   }
   if (Math.abs(initialValue - target) <= tolerance) return;
 
-  // One-axis corridor steering is collision-free on the routes that use this helper.
-  // Keep the real movement key held while the browser itself watches the authoritative
-  // player coordinate. This removes Playwright command round-trips from the movement
-  // budget under CPU throttling without changing WASD events, collisions or game speed.
-  // Keep pulseMs in the public helper signature for existing callers while axis travel
-  // no longer depends on controller pulse cadence.
   void pulseMs;
   const key = movementKey(axis, initialValue, target);
   let waitError: unknown = null;
@@ -213,35 +204,42 @@ export async function moveAxisTo(
   if (reachedOrCrossedTarget(key, end[axis], target, tolerance)) return;
 
   const reason = waitError instanceof Error ? ` wait=${JSON.stringify(waitError.message)}` : "";
-  throw new Error(
-    `player did not reach ${axis}=${target}; last=${JSON.stringify(end)}${reason}`
-  );
+  throw new Error(`player did not reach ${axis}=${target}; last=${JSON.stringify(end)}${reason}`);
 }
 
 async function movePastVillageWell(page: Page, deadline: number): Promise<void> {
-  let stagnantPulses = 0;
-  while (Date.now() < deadline) {
-    const before = await playerPosition(page);
-    if (!Number.isFinite(before.x) || !Number.isFinite(before.y)) break;
-    if (before.x >= VILLAGE_WELL_CLEAR_X) return;
+  const start = await playerPosition(page);
+  if (!Number.isFinite(start.x) || !Number.isFinite(start.y)) {
+    throw new Error(`physical route has invalid start before village well; start=${JSON.stringify(start)}`);
+  }
+  if (start.x >= VILLAGE_WELL_CLEAR_X) return;
 
-    const keys: MovementKey[] = ["d"];
-    // The well occupies x=435..540 and y=330..420. Use the real S key until the
-    // avatar is on the collision-free lower lane, then keep moving right. Longer
-    // corridor pulses reduce Playwright round-trips under CPU throttling without
-    // changing the real key, collision or gameplay-speed semantics.
-    if (before.y < VILLAGE_LOWER_LANE_Y) keys.push("s");
-    const { start, end } = await pulseKeys(page, keys, CORRIDOR_PULSE_MS);
-    await recordPulse(page, keys, VILLAGE_WELL_CLEAR_X, VILLAGE_LOWER_LANE_Y, start, end);
-    const progress = Math.hypot(end.x - start.x, end.y - start.y);
-    stagnantPulses = progress < 1 ? stagnantPulses + 1 : 0;
-    if (stagnantPulses >= 6) break;
+  const keys: MovementKey[] = ["d"];
+  if (start.y < VILLAGE_LOWER_LANE_Y) keys.push("s");
+  let waitError: unknown = null;
+
+  for (const key of keys) await page.keyboard.down(key);
+  try {
+    await page.waitForFunction(
+      ({ clearX }) => Number(document.body.dataset.playerX) >= clearX,
+      { clearX: VILLAGE_WELL_CLEAR_X },
+      { timeout: remainingRouteTime(deadline) }
+    );
+  } catch (error) {
+    waitError = error;
+  } finally {
+    if (!page.isClosed()) {
+      for (const key of [...keys].reverse()) await page.keyboard.up(key);
+    }
   }
 
-  const last = await playerPosition(page);
-  if (last.x < VILLAGE_WELL_CLEAR_X) {
-    throw new Error(`physical route did not clear village well; last=${JSON.stringify(last)}`);
-  }
+  await waitForBrowserFrame(page);
+  const end = await playerPosition(page);
+  await recordPulse(page, keys, VILLAGE_WELL_CLEAR_X, VILLAGE_LOWER_LANE_Y, start, end);
+  if (end.x >= VILLAGE_WELL_CLEAR_X) return;
+
+  const reason = waitError instanceof Error ? ` wait=${JSON.stringify(waitError.message)}` : "";
+  throw new Error(`physical route did not clear village well; last=${JSON.stringify(end)}${reason}`);
 }
 
 function remainingRouteTime(deadline: number): number {
@@ -270,41 +268,18 @@ async function moveInteractionAxis(
   const key = Math.abs(current - target) > TARGET_TOLERANCE
     ? movementKey(axis, current, target)
     : null;
-
-  // Interaction targets are centers, not exact coordinates. First stop near the
-  // interaction edge. This limits travel under delayed keyup and is enough for most
-  // targets without requiring pixel-perfect steering.
   const approachTarget = interactionAxisTarget(current, target);
   if (Math.abs(approachTarget - current) > TARGET_TOLERANCE) {
-    await moveAxisTo(
-      page,
-      axis,
-      approachTarget,
-      10,
-      remainingRouteTime(deadline),
-      STEERING_PULSE_MS
-    );
+    await moveAxisTo(page, axis, approachTarget, 10, remainingRouteTime(deadline), STEERING_PULSE_MS);
   }
   await waitForBrowserFrame(page);
   let after = await interactionSnapshot(page, hintText);
   if (after.hintReady) return true;
   if (!deepenToCenter || !key) return false;
 
-  // Some requested interactions overlap higher-priority hotspots. Mira and nearby
-  // firewood are the canonical example: reaching the outer NPC radius can still show
-  // the wood action. Continue in the same physical direction toward the NPC center,
-  // but never reverse after already crossing it. The scene's interaction grace then
-  // preserves the requested hint long enough for the controller to observe it.
   const afterValue = after.position[axis];
   if (!Number.isFinite(afterValue) || reachedOrCrossedTarget(key, afterValue, target)) return false;
-  await moveAxisTo(
-    page,
-    axis,
-    target,
-    8,
-    remainingRouteTime(deadline),
-    STEERING_PULSE_MS
-  );
+  await moveAxisTo(page, axis, target, 8, remainingRouteTime(deadline), STEERING_PULSE_MS);
   await waitForBrowserFrame(page);
   after = await interactionSnapshot(page, hintText);
   return after.hintReady;
@@ -320,28 +295,11 @@ async function moveToTavernInteraction(
   if (start.x < VILLAGE_WELL_CLEAR_X) await movePastVillageWell(page, deadline);
   if ((await interactionSnapshot(page, hintText)).hintReady) return;
 
-  // Stay on the collision-free lower lane while crossing the village and the full
-  // width of the tavern facade. Only then move vertically toward the door. This
-  // makes controller delay harmless: horizontal overshoot happens in open space,
-  // while the tavern wall itself safely bounds the later upward movement.
   const lowerApproachX = targetX - 20;
-  await moveAxisTo(
-    page,
-    "x",
-    lowerApproachX,
-    18,
-    remainingRouteTime(deadline),
-    CORRIDOR_PULSE_MS
-  );
+  await moveAxisTo(page, "x", lowerApproachX, 18, remainingRouteTime(deadline), CORRIDOR_PULSE_MS);
   if ((await interactionSnapshot(page, hintText)).hintReady) return;
 
-  await moveWithConcurrentKeysUntilHint(
-    page,
-    ["w"],
-    hintText,
-    remainingRouteTime(deadline),
-    CORRIDOR_PULSE_MS
-  );
+  await moveWithConcurrentKeysUntilHint(page, ["w"], hintText, remainingRouteTime(deadline), CORRIDOR_PULSE_MS);
 }
 
 export async function moveTowardInteraction(
@@ -355,9 +313,6 @@ export async function moveTowardInteraction(
   await releaseMovementKeys(page);
   const deadline = Date.now() + timeout;
 
-  // The tavern sits above a long collision-free lower corridor. A sequential
-  // corridor route is more robust than diagonal steering because a delayed keyup
-  // can no longer spend the route budget pushing one axis into a building edge.
   if (targetX >= 700 && targetY <= 360 && hintText.includes("войти в таверну")) {
     await moveToTavernInteraction(page, targetX, hintText, deadline);
     return;
@@ -371,11 +326,6 @@ export async function moveTowardInteraction(
     throw new Error(`player position is invalid before interaction steering; start=${JSON.stringify(steeringStart.position)}`);
   }
 
-  // Keep only one physical movement key active at a time. In a throttled browser,
-  // Playwright key commands can be delayed asymmetrically; a nominal diagonal pulse
-  // can therefore move one axis by ~100px before the other key is released. Sequential
-  // axes preserve real keyboard semantics and let the scene's interaction grace catch
-  // the actual spatial pass through the target radius.
   if (await moveInteractionAxis(page, "x", targetX, hintText, deadline)) return;
   if (await moveInteractionAxis(page, "y", targetY, hintText, deadline, true)) return;
   if (await moveInteractionAxis(page, "x", targetX, hintText, deadline, true)) return;
@@ -414,10 +364,6 @@ async function moveWithConcurrentKeysUntilHint(
   await installNavigationDiagnostics(page);
   await releaseMovementKeys(page);
 
-  // A single open-axis leg should keep one real movement key held while the browser
-  // itself watches the requested interaction surface. This avoids spending the
-  // remaining route budget on repeated Playwright key down/up round-trips under CPU
-  // throttling, while preserving the exact WASD event, collision and gameplay speed.
   if (keys.length === 1) {
     const key = keys[0];
     let waitError: unknown = null;
@@ -445,7 +391,6 @@ async function moveWithConcurrentKeysUntilHint(
 
   const deadline = Date.now() + timeout;
   let stagnantPulses = 0;
-
   try {
     while (Date.now() < deadline) {
       const snapshot = await interactionSnapshot(page, hintText);
@@ -474,13 +419,7 @@ export async function enterTavernSpatially(page: Page): Promise<void> {
   await releaseMovementKeys(page);
   const routeDeadline = Date.now() + 20_000;
 
-  await moveTowardInteraction(
-    page,
-    825,
-    330,
-    "войти в таверну",
-    remainingRouteTime(routeDeadline)
-  );
+  await moveTowardInteraction(page, 825, 330, "войти в таверну", remainingRouteTime(routeDeadline));
   await expect(hint).toContainText("войти в таверну", { timeout: 3_000 });
   await page.keyboard.press("e");
   await expect(page.locator("body")).toHaveAttribute("data-scene", "tavern", { timeout: 10_000 });
