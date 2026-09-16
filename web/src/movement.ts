@@ -14,6 +14,7 @@ type HeldMovementState = {
   consumedMs: number;
   lastTimeDown?: number;
   releaseConsumed: boolean;
+  observedWhileDown: boolean;
 };
 
 const heldMovementState = new WeakMap<object, HeldMovementState>();
@@ -36,9 +37,10 @@ export function effectiveHeldDelta(
   const timeDown = Number.isFinite(key.timeDown) ? Number(key.timeDown) : undefined;
   const previousState = heldMovementState.get(key as object);
   const isNewPress = !previousState
+    || (key.isDown && previousState.releaseConsumed)
     || (timeDown !== undefined && previousState.lastTimeDown !== timeDown);
   const state: HeldMovementState = isNewPress
-    ? { consumedMs: 0, lastTimeDown: timeDown, releaseConsumed: false }
+    ? { consumedMs: 0, lastTimeDown: timeDown, releaseConsumed: false, observedWhileDown: false }
     : previousState;
 
   if (key.isDown) {
@@ -49,11 +51,19 @@ export function effectiveHeldDelta(
     state.consumedMs += appliedMs;
     state.lastTimeDown = timeDown;
     state.releaseConsumed = false;
+    state.observedWhileDown = state.observedWhileDown || appliedMs > 0;
     heldMovementState.set(key as object, state);
     return appliedMs;
   }
 
   if (state.releaseConsumed) return 0;
+  if (state.observedWhileDown) {
+    state.lastTimeDown = timeDown;
+    state.releaseConsumed = true;
+    heldMovementState.set(key as object, state);
+    return 0;
+  }
+
   const heldMs = releasedHeldDurationMs(key);
   if (!Number.isFinite(heldMs) || heldMs <= 0) {
     if (timeDown !== undefined && timeDown > 0) {
