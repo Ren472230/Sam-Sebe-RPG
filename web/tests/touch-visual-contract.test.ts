@@ -33,3 +33,12 @@ test("390px touch and dialogue surfaces preserve large targets and bounded modal
   assert.match(styles, /@media \(max-width: 700px\)[\s\S]*#dialogue\s*\{[\s\S]*position:\s*fixed;[\s\S]*max-height:\s*calc\(100dvh - 16px - env\(safe-area-inset-bottom\)\);/);
   assert.match(styles, /\.dialogue-actions button\s*\{[\s\S]*min-height:\s*44px;/);
 });
+
+test("390px Living World panel stays compact without hiding its actions", () => {
+  assert.match(styles, /@media \(max-width: 700px\)[\s\S]*#world-pulse\s*\{[\s\S]*gap:\s*6px;[\s\S]*padding:\s*7px 8px 8px;/);
+  assert.match(styles, /#world-pulse-events\s*\{[\s\S]*max-height:\s*38px;[\s\S]*overflow-y:\s*auto;[\s\S]*scrollbar-width:\s*thin;/);
+  assert.match(styles, /\.world-pulse-actions\s*\{[\s\S]*display:\s*grid;[\s\S]*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\);/);
+  assert.match(styles, /\.world-pulse-actions button,\s*\.living-npc-actions button\s*\{[\s\S]*min-height:\s*44px;/);
+  assert.match(styles, /\.living-npc-actions\s*\{[\s\S]*flex-wrap:\s*nowrap;[\s\S]*overflow-x:\s*auto;[\s\S]*scroll-snap-type:\s*x proximity;/);
+  assert.match(styles, /\.living-npc-actions button\s*\{[\s\S]*flex:\s*0 0 auto;[\s\S]*white-space:\s*nowrap;/);
+});
