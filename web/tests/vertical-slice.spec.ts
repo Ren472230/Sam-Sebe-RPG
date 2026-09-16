@@ -235,15 +235,22 @@ test("canonical route finishes the firewood quest, advances the Living World, pe
     await expect(page.locator("#hud")).toContainText("дрова 0/5");
     await page.screenshot({ path: "test-results/03-active-quest.png", fullPage: true });
 
+    // The report contract requires a real insufficient-firewood rejection. Exercise
+    // it through Oren's visible UI immediately after accepting the quest, while the
+    // player is already standing beside him, instead of adding another village/tavern
+    // round trip solely for the negative branch.
+    await page.getByRole("button", { name: "Передать дрова" }).click();
+    const dialoguePanel = page.locator("#dialogue");
+    await expect(dialoguePanel).toContainText("Задание: Орену всё ещё нужны дрова. Осталось принести: 5.");
+    await expect(dialoguePanel).not.toContainText("Система:");
+    await page.screenshot({ path: "test-results/04-correct-early-rejection.png", fullPage: true });
+
     await leaveTavern(page);
     for (let count = 1; count <= 5; count += 1) {
       await collectOneFirewood(page, count);
     }
-    await page.screenshot({ path: "test-results/04-five-firewood.png", fullPage: true });
+    await page.screenshot({ path: "test-results/05-five-firewood.png", fullPage: true });
 
-    // The intentional insufficient-firewood branch is covered deterministically by
-    // tests/test_quest.py. The canonical browser route stays on the required V1 path
-    // so aggregate timing measures gameplay instead of a redundant rejection detour.
     await enterTavernFromVillage(page);
     await approachOren(page);
     await page.getByRole("button", { name: "Передать дрова" }).click();
@@ -251,7 +258,7 @@ test("canonical route finishes the firewood quest, advances the Living World, pe
     await expect(page.locator("#hud")).toContainText("монеты 15");
     await expect(page.locator("#hud")).toContainText("доверие Орена 10");
     await expect(page.locator("#dialogue")).toContainText("помню, что ты выручил меня");
-    await page.screenshot({ path: "test-results/05-completed.png", fullPage: true });
+    await page.screenshot({ path: "test-results/06-completed.png", fullPage: true });
     await expect(page.locator("#hud")).toContainText("подожди, чтобы увидеть, что изменится");
 
     await page.reload();
@@ -264,7 +271,7 @@ test("canonical route finishes the firewood quest, advances the Living World, pe
     await expect(page.locator("#hud")).toContainText("дрова доставлены ✓");
     await expect(page.locator("#hud")).toContainText("монеты 15");
     await expect(page.locator("#hud")).toContainText("доверие Орена 10");
-    await page.screenshot({ path: "test-results/06-reloaded.png", fullPage: true });
+    await page.screenshot({ path: "test-results/07-reloaded.png", fullPage: true });
 
     const tickBefore = await readWorldTick(page);
     await waitThroughUi(page, 1, tickBefore + 1);
@@ -275,13 +282,13 @@ test("canonical route finishes the firewood quest, advances the Living World, pe
     expect(publicEventText).toContain("Тален прибыл в таверну с новостями с дороги");
     expect(publicEventText).toContain("Орен ищет хлеб для гостя");
     expect(publicEventText).not.toMatch(/Talen arrived|The Wayfarer's Hearth|with news from the eastern road/i);
-    await page.screenshot({ path: "test-results/07-living-world.png", fullPage: true });
+    await page.screenshot({ path: "test-results/08-living-world.png", fullPage: true });
 
     const report = await fetchPassingReport(page, sessionId!);
     expect(report.verdict).toBe("SAFE FOR HUMAN EXPERIENCE TEST");
     expect(report.living_world.steps_advanced).toBe(6);
     expect(report.living_world.meaningful_events_observed).toBeGreaterThan(0);
-    expect(report.errors.expected_gameplay_failures).toBe(0);
+    expect(report.errors.expected_gameplay_failures).toBe(1);
     expect(report.errors.unexpected_backend_failures).toBe(0);
     expect(report.errors.client_errors).toBe(0);
     expect(report.errors.console_errors).toBe(0);
