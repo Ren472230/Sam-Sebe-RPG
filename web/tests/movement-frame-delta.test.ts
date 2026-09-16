@@ -60,17 +60,17 @@ test("a key pulse completed entirely between render frames is preserved", () => 
 });
 
 
-test("a release applies only the unconsumed remainder of the same physical press", () => {
+test("release after live movement never replays a wall-clock tail", () => {
   let currentDuration = 16;
   const key = { isDown: true, timeDown: 100, timeUp: 0, duration: 0, getDuration: () => currentDuration };
 
   assert.equal(effectiveHeldDelta(16, key, 116), 16);
   key.isDown = false;
-  key.timeUp = 180;
-  key.duration = 80;
+  key.timeUp = 580;
+  key.duration = 480;
   currentDuration = 0;
-  assert.equal(effectiveHeldDelta(16, key, 200), 64);
-  assert.equal(effectiveHeldDelta(16, key, 216), 0);
+  assert.equal(effectiveHeldDelta(16, key, 600), 0);
+  assert.equal(effectiveHeldDelta(16, key, 616), 0);
 });
 
 
