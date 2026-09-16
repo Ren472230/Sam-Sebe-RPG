@@ -1,6 +1,6 @@
 export const PLAYER_SPEED_PX_PER_MS = 0.22;
 export const MAX_MOVEMENT_SUBSTEP_MS = 50;
-export const MAX_MOVEMENT_CATCHUP_MS = MAX_MOVEMENT_SUBSTEP_MS;
+export const MAX_MOVEMENT_CATCHUP_MS = 200;
 
 export type HeldMovementKey = {
   isDown: boolean;
@@ -16,9 +16,26 @@ type HeldMovementState = {
 
 const heldMovementState = new WeakMap<object, HeldMovementState>();
 
-export function effectiveHeldDelta(deltaMs: number, key: HeldMovementKey | null): number {
+function monotonicNowMs(): number {
+  return typeof performance === "undefined" ? Number.NaN : performance.now();
+}
+
+function observedHeldDurationMs(key: HeldMovementKey, nowMs: number): number {
+  const timeDown = Number.isFinite(key.timeDown) ? key.timeDown : undefined;
+  if (timeDown !== undefined && Number.isFinite(nowMs)) {
+    const wallHeldMs = nowMs - timeDown;
+    if (wallHeldMs >= 0) return wallHeldMs;
+  }
+  return key.getDuration();
+}
+
+export function effectiveHeldDelta(
+  deltaMs: number,
+  key: HeldMovementKey | null,
+  nowMs = monotonicNowMs()
+): number {
   if (!key?.isDown || !Number.isFinite(deltaMs) || deltaMs <= 0) return 0;
-  const heldMs = key.getDuration();
+  const heldMs = observedHeldDurationMs(key, nowMs);
   if (!Number.isFinite(heldMs) || heldMs <= 0) return 0;
 
   const timeDown = Number.isFinite(key.timeDown) ? key.timeDown : undefined;
@@ -31,13 +48,10 @@ export function effectiveHeldDelta(deltaMs: number, key: HeldMovementKey | null)
     : previousState;
 
   const heldAdvanceMs = isNewPress
-    ? Math.min(deltaMs, heldMs)
+    ? heldMs
     : Math.max(0, heldMs - state.lastDurationMs);
-  const observedElapsedMs = isNewPress
-    ? heldAdvanceMs
-    : Math.max(Math.min(deltaMs, heldMs), heldAdvanceMs);
 
-  state.backlogMs += observedElapsedMs;
+  state.backlogMs += heldAdvanceMs;
   state.lastDurationMs = heldMs;
   state.lastTimeDown = timeDown;
 
