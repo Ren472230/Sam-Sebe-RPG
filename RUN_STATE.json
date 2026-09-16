@@ -23,11 +23,11 @@
     "A real human aesthetic judgment remains a later product gate after technical stabilization."
   ],
   "active_run": {
-    "run_id": null,
-    "status": "idle",
-    "started_at_utc": null,
-    "lease_expires_at_utc": null,
-    "base_sha": null,
+    "run_id": "2026-09-16-gameplay-navigation-stability-2",
+    "status": "running",
+    "started_at_utc": "2026-09-16T04:50:24Z",
+    "lease_expires_at_utc": "2026-09-16T06:20:24Z",
+    "base_sha": "bc47fd32c66bda293afe2d08cb733923e616da7c",
     "working_branch": "agent/autonomy-pilot-v0.1"
   },
   "last_handoff": {
