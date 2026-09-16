@@ -2,7 +2,7 @@ import Phaser from "phaser";
 
 import { requestId, type VisibleActor } from "../api";
 import { actionControlHint, movementControlHint } from "../controlHints";
-import { applyMovementDelta } from "../movement";
+import { applyAxisMovementDeltas, effectiveHeldDelta } from "../movement";
 import {
   createProductionFirewood,
   createProductionPlayer,
@@ -96,8 +96,12 @@ export class VillageScene extends Phaser.Scene {
 
     const directionX = Number(this.keys.D.isDown) - Number(this.keys.A.isDown);
     const directionY = Number(this.keys.S.isDown) - Number(this.keys.W.isDown);
-    applyMovementDelta(delta, (distance) => {
-      this.movePlayer(directionX * distance, directionY * distance);
+    const xKey = directionX > 0 ? this.keys.D : directionX < 0 ? this.keys.A : null;
+    const yKey = directionY > 0 ? this.keys.S : directionY < 0 ? this.keys.W : null;
+    const xDelta = effectiveHeldDelta(delta, xKey);
+    const yDelta = effectiveHeldDelta(delta, yKey);
+    applyAxisMovementDeltas(xDelta, yDelta, (xDistance, yDistance) => {
+      this.movePlayer(directionX * xDistance, directionY * yDistance);
     });
     this.publishPlayerPosition();
     this.updateHint();
