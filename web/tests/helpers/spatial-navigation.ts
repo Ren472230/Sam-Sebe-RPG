@@ -292,21 +292,39 @@ async function steerTavernApproachToHint(
   hintText: string,
   deadline: number
 ): Promise<void> {
+  const corridorY = targetY + INTERACTION_AXIS_MARGIN;
   try {
-    for (let round = 0; round < 3 && Date.now() < deadline; round += 1) {
-      for (const axis of ["y", "x"] as const) {
-        const snapshot = await interactionSnapshot(page, hintText);
-        if (snapshot.hintReady) return;
-        if (!Number.isFinite(snapshot.position.x) || !Number.isFinite(snapshot.position.y)) break;
-
-        const target = axis === "x" ? targetX : targetY;
-        if (Math.abs(snapshot.position[axis] - target) > TARGET_TOLERANCE) {
-          await moveAxisTo(page, axis, target, 6, remainingRouteTime(deadline));
-        }
-        await waitForBrowserFrame(page);
-        if ((await interactionSnapshot(page, hintText)).hintReady) return;
-      }
+    let snapshot = await interactionSnapshot(page, hintText);
+    if (snapshot.hintReady) return;
+    if (!Number.isFinite(snapshot.position.x) || !Number.isFinite(snapshot.position.y)) {
+      throw new Error(`tavern approach has invalid start; start=${JSON.stringify(snapshot.position)}`);
     }
+
+    // Approach the tavern through a lower collision-safe corridor first. Driving the
+    // Y axis directly at the interaction point can overshoot by one frame to y=315;
+    // at that height the player's collision box overlaps the tavern facade and D
+    // stalls near x=676. The existing interaction margin keeps the horizontal leg
+    // safely below the facade without changing collision geometry or gameplay speed.
+    if (Math.abs(snapshot.position.y - corridorY) > TARGET_TOLERANCE) {
+      await moveAxisTo(page, "y", corridorY, 8, remainingRouteTime(deadline));
+    }
+    snapshot = await interactionSnapshot(page, hintText);
+    if (snapshot.hintReady) return;
+
+    if (Math.abs(snapshot.position.x - targetX) > TARGET_TOLERANCE) {
+      await moveAxisTo(page, "x", targetX, 8, remainingRouteTime(deadline));
+    }
+    snapshot = await interactionSnapshot(page, hintText);
+    if (snapshot.hintReady) return;
+
+    const finalKey = movementKey("y", snapshot.position.y, targetY);
+    await moveWithConcurrentKeysUntilHint(
+      page,
+      [finalKey],
+      hintText,
+      remainingRouteTime(deadline),
+      STEERING_PULSE_MS
+    );
   } finally {
     await releaseMovementKeys(page);
   }
@@ -332,10 +350,9 @@ async function moveToTavernInteraction(
   if (start.x < VILLAGE_WELL_CLEAR_X) await movePastVillageWell(page, deadline);
   if ((await interactionSnapshot(page, hintText)).hintReady) return;
 
-  // Once the well is clear, correct Y first while left of the tavern obstacle, then X
-  // along the open lower edge. Movement ends on observed coordinates rather than a
-  // wall-clock pulse, so CPU throttling cannot turn a single pulse into a large miss.
-  // The interaction hint remains the only success condition.
+  // Once the well is clear, use a collision-safe lower corridor to pass the tavern
+  // facade, align X, then let the interaction hint terminate the final vertical leg.
+  // The hint remains the only success condition.
   await steerTavernApproachToHint(page, targetX, targetY, hintText, deadline);
 }
 
