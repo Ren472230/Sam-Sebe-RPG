@@ -285,8 +285,13 @@ export async function moveTowardInteraction(
       if (yKey && yActive && reachedOrCrossedTarget(yKey, y, targetY)) yActive = false;
 
       const keys: MovementKey[] = [];
-      if (xKey && xActive) keys.push(xKey);
+      // Playwright sends keydown/keyup commands sequentially. Under a throttled or
+      // overloaded browser the first key can therefore stay held much longer than
+      // the second one. Give the vertical key that unavoidable extra dwell time so
+      // diagonal approaches finish height before horizontal overshoot; once Y is
+      // complete, X continues alone. All movement still uses real keyboard events.
       if (yKey && yActive) keys.push(yKey);
+      if (xKey && xActive) keys.push(xKey);
 
       if (keys.length === 0) {
         // Both target coordinates have been physically reached/crossed. Give the
