@@ -111,6 +111,17 @@ function movementKey(axis: "x" | "y", current: number, target: number): Movement
   return current < target ? "s" : "w";
 }
 
+function reachedOrCrossedTarget(
+  key: MovementKey,
+  current: number,
+  target: number,
+  tolerance = TARGET_TOLERANCE
+): boolean {
+  if (!Number.isFinite(current)) return false;
+  if (Math.abs(current - target) <= tolerance) return true;
+  return key === "d" || key === "s" ? current >= target : current <= target;
+}
+
 async function pulseKeys(
   page: Page,
   keys: MovementKey[],
@@ -159,18 +170,30 @@ export async function moveAxisTo(
   await installNavigationDiagnostics(page);
   await releaseMovementKeys(page);
   const deadline = Date.now() + timeout;
+  const initial = await playerPosition(page);
+  const initialValue = initial[axis];
+  if (!Number.isFinite(initialValue)) {
+    throw new Error(`player position is invalid before ${axis}=${target}; start=${JSON.stringify(initial)}`);
+  }
+  if (Math.abs(initialValue - target) <= tolerance) return;
+
+  // Pick one physical direction for this axis and keep it for the whole approach.
+  // A delayed key release may carry the avatar past the exact coordinate, so crossing
+  // the target is success. Reversing after a crossing creates the oscillation seen in CI.
+  const key = movementKey(axis, initialValue, target);
   let stagnantPulses = 0;
 
   try {
     while (Date.now() < deadline) {
       const before = await playerPosition(page);
       const value = before[axis];
-      if (Number.isFinite(value) && Math.abs(value - target) <= tolerance) return;
+      if (reachedOrCrossedTarget(key, value, target, tolerance)) return;
       if (!Number.isFinite(value)) break;
 
-      const key = movementKey(axis, value, target);
       const { start, end } = await pulseKeys(page, [key]);
       await recordAxisTrace(page, { axis, target, reached: start, released: end });
+      if (reachedOrCrossedTarget(key, end[axis], target, tolerance)) return;
+
       const progress = Math.abs(end[axis] - start[axis]);
       stagnantPulses = progress < 1 ? stagnantPulses + 1 : 0;
       if (stagnantPulses >= 5) break;
@@ -230,6 +253,27 @@ export async function moveTowardInteraction(
     await movePastVillageWell(page, deadline);
   }
 
+  const steeringStart = await interactionSnapshot(page, hintText);
+  if (steeringStart.hintReady) return;
+  const startX = steeringStart.position.x;
+  const startY = steeringStart.position.y;
+  if (!Number.isFinite(startX) || !Number.isFinite(startY)) {
+    throw new Error(`player position is invalid before interaction steering; start=${JSON.stringify(steeringStart.position)}`);
+  }
+
+  // Each axis receives one direction for the entire interaction approach. Once the
+  // avatar reaches or crosses that coordinate, the axis is permanently released.
+  // This preserves real keyboard movement while preventing delayed releases from
+  // causing A<->D or W<->S oscillation around a target coordinate.
+  const xKey = Math.abs(targetX - startX) > TARGET_TOLERANCE
+    ? movementKey("x", startX, targetX)
+    : null;
+  const yKey = Math.abs(targetY - startY) > TARGET_TOLERANCE
+    ? movementKey("y", startY, targetY)
+    : null;
+  let xActive = xKey !== null;
+  let yActive = yKey !== null;
+
   try {
     while (Date.now() < deadline) {
       const snapshot = await interactionSnapshot(page, hintText);
@@ -237,16 +281,20 @@ export async function moveTowardInteraction(
       const { x, y } = snapshot.position;
       if (!Number.isFinite(x) || !Number.isFinite(y)) break;
 
-      const dx = targetX - x;
-      const dy = targetY - y;
+      if (xKey && xActive && reachedOrCrossedTarget(xKey, x, targetX)) xActive = false;
+      if (yKey && yActive && reachedOrCrossedTarget(yKey, y, targetY)) yActive = false;
+
       const keys: MovementKey[] = [];
-      if (Math.abs(dx) > TARGET_TOLERANCE) keys.push(movementKey("x", x, targetX));
-      if (Math.abs(dy) > TARGET_TOLERANCE) keys.push(movementKey("y", y, targetY));
+      if (xKey && xActive) keys.push(xKey);
+      if (yKey && yActive) keys.push(yKey);
 
       if (keys.length === 0) {
-        // The supplied coordinate is an approach point. Probe one physical step so
-        // a nearby interaction radius can refresh before declaring failure.
-        keys.push(y >= targetY ? "w" : "s");
+        // Both target coordinates have been physically reached/crossed. Give the
+        // scene one extra frame to publish the interaction hint, then stop rather
+        // than reversing an axis and moving away from the intended interaction.
+        await waitForBrowserFrame(page);
+        if ((await interactionSnapshot(page, hintText)).hintReady) return;
+        break;
       }
 
       const { start, end } = await pulseKeys(page, keys);
@@ -254,6 +302,9 @@ export async function moveTowardInteraction(
 
       const after = await interactionSnapshot(page, hintText);
       if (after.hintReady) return;
+
+      if (xKey && xActive && reachedOrCrossedTarget(xKey, end.x, targetX)) xActive = false;
+      if (yKey && yActive && reachedOrCrossedTarget(yKey, end.y, targetY)) yActive = false;
 
       const progress = Math.hypot(end.x - start.x, end.y - start.y);
       stagnantPulses = progress < 1 ? stagnantPulses + 1 : 0;
