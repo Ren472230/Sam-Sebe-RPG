@@ -1,16 +1,17 @@
 export const PLAYER_SPEED_PX_PER_MS = 0.22;
 export const MAX_MOVEMENT_SUBSTEP_MS = 50;
-export const MAX_MOVEMENT_CATCHUP_MS = 200;
+export const MAX_MOVEMENT_CATCHUP_MS = 400;
 
 export type HeldMovementKey = {
   isDown: boolean;
   getDuration: () => number;
   timeDown?: number;
+  timeUp?: number;
+  duration?: number;
 };
 
 type HeldMovementState = {
-  backlogMs: number;
-  lastDurationMs: number;
+  consumedMs: number;
   lastTimeDown?: number;
 };
 
@@ -22,10 +23,18 @@ function monotonicNowMs(): number {
 
 function observedHeldDurationMs(key: HeldMovementKey, nowMs: number): number {
   const timeDown = Number.isFinite(key.timeDown) ? key.timeDown : undefined;
-  if (timeDown !== undefined && Number.isFinite(nowMs)) {
+  if (key.isDown && timeDown !== undefined && Number.isFinite(nowMs)) {
     const wallHeldMs = nowMs - timeDown;
     if (wallHeldMs >= 0) return wallHeldMs;
   }
+
+  if (!key.isDown) {
+    if (Number.isFinite(key.duration) && Number(key.duration) >= 0) return Number(key.duration);
+    if (timeDown !== undefined && Number.isFinite(key.timeUp) && Number(key.timeUp) >= timeDown) {
+      return Number(key.timeUp) - timeDown;
+    }
+  }
+
   return key.getDuration();
 }
 
@@ -34,29 +43,22 @@ export function effectiveHeldDelta(
   key: HeldMovementKey | null,
   nowMs = monotonicNowMs()
 ): number {
-  if (!key?.isDown || !Number.isFinite(deltaMs) || deltaMs <= 0) return 0;
+  if (!key || !Number.isFinite(deltaMs) || deltaMs <= 0) return 0;
   const heldMs = observedHeldDurationMs(key, nowMs);
   if (!Number.isFinite(heldMs) || heldMs <= 0) return 0;
 
   const timeDown = Number.isFinite(key.timeDown) ? key.timeDown : undefined;
   const previousState = heldMovementState.get(key as object);
   const isNewPress = !previousState
-    || (timeDown !== undefined && previousState.lastTimeDown !== undefined && timeDown !== previousState.lastTimeDown)
-    || heldMs < (previousState?.lastDurationMs ?? 0);
+    || (timeDown !== undefined && previousState.lastTimeDown !== undefined && timeDown !== previousState.lastTimeDown);
   const state: HeldMovementState = isNewPress
-    ? { backlogMs: 0, lastDurationMs: 0, lastTimeDown: timeDown }
+    ? { consumedMs: 0, lastTimeDown: timeDown }
     : previousState;
 
-  const heldAdvanceMs = isNewPress
-    ? heldMs
-    : Math.max(0, heldMs - state.lastDurationMs);
-
-  state.backlogMs += heldAdvanceMs;
-  state.lastDurationMs = heldMs;
+  const remainingMs = Math.max(0, heldMs - state.consumedMs);
+  const appliedMs = Math.min(remainingMs, MAX_MOVEMENT_CATCHUP_MS);
+  state.consumedMs += appliedMs;
   state.lastTimeDown = timeDown;
-
-  const appliedMs = Math.min(state.backlogMs, MAX_MOVEMENT_CATCHUP_MS);
-  state.backlogMs -= appliedMs;
   heldMovementState.set(key as object, state);
   return appliedMs;
 }
