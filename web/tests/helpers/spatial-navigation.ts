@@ -249,16 +249,21 @@ async function moveInteractionAxis(
   axis: "x" | "y",
   target: number,
   hintText: string,
-  deadline: number
+  deadline: number,
+  deepenToCenter = false
 ): Promise<boolean> {
   const snapshot = await interactionSnapshot(page, hintText);
   if (snapshot.hintReady) return true;
   const current = snapshot.position[axis];
   if (!Number.isFinite(current)) return false;
 
-  // Interaction targets are centers, not exact coordinates. Stop each physical axis
-  // near the edge of the interaction radius. This leaves room for delayed keyup while
-  // still crossing the real spatial interaction band instead of chasing one pixel.
+  const key = Math.abs(current - target) > TARGET_TOLERANCE
+    ? movementKey(axis, current, target)
+    : null;
+
+  // Interaction targets are centers, not exact coordinates. First stop near the
+  // interaction edge. This limits travel under delayed keyup and is enough for most
+  // targets without requiring pixel-perfect steering.
   const approachTarget = interactionAxisTarget(current, target);
   if (Math.abs(approachTarget - current) > TARGET_TOLERANCE) {
     await moveAxisTo(
@@ -271,7 +276,28 @@ async function moveInteractionAxis(
     );
   }
   await waitForBrowserFrame(page);
-  return (await interactionSnapshot(page, hintText)).hintReady;
+  let after = await interactionSnapshot(page, hintText);
+  if (after.hintReady) return true;
+  if (!deepenToCenter || !key) return false;
+
+  // Some requested interactions overlap higher-priority hotspots. Mira and nearby
+  // firewood are the canonical example: reaching the outer NPC radius can still show
+  // the wood action. Continue in the same physical direction toward the NPC center,
+  // but never reverse after already crossing it. The scene's interaction grace then
+  // preserves the requested hint long enough for the controller to observe it.
+  const afterValue = after.position[axis];
+  if (!Number.isFinite(afterValue) || reachedOrCrossedTarget(key, afterValue, target)) return false;
+  await moveAxisTo(
+    page,
+    axis,
+    target,
+    8,
+    remainingRouteTime(deadline),
+    STEERING_PULSE_MS
+  );
+  await waitForBrowserFrame(page);
+  after = await interactionSnapshot(page, hintText);
+  return after.hintReady;
 }
 
 async function moveToTavernInteraction(
@@ -341,7 +367,8 @@ export async function moveTowardInteraction(
   // axes preserve real keyboard semantics and let the scene's interaction grace catch
   // the actual spatial pass through the target radius.
   if (await moveInteractionAxis(page, "x", targetX, hintText, deadline)) return;
-  if (await moveInteractionAxis(page, "y", targetY, hintText, deadline)) return;
+  if (await moveInteractionAxis(page, "y", targetY, hintText, deadline, true)) return;
+  if (await moveInteractionAxis(page, "x", targetX, hintText, deadline, true)) return;
 
   const snapshot = await interactionSnapshot(page, hintText);
   if (snapshot.hintReady) return;
