@@ -292,32 +292,20 @@ async function steerTavernApproachToHint(
   hintText: string,
   deadline: number
 ): Promise<void> {
-  let stagnantPulses = 0;
   try {
-    while (Date.now() < deadline) {
-      const snapshot = await interactionSnapshot(page, hintText);
-      if (snapshot.hintReady) return;
-      if (!Number.isFinite(snapshot.position.x) || !Number.isFinite(snapshot.position.y)) break;
+    for (let round = 0; round < 3 && Date.now() < deadline; round += 1) {
+      for (const axis of ["y", "x"] as const) {
+        const snapshot = await interactionSnapshot(page, hintText);
+        if (snapshot.hintReady) return;
+        if (!Number.isFinite(snapshot.position.x) || !Number.isFinite(snapshot.position.y)) break;
 
-      const keys: MovementKey[] = [];
-      if (Math.abs(snapshot.position.x - targetX) > TARGET_TOLERANCE) {
-        keys.push(movementKey("x", snapshot.position.x, targetX));
-      }
-      if (Math.abs(snapshot.position.y - targetY) > TARGET_TOLERANCE) {
-        keys.push(movementKey("y", snapshot.position.y, targetY));
-      }
-
-      if (keys.length === 0) {
+        const target = axis === "x" ? targetX : targetY;
+        if (Math.abs(snapshot.position[axis] - target) > TARGET_TOLERANCE) {
+          await moveAxisTo(page, axis, target, 6, remainingRouteTime(deadline));
+        }
         await waitForBrowserFrame(page);
         if ((await interactionSnapshot(page, hintText)).hintReady) return;
-        break;
       }
-
-      const { start, end } = await pulseKeys(page, keys, STEERING_PULSE_MS);
-      await recordPulse(page, keys, targetX, targetY, start, end);
-      const progress = Math.hypot(end.x - start.x, end.y - start.y);
-      stagnantPulses = progress < 1 ? stagnantPulses + 1 : 0;
-      if (stagnantPulses >= 6) break;
     }
   } finally {
     await releaseMovementKeys(page);
@@ -327,7 +315,7 @@ async function steerTavernApproachToHint(
   if (snapshot.hintReady) return;
   const diagnostics = await page.evaluate(() => document.body.dataset.movementTrace ?? null);
   throw new Error(
-    `closed-loop tavern approach did not reach ${JSON.stringify(hintText)}; `
+    `coordinate-steered tavern approach did not reach ${JSON.stringify(hintText)}; `
       + `end=${JSON.stringify(snapshot.position)} hint=${JSON.stringify(snapshot.hint)} `
       + `movementTrace=${JSON.stringify(diagnostics)}`
   );
@@ -344,10 +332,10 @@ async function moveToTavernInteraction(
   if (start.x < VILLAGE_WELL_CLEAR_X) await movePastVillageWell(page, deadline);
   if ((await interactionSnapshot(page, hintText)).hintReady) return;
 
-  // Once the well is clear, steer both axes in short real-key pulses. The requested
-  // interaction hint remains the success condition while the target coordinates only
-  // guide correction. This prevents a throttled browser from turning one overshoot
-  // into an open-loop miss just outside the tavern interaction radius.
+  // Once the well is clear, correct Y first while left of the tavern obstacle, then X
+  // along the open lower edge. Movement ends on observed coordinates rather than a
+  // wall-clock pulse, so CPU throttling cannot turn a single pulse into a large miss.
+  // The interaction hint remains the only success condition.
   await steerTavernApproachToHint(page, targetX, targetY, hintText, deadline);
 }
 
