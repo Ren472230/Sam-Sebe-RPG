@@ -42,8 +42,10 @@ function installTouchControls(): void {
   const action = actionButton();
   root.append(dpad, action);
 
+  const playtestTools = document.getElementById("playtest-tools");
   const dialogue = document.getElementById("dialogue");
-  if (dialogue) app.insertBefore(root, dialogue);
+  if (playtestTools) app.insertBefore(root, playtestTools);
+  else if (dialogue) app.insertBefore(root, dialogue);
   else app.append(root);
 
   bindActionContext(action);
