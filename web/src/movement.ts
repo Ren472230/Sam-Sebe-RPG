@@ -30,7 +30,14 @@ export function effectiveHeldDelta(deltaMs: number, key: HeldMovementKey | null)
     ? { backlogMs: 0, lastDurationMs: 0, lastTimeDown: timeDown }
     : previousState;
 
-  state.backlogMs += Math.min(deltaMs, heldMs);
+  const heldAdvanceMs = isNewPress
+    ? Math.min(deltaMs, heldMs)
+    : Math.max(0, heldMs - state.lastDurationMs);
+  const observedElapsedMs = isNewPress
+    ? heldAdvanceMs
+    : Math.max(Math.min(deltaMs, heldMs), heldAdvanceMs);
+
+  state.backlogMs += observedElapsedMs;
   state.lastDurationMs = heldMs;
   state.lastTimeDown = timeDown;
 

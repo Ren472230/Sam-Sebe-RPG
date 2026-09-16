@@ -48,6 +48,25 @@ test("held movement amortizes a continuous render stall instead of discarding or
 });
 
 
+test("held movement recovers elapsed hold time when Phaser smooths a stalled frame delta", () => {
+  let heldMs = 16;
+  const key = { isDown: true, timeDown: 150, getDuration: () => heldMs };
+
+  assert.equal(effectiveHeldDelta(16, key), 16);
+
+  heldMs = 816;
+  assert.equal(effectiveHeldDelta(16, key), 200);
+  heldMs = 832;
+  assert.equal(effectiveHeldDelta(16, key), 200);
+  heldMs = 848;
+  assert.equal(effectiveHeldDelta(16, key), 200);
+  heldMs = 864;
+  assert.equal(effectiveHeldDelta(16, key), 200);
+  heldMs = 880;
+  assert.equal(effectiveHeldDelta(16, key), 64);
+});
+
+
 test("a short new press after a stall is charged only for its observed hold duration", () => {
   const key = { isDown: true, timeDown: 200, getDuration: () => 80 };
 
