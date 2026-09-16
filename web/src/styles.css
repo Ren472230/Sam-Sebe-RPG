@@ -400,6 +400,80 @@ button, textarea { font: inherit; }
     font-size: 10px;
   }
 
+  #world-pulse {
+    gap: 6px;
+    padding: 7px 8px 8px;
+  }
+
+  .world-pulse-copy {
+    display: grid;
+    gap: 2px;
+  }
+
+  .world-pulse-heading {
+    gap: 8px;
+  }
+
+  #world-pulse h2 {
+    font-size: 13px;
+  }
+
+  #world-pulse-tick {
+    font-size: 10px;
+  }
+
+  #world-pulse-nearby {
+    margin: 0;
+    overflow: hidden;
+    color: #c9c7c1;
+    font-size: 11px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  #world-pulse-events {
+    display: block;
+    max-height: 38px;
+    margin: 2px 0 0;
+    overflow-y: auto;
+    padding-left: 16px;
+    font-size: 11px;
+    line-height: 1.35;
+    scrollbar-width: thin;
+  }
+
+  .world-pulse-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .world-pulse-actions button,
+  .living-npc-actions button {
+    min-height: 44px;
+  }
+
+  .world-pulse-actions button {
+    width: 100%;
+    padding: 6px 8px;
+  }
+
+  .living-npc-actions {
+    flex-wrap: nowrap;
+    gap: 6px;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    padding: 6px 0 2px;
+    scroll-snap-type: x proximity;
+    scrollbar-width: thin;
+  }
+
+  .living-npc-actions button {
+    flex: 0 0 auto;
+    scroll-snap-align: start;
+    white-space: nowrap;
+  }
+
   .stream-mode #hud {
     display: flex;
     padding: 0 16px;
