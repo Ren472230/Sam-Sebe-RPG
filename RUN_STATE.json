@@ -15,35 +15,39 @@
     "draft": true,
     "merged": false
   },
-  "phase": "gameplay_navigation_stabilization_session",
+  "phase": "gameplay_navigation_stability_proof_next",
   "current_objective": "SESSION_OBJECTIVE: stabilize the real physical village route around the well and tavern so the navigation-stability checks and canonical vertical-slice browser route pass from one exact SHA without changing collisions, gameplay speed, canonical state or real keyboard semantics.",
-  "next_action": "GAMEPLAY: use the fresh 74200fb browser evidence to prove why movePastVillageWell and post-well target steering stop before the tavern interaction, apply the smallest controller/test-harness correction, then validate the affected browser gates on one exact SHA.",
+  "next_action": "GAMEPLAY: complete the roadmap stability proof by obtaining two additional consecutive Stream Slice successes on exact validation SHA d07f6c9a8b86624577b02db88959e2e243aa1938 after reconciling the still-running Prototype Web CI and Playable Candidate checks; keep dependent browser gates green before moving to telemetry integration.",
   "blockers": [
-    "Fresh exact-head validation 74200fb has red browser-bearing required gates caused by real physical navigation: the slow/stalled controller can stop before clearing the village well and the canonical route can stop at x=660,y=334 before the tavern interaction hint appears.",
-    "A real human aesthetic judgment remains a later product gate after technical stabilization."
+    "The village-well/tavern physical-navigation blocker is resolved on exact validation SHA d07f6c9a8b86624577b02db88959e2e243aa1938. Final seven-gate release readiness is not yet claimed because Prototype Web CI run 35061481673 and Playable Candidate Gate run 35061481691 were still in progress at handoff, with no fresh red result observed.",
+    "A real human experience and aesthetic judgment remains a later product gate after technical stabilization."
   ],
   "active_run": {
-    "run_id": "2026-09-16-gameplay-navigation-stability-2",
-    "status": "running",
-    "started_at_utc": "2026-09-16T04:50:24Z",
-    "lease_expires_at_utc": "2026-09-16T06:20:24Z",
-    "base_sha": "bc47fd32c66bda293afe2d08cb733923e616da7c",
+    "run_id": null,
+    "status": "idle",
+    "started_at_utc": null,
+    "lease_expires_at_utc": null,
+    "base_sha": null,
     "working_branch": "agent/autonomy-pilot-v0.1"
   },
   "last_handoff": {
-    "completed_at_utc": "2026-09-16T04:40:00Z",
-    "result": "SESSION_OBJECTIVE: make the existing interaction feedback read as one coherent action system on desktop and 390px mobile. CHECKPOINT 1: added a distinct interaction ribbon in web/src/touchFeedback.css using the project palette: neutral turquoise-accented 'Подсказка' state and scarlet/turquoise 'Действие' contextual state, with bounded wrapping on mobile. CHECKPOINT 2: web/src/touchControls.ts now mirrors the existing contextual action into data-contextual on both the touch action and interaction hint, exposes the hint as an aria-live status surface, and keeps the stable accessible action name 'Взаимодействовать'; gameplay keyboard/E semantics are unchanged. CHECKPOINT 3: added interaction-feedback-contract.test.ts and wired it into npm run test:contract; exact validation SHA 74200fb113395577ed04ada5961122ed99618658 passes the full 53/53 web/UI contract set and production build within the 1.2 MB JS budget. CHECKPOINT 4: added 00-interaction-feedback.spec.ts and a dedicated Prototype Web CI step before the long browser routes. Exact validation SHA 74200fb113395577ed04ada5961122ed99618658 passes startup controls plus the dedicated desktop/390px interaction-feedback browser acceptance: visible accessible ribbon, stable 390px action control, no horizontal overflow, durable pressed visual feedback and screenshot capture. CHECKPOINT 5: Visual Forge Gate run 35056361800 is green on the same validation SHA. The later full browser route remains owned by the known GAMEPLAY spatial-navigation stabilization and is not part of this visual objective. STOP_REASON: OBJECTIVE_COMPLETE. Owner decision is not required.",
-    "head_sha": "220d1306f1342f759be1f788d8a2aa56d9e004f9",
-    "work_head_sha": "220d1306f1342f759be1f788d8a2aa56d9e004f9",
+    "completed_at_utc": "2026-09-16T06:06:45Z",
+    "result": "SESSION_OBJECTIVE: stabilize the real physical village route around the well and tavern so navigation-stability checks and the canonical browser route pass from one exact SHA using real keyboard movement. CHECKPOINT 1: fresh failure geometry proved the tavern controller could finish near x=810,y=334, about 85.3px from the real tavern hotspot (825,250), just outside the strict <85px interaction radius; the previous targetX-20 with +/-18 tolerance created this edge condition after the well. CHECKPOINT 2: working commit 65b821a4ffa50d63b0b4b2139cd0cb7a90070ba8 changes only web/tests/helpers/spatial-navigation.ts, centering the lower-lane approach on x=825 with 8px tolerance before the final northward real-keyboard movement; collisions, gameplay speed, canonical state and timeouts are unchanged. CHECKPOINT 3: exact validation SHA d07f6c9a8b86624577b02db88959e2e243aa1938 passes Stream Slice Gate run 35061481654: 22 Stream Slice Python tests, preflight, 53/53 web contracts, production build and 3/3 real Chromium Stream Slice tests. CHECKPOINT 4: the same validation SHA passes Living World Integration Gate run 35061481705 including the real browser critical route, plus Visual Forge run 35061481676, Windows Compatibility run 35061481682 and Release Reproducibility run 35061481768. CHECKPOINT 5: Playable Candidate run 35061481691 had already passed its real browser integrated route, Living NPC and Social World browser acceptance before entering Stream Slice acceptance; Prototype Web CI run 35061481673 had green contracts, build, startup controls and desktop/mobile interaction checks and was still executing its broad browser suite. No fresh required-gate failure was observed at handoff. STOP_REASON: OBJECTIVE_COMPLETE. Owner decision is not required.",
+    "head_sha": "65b821a4ffa50d63b0b4b2139cd0cb7a90070ba8",
+    "work_head_sha": "65b821a4ffa50d63b0b4b2139cd0cb7a90070ba8",
     "verification": [
-      "Working visual result HEAD before state handoff: 220d1306f1342f759be1f788d8a2aa56d9e004f9 on agent/autonomy-pilot-v0.1.",
-      "Exact validation PR #56 head: 74200fb113395577ed04ada5961122ed99618658.",
-      "Prototype Web CI run 35056361713 on 74200fb: web/UI contracts SUCCESS 53/53; production build SUCCESS; startup-controls browser test and dedicated desktop/390px interaction-feedback browser acceptance SUCCESS.",
-      "Dedicated mobile acceptance verifies no horizontal overflow, stable touch action label/context, durable pressed feedback and captures interaction-feedback-mobile-390.png.",
-      "Visual Forge Gate run 35056361800 on 74200fb: SUCCESS.",
-      "No gameplay rule, reward, quest condition, NPC causality, save format or spatial-navigation mechanic was changed by this session."
+      "Working gameplay result HEAD before state handoff: 65b821a4ffa50d63b0b4b2139cd0cb7a90070ba8 on agent/autonomy-pilot-v0.1; compare against be85e74ec86b3995051ca3d4ae7feb7c5eecef3c is one commit modifying only web/tests/helpers/spatial-navigation.ts (4 additions, 2 deletions).",
+      "Exact validation PR #56 head: d07f6c9a8b86624577b02db88959e2e243aa1938; main remains unchanged and PR #56 remains draft/unmerged.",
+      "Stream Slice Gate run 35061481654 on d07f6c9a: SUCCESS. Stream Slice Python tests 22 passed; preflight PASS; web contracts 53/53; production build PASS; Stream Slice Chromium acceptance 3/3 passed in about 3.5 minutes.",
+      "Living World Integration Gate run 35061481705 on d07f6c9a: SUCCESS. Backend/persistence and Client contract + build + Chromium both succeeded, including the real browser critical route.",
+      "Visual Forge Gate run 35061481676 on d07f6c9a: SUCCESS.",
+      "Windows Compatibility Gate run 35061481682 on d07f6c9a: SUCCESS.",
+      "Release Reproducibility Gate run 35061481768 on d07f6c9a: SUCCESS.",
+      "Playable Candidate Gate run 35061481691 on d07f6c9a was still in progress at handoff; backend was green and the web job had already passed the real browser integrated route, Living NPC acceptance and Social World acceptance before Stream Slice acceptance started.",
+      "Prototype Web CI run 35061481673 on d07f6c9a was still in progress at handoff; contracts, build, startup controls and desktop/mobile interaction-feedback checks were green before the broad browser suite.",
+      "No gameplay rule, reward, quest condition, NPC causality, save format, collision map, movement speed or global timeout was changed by this session."
     ],
-    "next_action": "VISUAL: inspect the 390px Living World / journal information hierarchy in a dedicated browser check and improve only evidence-backed density, readability or reachability issues.",
+    "next_action": "GAMEPLAY: prove route stability with two more consecutive Stream Slice successes on exact validation SHA d07f6c9a8b86624577b02db88959e2e243aa1938, after reconciling the two in-progress required gates; then advance only if the dependent browser gates remain green.",
     "owner_decision_required": false,
     "stop_reason": "OBJECTIVE_COMPLETE"
   },
@@ -52,17 +56,17 @@
     "reason": null
   },
   "verified_gates_at_authoritative_head": {
-    "note": "The active server-backed line still requires GAMEPLAY physical-navigation stabilization before final technical release readiness."
+    "note": "The authoritative integration PR #53 remains unchanged. Fresh navigation evidence is proven on validation SHA d07f6c9a8b86624577b02db88959e2e243aa1938 and the matching working-tree change is committed on agent/autonomy-pilot-v0.1 at 65b821a4ffa50d63b0b4b2139cd0cb7a90070ba8."
   },
   "pilot_validation_at_work_head": {
-    "work_head_sha": "74200fb113395577ed04ada5961122ed99618658",
-    "visual_forge_gate": {"run_id": 35056361800, "status": "success"},
-    "prototype_web_ci": {"run_id": 35056361713, "status": "completed_with_later_browser_failure", "verified_scope": "53/53 web/UI contracts, production build, startup-controls browser test and dedicated desktop/390px interaction-feedback browser acceptance are green; later gameplay browser route remains red"},
-    "release_reproducibility_gate": {"run_id": 35056361710, "status": "completed_status_to_reconcile"},
-    "windows_compatibility_gate": {"run_id": 35056361781, "status": "completed_status_to_reconcile"},
-    "stream_slice_gate": {"run_id": 35056361899, "status": "completed_status_to_reconcile"},
-    "living_world_integration_gate": {"run_id": 35056361753, "status": "failure", "failure_scope": "real browser critical route: two village-well clearing failures plus canonical tavern-entry failure"},
-    "playable_candidate_gate": {"run_id": 35056361757, "status": "failure", "failure_scope": "browser-bearing job failure; backend + Living World job green"}
+    "work_head_sha": "d07f6c9a8b86624577b02db88959e2e243aa1938",
+    "visual_forge_gate": {"run_id": 35061481676, "status": "success"},
+    "prototype_web_ci": {"run_id": 35061481673, "status": "in_progress", "verified_scope": "53/53 web/UI contracts, production build, startup-controls browser test and desktop/390px interaction-feedback browser acceptance are green; broad browser suite still running at handoff"},
+    "release_reproducibility_gate": {"run_id": 35061481768, "status": "success"},
+    "windows_compatibility_gate": {"run_id": 35061481682, "status": "success"},
+    "stream_slice_gate": {"run_id": 35061481654, "status": "success", "verified_scope": "22 Stream Slice Python tests, preflight, 53/53 web contracts, production build and 3/3 real Chromium Stream Slice tests passed"},
+    "living_world_integration_gate": {"run_id": 35061481705, "status": "success", "verified_scope": "backend/persistence and client contract/build/real browser critical route all passed"},
+    "playable_candidate_gate": {"run_id": 35061481691, "status": "in_progress", "verified_scope": "backend green; real browser integrated route, Living NPC browser acceptance and Social World browser acceptance passed; Stream Slice acceptance running at handoff"}
   },
   "standalone_experiment": {
     "branch": "experiment/standalone-html-v1",
@@ -87,9 +91,10 @@
     "github_releases": "none"
   },
   "known_limitations": [
-    "Shared physical-navigation stability remains a GAMEPLAY-owned release blocker independent of the verified visual interaction-feedback slice.",
+    "Prototype Web CI run 35061481673 and Playable Candidate Gate run 35061481691 were still running at handoff; their final status must be reconciled before claiming all seven required gates green on d07f6c9a8b86624577b02db88959e2e243aa1938.",
+    "An isolated temporary branch agent/autonomy-pilot-validation-v0.1-tmp-unused at 12c4e83c40121cf92dc7007e78ec3e4de424880a was accidentally created during connector operations; it does not affect main, the working branch or PR #56 and should be deleted when branch-ref deletion capability is available.",
     "The complete SVG stream pack remains temporary production-facing art rather than final production art.",
     "A real human experience and aesthetic check remains required after technical stabilization."
   ],
-  "current_blocker": "Fresh 74200fb required browser evidence is red on real physical navigation around the village well and tavern; this gameplay session owns that stabilization."
+  "current_blocker": null
 }
