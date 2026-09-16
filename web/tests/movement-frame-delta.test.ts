@@ -34,16 +34,33 @@ test("movement delta ignores invalid or non-positive frame durations", () => {
 });
 
 
-test("held movement charges only observable key time without discarding a continuously held stalled frame", () => {
-  const justPressed = { isDown: true, getDuration: () => 25 };
-  const normallyHeld = { isDown: true, getDuration: () => 500 };
-  const heldAcrossStall = { isDown: true, getDuration: () => 900 };
-  const newlyPressedAfterStall = { isDown: true, getDuration: () => 25 };
-  const released = { isDown: false, getDuration: () => 500 };
+test("held movement amortizes a continuous render stall instead of discarding or applying it in one jump", () => {
+  let heldMs = 900;
+  const key = { isDown: true, timeDown: 100, getDuration: () => heldMs };
 
-  assert.equal(effectiveHeldDelta(125, justPressed), 25);
-  assert.equal(effectiveHeldDelta(125, normallyHeld), 125);
-  assert.equal(effectiveHeldDelta(800, heldAcrossStall), 800);
-  assert.equal(effectiveHeldDelta(800, newlyPressedAfterStall), 25);
-  assert.equal(effectiveHeldDelta(125, released), 0);
+  assert.equal(effectiveHeldDelta(800, key), 200);
+  heldMs = 916;
+  assert.equal(effectiveHeldDelta(16, key), 200);
+  heldMs = 932;
+  assert.equal(effectiveHeldDelta(16, key), 200);
+  heldMs = 948;
+  assert.equal(effectiveHeldDelta(16, key), 200);
+});
+
+
+test("a short new press after a stall is charged only for its observed hold duration", () => {
+  const key = { isDown: true, timeDown: 200, getDuration: () => 80 };
+
+  assert.equal(effectiveHeldDelta(800, key), 80);
+});
+
+
+test("a new physical press clears leftover catch-up from the previous hold", () => {
+  let heldMs = 900;
+  const key = { isDown: true, timeDown: 300, getDuration: () => heldMs };
+
+  assert.equal(effectiveHeldDelta(800, key), 200);
+  key.timeDown = 400;
+  heldMs = 25;
+  assert.equal(effectiveHeldDelta(800, key), 25);
 });
