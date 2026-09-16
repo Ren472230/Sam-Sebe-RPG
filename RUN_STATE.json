@@ -15,12 +15,12 @@
     "draft": true,
     "merged": false
   },
-  "phase": "gameplay_spatial_navigation_stability_verification",
-  "current_objective": "SESSION_OBJECTIVE: stabilize shared real-keyboard spatial navigation so the canonical Mira interaction and tavern entry routes stop oscillating across target coordinates and the browser-bearing required gates can converge on one exact validation SHA.",
-  "next_action": "Implement one-direction-per-axis steering for moveTowardInteraction and one-way crossing semantics for moveAxisTo, then validate the exact implementation SHA through PR #56 before any broader gameplay work.",
+  "phase": "visual_interaction_feedback_session",
+  "current_objective": "SESSION_OBJECTIVE: make the existing interaction feedback read as one coherent action system on desktop and 390px mobile – a clearly distinguishable contextual action ribbon plus the matching touch action state – while preserving all gameplay rules and the ongoing physical-navigation stabilization work.",
+  "next_action": "VISUAL: add explicit contextual state to #interaction-hint, align its desktop/mobile styling with the contextual touch action, add deterministic contracts, then validate the exact visual work SHA through the existing PR #56 validation contour without changing gameplay navigation.",
   "blockers": [
-    "PR #56 validation head 711d6bfbecab4f64b654295c2d2b9ef517fa8964 keeps Stream Slice, Prototype Web CI, Living World Integration and Playable Candidate red in real-browser physical navigation.",
-    "Fresh Stream Slice diagnostics prove moveTowardInteraction reverses the x key after crossing Mira's target: A+W moves (330,455)->(290,437)->(218,409), then D+W reverses x to (339,354) and loses the requested interaction. The same pulse/reversal pattern can destabilize tavern x=825 steering."
+    "PR #56 validation head 4666e07b7577d5fc2ac488fb8d8258eb5e568728 keeps Stream Slice, Prototype Web CI, Living World Integration and Playable Candidate red in real-browser physical navigation.",
+    "The red required workflows are currently isolated to shared physical-navigation behavior after web/UI contracts and production build pass; this VISUAL session must not modify spatial-navigation mechanics."
   ],
   "active_run": {
     "run_id": "2026-09-16-visual-interaction-feedback-1",
@@ -56,14 +56,14 @@
     "note": "The active server-backed line remains under physical browser-navigation stabilization on validation PR #56."
   },
   "pilot_validation_at_work_head": {
-    "work_head_sha": "711d6bfbecab4f64b654295c2d2b9ef517fa8964",
-    "visual_forge_gate": {"run_id": 35042977850, "status": "success"},
-    "release_reproducibility_gate": {"run_id": 35042977852, "status": "success"},
-    "windows_compatibility_gate": {"run_id": 35042977853, "status": "success"},
-    "stream_slice_gate": {"run_id": 35042977849, "status": "failure", "failure_scope": "real Chromium Stream Slice route misses Mira interaction after all Python/preflight/web-contract/build checks pass"},
-    "prototype_web_ci": {"run_id": 35042977887, "status": "failure", "failure_scope": "real browser suite has shared spatial-navigation failures; 50/50 web/UI contracts and production build pass"},
-    "living_world_integration_gate": {"run_id": 35042977844, "status": "failure", "failure_scope": "real browser critical route fails after backend/persistence, client contract and production build pass"},
-    "playable_candidate_gate": {"run_id": 35042978024, "status": "failure", "failure_scope": "real browser integrated route has Mira/tavern spatial-navigation failures; backend/Living World, 50 web contracts and production build pass"}
+    "work_head_sha": "4666e07b7577d5fc2ac488fb8d8258eb5e568728",
+    "visual_forge_gate": {"run_id": 35050731931, "status": "success"},
+    "release_reproducibility_gate": {"run_id": 35050731966, "status": "success"},
+    "windows_compatibility_gate": {"run_id": 35050731937, "status": "success"},
+    "stream_slice_gate": {"run_id": 35050731986, "status": "failure", "failure_scope": "real Chromium route remains red after contract/build stages pass"},
+    "prototype_web_ci": {"run_id": 35050731929, "status": "failure", "failure_scope": "real browser suite remains red in shared physical navigation"},
+    "living_world_integration_gate": {"run_id": 35050731934, "status": "failure", "failure_scope": "real browser critical route remains red"},
+    "playable_candidate_gate": {"run_id": 35050731938, "status": "failure", "failure_scope": "real browser integrated route remains red in physical navigation"}
   },
   "standalone_experiment": {
     "branch": "experiment/standalone-html-v1",
@@ -88,9 +88,9 @@
     "github_releases": "none"
   },
   "known_limitations": [
-    "Required browser-bearing gates remain red on PR #56 validation head 711d6bfbecab4f64b654295c2d2b9ef517fa8964 because shared physical navigation is still unstable.",
+    "Required browser-bearing gates remain red on PR #56 validation head 4666e07b7577d5fc2ac488fb8d8258eb5e568728 because shared physical navigation is still unstable.",
     "The complete SVG stream pack remains temporary production-facing art rather than final production art.",
     "A real human experience check remains required after technical stabilization."
   ],
-  "current_blocker": "Shared physical-navigation instability on PR #56 validation head 711d6bfbecab4f64b654295c2d2b9ef517fa8964 keeps Stream Slice, Prototype Web CI, Living World Integration and Playable Candidate red despite green visual contracts/build/mobile checks."
+  "current_blocker": "Shared physical-navigation instability on PR #56 validation head 4666e07b7577d5fc2ac488fb8d8258eb5e568728 keeps Stream Slice, Prototype Web CI, Living World Integration and Playable Candidate red; current VISUAL work may proceed only on UI surfaces that do not alter navigation mechanics."
 }
