@@ -19,6 +19,7 @@ const MOVEMENT_KEYS = ["w", "a", "s", "d"] as const;
 const VILLAGE_WELL_CLEAR_X = 560;
 const VILLAGE_LOWER_LANE_Y = 455;
 const STEERING_PULSE_MS = 80;
+const CORRIDOR_PULSE_MS = 180;
 const TARGET_TOLERANCE = 7;
 
 export async function playerPosition(page: Page): Promise<PlayerPosition> {
@@ -165,7 +166,8 @@ export async function moveAxisTo(
   axis: "x" | "y",
   target: number,
   tolerance = 8,
-  timeout = 10_000
+  timeout = 10_000,
+  pulseMs = STEERING_PULSE_MS
 ): Promise<void> {
   await installNavigationDiagnostics(page);
   await releaseMovementKeys(page);
@@ -190,7 +192,7 @@ export async function moveAxisTo(
       if (reachedOrCrossedTarget(key, value, target, tolerance)) return;
       if (!Number.isFinite(value)) break;
 
-      const { start, end } = await pulseKeys(page, [key]);
+      const { start, end } = await pulseKeys(page, [key], pulseMs);
       await recordAxisTrace(page, { axis, target, reached: start, released: end });
       if (reachedOrCrossedTarget(key, end[axis], target, tolerance)) return;
 
@@ -214,9 +216,11 @@ async function movePastVillageWell(page: Page, deadline: number): Promise<void> 
 
     const keys: MovementKey[] = ["d"];
     // The well occupies x=435..540 and y=330..420. Use the real S key until the
-    // avatar is on the collision-free lower lane, then keep moving right.
+    // avatar is on the collision-free lower lane, then keep moving right. Longer
+    // corridor pulses reduce Playwright round-trips under CPU throttling without
+    // changing the real key, collision or gameplay-speed semantics.
     if (before.y < VILLAGE_LOWER_LANE_Y) keys.push("s");
-    const { start, end } = await pulseKeys(page, keys);
+    const { start, end } = await pulseKeys(page, keys, CORRIDOR_PULSE_MS);
     await recordPulse(page, keys, VILLAGE_WELL_CLEAR_X, VILLAGE_LOWER_LANE_Y, start, end);
     const progress = Math.hypot(end.x - start.x, end.y - start.y);
     stagnantPulses = progress < 1 ? stagnantPulses + 1 : 0;
@@ -227,6 +231,44 @@ async function movePastVillageWell(page: Page, deadline: number): Promise<void> 
   if (last.x < VILLAGE_WELL_CLEAR_X) {
     throw new Error(`physical route did not clear village well; last=${JSON.stringify(last)}`);
   }
+}
+
+function remainingRouteTime(deadline: number): number {
+  return Math.max(1_000, deadline - Date.now());
+}
+
+async function moveToTavernInteraction(
+  page: Page,
+  targetX: number,
+  hintText: string,
+  deadline: number
+): Promise<void> {
+  const start = await playerPosition(page);
+  if (start.x < VILLAGE_WELL_CLEAR_X) await movePastVillageWell(page, deadline);
+  if ((await interactionSnapshot(page, hintText)).hintReady) return;
+
+  // Stay on the collision-free lower lane while crossing the village and the full
+  // width of the tavern facade. Only then move vertically toward the door. This
+  // makes controller delay harmless: horizontal overshoot happens in open space,
+  // while the tavern wall itself safely bounds the later upward movement.
+  const lowerApproachX = targetX - 20;
+  await moveAxisTo(
+    page,
+    "x",
+    lowerApproachX,
+    18,
+    remainingRouteTime(deadline),
+    CORRIDOR_PULSE_MS
+  );
+  if ((await interactionSnapshot(page, hintText)).hintReady) return;
+
+  await moveWithConcurrentKeysUntilHint(
+    page,
+    ["w"],
+    hintText,
+    remainingRouteTime(deadline),
+    CORRIDOR_PULSE_MS
+  );
 }
 
 export async function moveTowardInteraction(
@@ -241,16 +283,12 @@ export async function moveTowardInteraction(
   const deadline = Date.now() + timeout;
   let stagnantPulses = 0;
 
-  // A direct target-aware tavern approach can start on the workshop side of the
-  // village well. Route that long crossing through the same lower physical lane
-  // used by the canonical tavern helper before fine target steering begins.
-  const initial = await playerPosition(page);
-  if (
-    targetX >= 700
-    && targetY <= 360
-    && initial.x < VILLAGE_WELL_CLEAR_X
-  ) {
-    await movePastVillageWell(page, deadline);
+  // The tavern sits above a long collision-free lower corridor. A sequential
+  // corridor route is more robust than diagonal steering because a delayed keyup
+  // can no longer spend the route budget pushing one axis into a building edge.
+  if (targetX >= 700 && targetY <= 360 && hintText.includes("войти в таверну")) {
+    await moveToTavernInteraction(page, targetX, hintText, deadline);
+    return;
   }
 
   const steeringStart = await interactionSnapshot(page, hintText);
@@ -285,11 +323,6 @@ export async function moveTowardInteraction(
       if (yKey && yActive && reachedOrCrossedTarget(yKey, y, targetY)) yActive = false;
 
       const keys: MovementKey[] = [];
-      // Playwright sends keydown/keyup commands sequentially. Under a throttled or
-      // overloaded browser the first key can therefore stay held much longer than
-      // the second one. Give the vertical key that unavoidable extra dwell time so
-      // diagonal approaches finish height before horizontal overshoot; once Y is
-      // complete, X continues alone. All movement still uses real keyboard events.
       if (yKey && yActive) keys.push(yKey);
       if (xKey && xActive) keys.push(xKey);
 
@@ -347,7 +380,8 @@ async function moveWithConcurrentKeysUntilHint(
   page: Page,
   keys: MovementKey[],
   hintText: string,
-  timeout: number
+  timeout: number,
+  pulseMs = STEERING_PULSE_MS
 ): Promise<void> {
   await installNavigationDiagnostics(page);
   await releaseMovementKeys(page);
@@ -358,7 +392,7 @@ async function moveWithConcurrentKeysUntilHint(
     while (Date.now() < deadline) {
       const snapshot = await interactionSnapshot(page, hintText);
       if (snapshot.hintReady) return;
-      const { start, end } = await pulseKeys(page, keys);
+      const { start, end } = await pulseKeys(page, keys, pulseMs);
       const progress = Math.hypot(end.x - start.x, end.y - start.y);
       stagnantPulses = progress < 1 ? stagnantPulses + 1 : 0;
       if (stagnantPulses >= 6) break;
@@ -382,15 +416,13 @@ export async function enterTavernSpatially(page: Page): Promise<void> {
   await releaseMovementKeys(page);
   const routeDeadline = Date.now() + 20_000;
 
-  const start = await playerPosition(page);
-  if (start.x < VILLAGE_WELL_CLEAR_X) await movePastVillageWell(page, routeDeadline);
-
-  // After clearing the well, steer both axes together. Sequentially spending the
-  // route budget on x first left only one delayed y pulse in CI and stopped outside
-  // the tavern interaction radius. Concurrent real-key steering reaches the same
-  // target without increasing timeouts or bypassing collisions.
-  const remainingForApproach = Math.max(1_000, routeDeadline - Date.now());
-  await moveTowardInteraction(page, 825, 330, "войти в таверну", remainingForApproach);
+  await moveTowardInteraction(
+    page,
+    825,
+    330,
+    "войти в таверну",
+    remainingRouteTime(routeDeadline)
+  );
   await expect(hint).toContainText("войти в таверну", { timeout: 3_000 });
   await page.keyboard.press("e");
   await expect(page.locator("body")).toHaveAttribute("data-scene", "tavern", { timeout: 10_000 });
