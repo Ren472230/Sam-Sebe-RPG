@@ -56,6 +56,10 @@ test("coarse-pointer landscape keeps touch controls and dialogue playable above 
   );
   assert.match(
     touchFeedbackStyles,
+    /@media \(min-width: 701px\) and \(max-width: 900px\) and \(any-pointer: coarse\)[\s\S]*body #touch-controls\s*\{[\s\S]*display:\s*grid;/
+  );
+  assert.match(
+    touchFeedbackStyles,
     /@media \(min-width: 701px\) and \(max-width: 900px\) and \(any-pointer: coarse\)[\s\S]*#touch-controls button\s*\{[\s\S]*min-width:\s*48px;[\s\S]*min-height:\s*48px;/
   );
   assert.match(
