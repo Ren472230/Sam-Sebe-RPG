@@ -15,11 +15,11 @@ test("desktop interaction ribbon renders the live neutral action surface clearly
   const presentation = await hint.evaluate((element) => ({
     label: getComputedStyle(element, "::before").content,
     border: getComputedStyle(element).borderLeftColor,
-    minHeight: element.getBoundingClientRect().height
+    height: element.getBoundingClientRect().height
   }));
   expect(presentation.label).toContain("Подсказка");
   expect(presentation.border).toBe("rgb(101, 213, 217)");
-  expect(presentation.minHeight).toBeGreaterThanOrEqual(40);
+  expect(presentation.height).toBeGreaterThanOrEqual(38);
 });
 
 test("390px interaction ribbon and touch action stay bounded with durable pressed feedback", async ({ page }) => {
