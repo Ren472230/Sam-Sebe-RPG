@@ -286,6 +286,18 @@ async function moveAxisIntoBand(
     throw new Error(`player position is invalid before ${axis} band [${min}, ${max}]; start=${JSON.stringify(current)}`);
   }
 
+  const initialBoundary = current[axis] < min ? min : max;
+  if (Math.abs(initialBoundary - current[axis]) > 60) {
+    current = await holdAxisUntilTarget(
+      page,
+      axis,
+      initialBoundary,
+      4,
+      remainingRouteTime(deadline)
+    );
+    if (current[axis] >= min && current[axis] <= max) return current;
+  }
+
   let stagnantPulses = 0;
   let pulses = 0;
   const traceTarget = Math.round((min + max) / 2);
