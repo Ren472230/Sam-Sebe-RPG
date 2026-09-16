@@ -23,11 +23,11 @@
     "The current work SHA c6a6b59aa91487e37ce3284a78e96687dbf2af0b now routes tavern entry through the canonical outdoor y=455 lane before the lateral approach and requires repeated stationary samples plus 900 ms no-progress before declaring a steering stall. Fresh exact-SHA CI evidence is pending."
   ],
   "active_run": {
-    "run_id": "2026-09-16-gameplay-navigation-session-3",
+    "run_id": "2026-09-16-visual-verification-session-6",
     "status": "running",
-    "started_at_utc": "2026-09-16T00:48:13Z",
-    "lease_expires_at_utc": "2026-09-16T02:18:13Z",
-    "base_sha": "c9cea3efa5d10093cdd3a30cacf92ebf81bbcf20",
+    "started_at_utc": "2026-09-16T02:21:30Z",
+    "lease_expires_at_utc": "2026-09-16T03:51:30Z",
+    "base_sha": "31cfb217626c241445523f9b1067d78559a88696",
     "working_branch": "agent/autonomy-pilot-v0.1"
   },
   "last_handoff": {
@@ -85,7 +85,7 @@
     "web_lockfile": "web/package-lock.json",
     "python_constraints": "constraints/python-3.12.txt",
     "ci_install_policy": "current release/browser workflows use npm ci and constrained pip installs",
-    "windows_launcher": "uses constrained pip and npm ci when the lockfile exists; npm install is a local fallback only if missing",
+    "windows_launcher": "uses constrained pip and npm ci when the lockfile exists; npm install fallback only if missing",
     "repository_hygiene": "root .gitignore covers generated caches, environments, browser reports, local SQLite state, environment files, secrets and editor/OS debris",
     "github_releases": "none"
   },
