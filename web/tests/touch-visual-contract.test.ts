@@ -16,6 +16,12 @@ test("touch action control mirrors the existing interaction hint without changin
   assert.match(touchSource, /button\.dataset\.contextual = nextContext === DEFAULT_ACTION_CONTEXT \? "false" : "true"/);
 });
 
+test("mobile controls stay adjacent to gameplay while preserving the playtest tools", () => {
+  assert.match(touchSource, /const playtestTools = document\.getElementById\("playtest-tools"\)/);
+  assert.match(touchSource, /if \(playtestTools\) app\.insertBefore\(root, playtestTools\)/);
+  assert.match(touchSource, /else if \(dialogue\) app\.insertBefore\(root, dialogue\)/);
+});
+
 test("held touch controls expose durable pressed feedback without changing keyboard dispatch", () => {
   assert.match(touchSource, /import "\.\/touchFeedback\.css"/);
   assert.match(touchSource, /button\.dataset\.pressed = "false"/);
