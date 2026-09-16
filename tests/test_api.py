@@ -47,6 +47,35 @@ def create_player(
     return response.json()["player_id"]
 
 
+def move_player(
+    client: TestClient,
+    player_id: str,
+    destination_id: str,
+    external_id: str,
+) -> None:
+    response = client.post(
+        "/api/action",
+        json={
+            "player_id": player_id,
+            "action_type": "MOVE",
+            "destination_id": destination_id,
+            "external_id": external_id,
+        },
+    )
+    assert response.status_code == 200
+    assert response.json()["success"] is True
+
+
+def move_to_tavern(client: TestClient, player_id: str, prefix: str) -> None:
+    move_player(client, player_id, "village_square", f"{prefix}-square")
+    move_player(client, player_id, "tavern_interior", f"{prefix}-tavern")
+
+
+def move_to_workshop(client: TestClient, player_id: str, prefix: str) -> None:
+    move_player(client, player_id, "village_square", f"{prefix}-square")
+    move_player(client, player_id, "workshop_yard", f"{prefix}-workshop")
+
+
 def test_health_and_session_use_frozen_external_identity_contract(tmp_path: Path) -> None:
     _, client = make_client(tmp_path / "world.sqlite3")
 
@@ -85,26 +114,9 @@ def test_state_matches_frozen_projection_and_exposes_oren_in_tavern(tmp_path: Pa
         "conflict": 0,
         "romance": 0,
     }
+    assert payload["living_npc"]["nearby_npc_ids"] == ["npc_mira"]
 
-    assert client.post(
-        "/api/action",
-        json={
-            "player_id": player,
-            "action_type": "MOVE",
-            "destination_id": "village_square",
-            "external_id": "move-square",
-        },
-    ).json()["success"] is True
-    assert client.post(
-        "/api/action",
-        json={
-            "player_id": player,
-            "action_type": "MOVE",
-            "destination_id": "tavern_interior",
-            "external_id": "move-tavern",
-        },
-    ).json()["success"] is True
-
+    move_to_tavern(client, player, "state")
     tavern = client.get(f"/api/state/{player}").json()
     assert tavern["location"]["id"] == "tavern_interior"
     assert "npc_oren" in {actor["actor_id"] for actor in tavern["visible_actors"]}
@@ -144,6 +156,7 @@ def test_action_response_preserves_existing_action_result_semantics(tmp_path: Pa
 def test_dialogue_accepts_frozen_text_field(tmp_path: Path) -> None:
     _, client = make_client(tmp_path / "world.sqlite3", provider=EchoProvider())
     player = create_player(client)
+    move_to_tavern(client, player, "dialogue")
 
     response = client.post(
         "/api/dialogue",
@@ -155,6 +168,8 @@ def test_dialogue_accepts_frozen_text_field(tmp_path: Path) -> None:
         "text": "heard:Есть работа?",
         "proposal": None,
         "used_fallback": False,
+        "social_action": None,
+        "npc_id": "npc_oren",
     }
 
 
@@ -163,6 +178,7 @@ def test_api_completes_exact_once_firewood_route_and_persists_restart(tmp_path: 
     db, client = make_client(db_path)
     player = create_player(client, external_id="persistent-player")
 
+    move_to_tavern(client, player, "offer")
     offered = client.post(
         "/api/dialogue",
         json={"player_id": player, "text": "Есть работа?"},
@@ -183,6 +199,7 @@ def test_api_completes_exact_once_firewood_route_and_persists_restart(tmp_path: 
     assert accept_replay["replayed"] is True
     assert accept_replay["event_id"] == accepted["event_id"]
 
+    move_to_workshop(client, player, "collect")
     for index in range(1, 5):
         take = client.post(
             "/api/action",
@@ -256,6 +273,7 @@ def test_api_completes_exact_once_firewood_route_and_persists_restart(tmp_path: 
     assert reopened_state["quest"]["status"] == "completed"
     assert reopened_state["coins"] == 15
     assert reopened_state["oren_relation"]["trust"] == 10
+    move_to_tavern(reopened_client, player, "restart")
     after_restart = reopened_client.post(
         "/api/dialogue",
         json={"player_id": player, "text": "Помнишь меня?"},
@@ -274,6 +292,7 @@ def test_legacy_pr6_frontend_payloads_remain_compatible(tmp_path: Path) -> None:
     assert state["world"]["location_id"] == state["location"]["id"]
     assert state["oren_trust"] == state["oren_relation"]["trust"]
 
+    move_to_tavern(client, player, "legacy")
     legacy_dialogue = client.post(
         "/api/dialogue",
         json={"player_id": player, "user_text": "legacy"},
