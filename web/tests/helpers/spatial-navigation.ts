@@ -22,6 +22,9 @@ const STEERING_PULSE_MS = 80;
 const CORRIDOR_PULSE_MS = 180;
 const TARGET_TOLERANCE = 7;
 const INTERACTION_AXIS_MARGIN = 30;
+const TAVERN_SAFE_X_MARGIN = 20;
+const TAVERN_SAFE_Y_MIN = 320;
+const TAVERN_SAFE_Y_MAX = 333;
 
 export async function playerPosition(page: Page): Promise<PlayerPosition> {
   return page.evaluate(() => ({
@@ -271,6 +274,51 @@ async function holdAxisUntilTarget(
   );
 }
 
+async function moveAxisIntoBand(
+  page: Page,
+  axis: "x" | "y",
+  min: number,
+  max: number,
+  deadline: number
+): Promise<PlayerPosition> {
+  let current = await playerPosition(page);
+  if (!Number.isFinite(current[axis])) {
+    throw new Error(`player position is invalid before ${axis} band [${min}, ${max}]; start=${JSON.stringify(current)}`);
+  }
+
+  let stagnantPulses = 0;
+  let pulses = 0;
+  const traceTarget = Math.round((min + max) / 2);
+  while (Date.now() < deadline && pulses < 64) {
+    const value = current[axis];
+    if (value >= min && value <= max) return current;
+
+    const boundary = value < min ? min : max;
+    const key = movementKey(axis, value, boundary);
+    const gap = Math.abs(boundary - value);
+    const duration = axisPulseDuration(gap, STEERING_PULSE_MS);
+    const { start, end } = await pulseKeys(page, [key], duration, current);
+    await recordAxisTrace(page, { axis, target: traceTarget, reached: start, released: end });
+    pulses += 1;
+
+    const endValue = end[axis];
+    if (!Number.isFinite(endValue)) break;
+    if (endValue >= min && endValue <= max) return end;
+
+    const progress = Math.abs(endValue - start[axis]);
+    stagnantPulses = progress < 1 ? stagnantPulses + 1 : 0;
+    if (stagnantPulses >= 6) break;
+    current = end;
+  }
+
+  await releaseMovementKeys(page);
+  const end = await playerPosition(page);
+  throw new Error(
+    `player did not settle inside ${axis} band [${min}, ${max}]; `
+      + `last=${JSON.stringify(end)} pulses=${pulses}`
+  );
+}
+
 async function movePastVillageWell(page: Page, deadline: number): Promise<void> {
   let start = await playerPosition(page);
   if (!Number.isFinite(start.x) || !Number.isFinite(start.y)) {
@@ -425,9 +473,29 @@ async function steerTavernApproachToHint(
     snapshot = await interactionSnapshot(page, hintText);
     if (snapshot.hintReady) return;
 
-    if (Math.abs(snapshot.position.x - targetX) > TARGET_TOLERANCE) {
-      await holdAxisUntilTarget(page, "x", targetX, 8, remainingRouteTime(deadline));
-    }
+    await moveAxisIntoBand(
+      page,
+      "x",
+      targetX - TAVERN_SAFE_X_MARGIN,
+      targetX + TAVERN_SAFE_X_MARGIN,
+      deadline
+    );
+    snapshot = await interactionSnapshot(page, hintText);
+    if (snapshot.hintReady) return;
+
+    await moveAxisIntoBand(page, "y", TAVERN_SAFE_Y_MIN, TAVERN_SAFE_Y_MAX, deadline);
+    await waitForBrowserFrame(page);
+    snapshot = await interactionSnapshot(page, hintText);
+    if (snapshot.hintReady) return;
+
+    await moveAxisIntoBand(
+      page,
+      "x",
+      targetX - TAVERN_SAFE_X_MARGIN,
+      targetX + TAVERN_SAFE_X_MARGIN,
+      deadline
+    );
+    await waitForBrowserFrame(page);
     snapshot = await interactionSnapshot(page, hintText);
     if (snapshot.hintReady) return;
 
