@@ -380,8 +380,10 @@ export async function enterTavernSpatially(page: Page): Promise<void> {
   const start = await playerPosition(page);
   if (start.x < VILLAGE_WELL_CLEAR_X) await movePastVillageWell(page, routeDeadline);
 
-  const remainingForLane = Math.max(1_000, routeDeadline - Date.now());
-  await moveAxisTo(page, "x", 825, 12, Math.min(12_000, remainingForLane));
+  // After clearing the well, steer both axes together. Sequentially spending the
+  // route budget on x first left only one delayed y pulse in CI and stopped outside
+  // the tavern interaction radius. Concurrent real-key steering reaches the same
+  // target without increasing timeouts or bypassing collisions.
   const remainingForApproach = Math.max(1_000, routeDeadline - Date.now());
   await moveTowardInteraction(page, 825, 330, "войти в таверну", remainingForApproach);
   await expect(hint).toContainText("войти в таверну", { timeout: 3_000 });
