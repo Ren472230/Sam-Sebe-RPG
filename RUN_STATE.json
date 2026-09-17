@@ -20,11 +20,11 @@
   "next_action": "Recover the expired prior gameplay run from current branch HEAD c28cc40dffbdd821bfcd216c83ba7b8239b5e756, inspect the exact second-firewood failure from validation run 35177003077, prove whether the defect is controller timing or game interaction handling, then apply the smallest evidence-backed fix and validate on one exact candidate.",
   "blockers": [],
   "active_run": {
-    "run_id": "2026-09-17-gameplay-firewood-interaction-race-2",
+    "run_id": "2026-09-17-visual-rq-h07-final-validation-1",
     "status": "running",
-    "started_at_utc": "2026-09-17T04:52:12Z",
-    "lease_expires_at_utc": "2026-09-17T06:22:12Z",
-    "base_sha": "c28cc40dffbdd821bfcd216c83ba7b8239b5e756",
+    "started_at_utc": "2026-09-17T06:24:00Z",
+    "lease_expires_at_utc": "2026-09-17T07:54:00Z",
+    "base_sha": "0f36be13c32bfd83e54d46707449bf78699dc6ee",
     "working_branch": "agent/autonomy-pilot-v0.1"
   },
   "last_handoff": {
