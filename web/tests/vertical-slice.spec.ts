@@ -3,7 +3,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { expect, test, type Page } from "@playwright/test";
 
 import { installBrowserDiagnostics } from "./helpers/browser-diagnostics";
-import { enterTavernSpatially } from "./helpers/spatial-navigation";
+import { enterTavernSpatially, moveTowardInteraction } from "./helpers/spatial-navigation";
 
 type PlayerPosition = { x: number; y: number };
 type ActionPayload = {
@@ -26,6 +26,14 @@ type PlaytestReport = {
     crashes: number;
   };
 };
+
+const FIREWOOD_TARGETS = [
+  { x: 260, y: 431 },
+  { x: 224, y: 449 },
+  { x: 188, y: 428 },
+  { x: 151, y: 446 },
+  { x: 112, y: 430 }
+] as const;
 
 async function playerPosition(page: Page): Promise<PlayerPosition> {
   return page.evaluate(() => ({
@@ -121,12 +129,16 @@ async function leaveTavern(page: Page): Promise<void> {
 }
 
 async function collectOneFirewood(page: Page, expectedCount: number): Promise<void> {
-  // The five canonical firewood hotspots form a continuous leftward sweep from the
-  // workshop anchor. Drive the real keyboard until the game itself exposes the TAKE
-  // interaction instead of asking an external controller to settle on exact pixels.
-  // This preserves physical input/collisions and remains stable when the CI runner
-  // delays key-up delivery, because the interaction hint is the stop condition.
-  await moveAndInteractWhenHint(page, ["a"], "подобрать дрова", 12_000);
+  const target = FIREWOOD_TARGETS[expectedCount - 1];
+  if (!target) throw new Error(`missing canonical firewood target for count ${expectedCount}`);
+
+  // Use the shared target-aware real-key controller that already stabilizes the
+  // canonical spatial routes. Each pickup still reaches the game's own visible
+  // interaction prompt through collisions and physical keyboard input; the target
+  // only tells the controller which actual firewood hotspot it is approaching.
+  await moveTowardInteraction(page, target.x, target.y, "подобрать дрова", 12_000);
+  await expect(page.locator("#interaction-hint")).toContainText("подобрать дрова", { timeout: 3_000 });
+  await page.keyboard.press("e");
   await expect(page.locator("#hud")).toContainText(`дрова ${expectedCount}/5`);
 }
 
