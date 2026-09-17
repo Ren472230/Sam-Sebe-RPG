@@ -406,7 +406,18 @@ async function moveInteractionAxis(
 
   const afterValue = after.position[axis];
   if (!Number.isFinite(afterValue) || reachedOrCrossedTarget(key, afterValue, target)) return false;
-  await moveAxisTo(page, axis, target, 8, remainingRouteTime(deadline), STEERING_PULSE_MS);
+  try {
+    await moveAxisTo(page, axis, target, 8, remainingRouteTime(deadline), STEERING_PULSE_MS);
+  } catch (error) {
+    // A loaded runner can exhaust the controller's precision deadline on the final
+    // tiny pulse even though the physical avatar has already entered the game's
+    // real interaction radius. Give the scene one frame to publish its own prompt;
+    // accept only that product-owned prompt, otherwise preserve the original failure.
+    await waitForBrowserFrame(page);
+    const recovered = await interactionSnapshot(page, hintText);
+    if (recovered.hintReady) return true;
+    throw error;
+  }
   await waitForBrowserFrame(page);
   after = await interactionSnapshot(page, hintText);
   return after.hintReady;
