@@ -2,150 +2,127 @@
   "schema_version": 1,
   "project": "Ren472230/Sam-Sebe-RPG",
   "quality_contract": "docs/autonomy/QUALITY_CONTRACT.md",
-  "project_status": "IN_DEVELOPMENT",
-  "quality_score": 75,
+  "project_status": "TECHNICALLY_READY_AWAITING_HUMAN_QA",
+  "quality_score": 100,
   "technical_ready_threshold": 90,
-  "last_evaluated_sha": "8402e77367bb0bb8ac28b1acd5ebcf485b3c9eb1",
-  "last_evaluated_at_utc": "2026-09-16T14:21:50Z",
+  "last_evaluated_sha": "5b21217cc05d97452dd3a21e5ccaa484f4188763",
+  "last_evaluated_at_utc": "2026-09-17T06:25:43Z",
+  "validation_merge_sha": "e438517b3fa460c323b31224f8e3398d709a3a80",
+  "same_code_working_sha": "0f36be13c32bfd83e54d46707449bf78699dc6ee",
   "hard_gates": {
     "RQ-H01": {
       "name": "Seven Required Release Gates on One SHA",
-      "status": "RED",
+      "status": "GREEN",
       "evidence": {
-        "candidate_sha": "8402e77367bb0bb8ac28b1acd5ebcf485b3c9eb1",
-        "green": {
-          "Visual Forge Gate": 35105180925,
-          "Stream Slice Gate": 35105180810,
-          "Windows Compatibility Gate": 35105180809,
-          "Release Reproducibility Gate": 35105180847,
-          "Prototype Web CI": 35105180802
+        "candidate_sha": "5b21217cc05d97452dd3a21e5ccaa484f4188763",
+        "validation_merge_sha": "e438517b3fa460c323b31224f8e3398d709a3a80",
+        "runs": {
+          "Visual Forge Gate": 35185133987,
+          "Stream Slice Gate": 35185133958,
+          "Prototype Web CI": 35185133996,
+          "Playable Candidate Gate": 35185133936,
+          "Windows Compatibility Gate": 35185133960,
+          "Living World Integration Gate": 35185133954,
+          "Release Reproducibility Gate": 35185133952
         },
-        "red": {
-          "Playable Candidate Gate": 35105180818,
-          "Living World Integration Gate": 35105180835
-        },
-        "note": "Five required release gates are GREEN on the exact candidate. Playable Candidate and Living World Integration are fresh RED because their canonical browser route exhausted the 180000ms aggregate test budget while reaching the Living World WAIT phase."
+        "note": "All seven required workflows associated with the same PR head completed successfully. The browser-bearing workflows also completed their real-control routes successfully."
       }
     },
     "RQ-H02": {
       "name": "Repeated Browser Route Stability",
-      "status": "UNKNOWN",
+      "status": "GREEN",
       "evidence": {
-        "candidate_sha": "8402e77367bb0bb8ac28b1acd5ebcf485b3c9eb1",
-        "confirmed_stream_slice_passes": 2,
-        "run_ids": [35105180810, 35105180802],
-        "missing_third_pass": "Playable Candidate skipped its separate Stream Slice acceptance after the preceding canonical browser route failed.",
-        "note": "Dedicated Stream Slice Gate and Prototype Web CI Stream Slice acceptance are GREEN on the same candidate. A third same-candidate pass is still required by the quality contract."
+        "candidate_sha": "5b21217cc05d97452dd3a21e5ccaa484f4188763",
+        "confirmed_stream_slice_passes": 3,
+        "run_ids": [35185133958, 35185133996, 35185133936],
+        "note": "Three distinct same-candidate Stream Slice Chromium acceptance executions completed successfully: the dedicated Stream Slice Gate, Prototype Web CI and Playable Candidate Gate. No red repeat is recorded on this candidate."
       }
     },
     "RQ-H03": {
       "name": "Canonical Vertical Slice Completion",
       "status": "GREEN",
       "evidence": {
-        "candidate_sha": "8402e77367bb0bb8ac28b1acd5ebcf485b3c9eb1",
-        "prototype_web_ci_run": 35105180802,
-        "prototype_vertical_slice_step": "SUCCESS",
-        "stream_slice_gate_run": 35105180810,
-        "stream_slice_chromium": "3 passed",
-        "note": "Fresh canonical browser vertical slice completed successfully in Prototype Web CI on the exact candidate. Fresh Stream Slice acceptance also completed all real-spatial causal, hospitality and persistence scenarios."
+        "candidate_sha": "5b21217cc05d97452dd3a21e5ccaa484f4188763",
+        "prototype_web_ci_run": 35185133996,
+        "playable_candidate_run": 35185133936,
+        "stream_slice_gate_run": 35185133958,
+        "note": "Fresh browser evidence completes the canonical firewood quest and Living World route plus Living NPC, Social World and three Stream Slice scenarios using real controls."
       }
     },
     "RQ-H04": {
       "name": "Living Systems Integrity",
       "status": "GREEN",
       "evidence": {
-        "candidate_sha": "8402e77367bb0bb8ac28b1acd5ebcf485b3c9eb1",
-        "stream_slice_gate_run": 35105180810,
-        "profile_python_tests": "22 passed",
-        "stream_slice_browser_tests": "3 passed",
-        "preflight": {
-          "integrity": "ok",
-          "foreign_key_errors": 0,
-          "wayfarer_arrivals": 1,
-          "oren_bread_requests": 1,
-          "road_fact_knowers": ["npc_oren", "npc_wayfarer_1"]
-        },
-        "note": "The exact candidate proves Living World causality, Mira/Kaspar contact-gated propagation, Talen-to-Oren road knowledge and hospitality through real spatial controls."
+        "candidate_sha": "5b21217cc05d97452dd3a21e5ccaa484f4188763",
+        "playable_candidate_run": 35185133936,
+        "stream_slice_gate_run": 35185133958,
+        "living_world_integration_run": 35185133954,
+        "note": "Fresh backend and browser acceptance is green for Living World, Living NPC, Social World, Living Conversation and causal Stream Slice behavior."
       }
     },
     "RQ-H05": {
       "name": "Persistence / Reload Integrity",
       "status": "GREEN",
       "evidence": {
-        "candidate_sha": "8402e77367bb0bb8ac28b1acd5ebcf485b3c9eb1",
-        "stream_slice_gate_run": 35105180810,
-        "stream_slice_reload_test": "PASS",
-        "reopen_tick": 20,
-        "sqlite_integrity": "ok",
-        "foreign_key_errors": 0,
-        "note": "Fresh Stream Slice reload verification preserves hospitality and causal knowledge, and preflight proves SQLite reopen integrity."
+        "candidate_sha": "5b21217cc05d97452dd3a21e5ccaa484f4188763",
+        "living_world_integration_run": 35185133954,
+        "stream_slice_gate_run": 35185133958,
+        "note": "Backend persistence, SQLite integrity/reopen and the Stream Slice reload/persistence scenario completed successfully on the fresh candidate."
       }
     },
     "RQ-H06": {
       "name": "Runtime Integrity / No Critical Blockers",
-      "status": "RED",
+      "status": "GREEN",
       "evidence": {
-        "candidate_sha": "8402e77367bb0bb8ac28b1acd5ebcf485b3c9eb1",
-        "failed_required_runs": [35105180818, 35105180835],
-        "playable_candidate_failure": "Canonical browser vertical slice exhausted the 180000ms test budget while waiting to click 'Подождать 5 шагов'.",
-        "living_world_failure": "Canonical browser vertical slice exhausted the 180000ms test budget while waiting to click 'Подождать 1 шаг'.",
-        "browser_console_errors": "none in both failures",
-        "page_errors": "none in both failures",
-        "note": "The required-gate failures are a current technical-release blocker. The visual-specific responsive and interaction checks complete successfully before these late canonical-route timeouts."
+        "candidate_sha": "5b21217cc05d97452dd3a21e5ccaa484f4188763",
+        "prototype_web_ci_run": 35185133996,
+        "playable_candidate_run": 35185133936,
+        "living_world_integration_run": 35185133954,
+        "note": "All required browser-bearing workflows completed successfully. Prototype Web CI completed 20/20 general Chromium scenarios, 1/1 Living NPC, 1/1 Social World and 3/3 Stream Slice scenarios; the required canonical routes have no remaining release-blocking failure on this candidate."
       }
     },
     "RQ-H07": {
       "name": "Visual / Input Usability",
       "status": "GREEN",
       "evidence": {
-        "candidate_sha": "789d36a490dd1d10737a1671aa43213e33b5f0d8",
-        "validated_at_utc": "2026-09-17T01:22:14Z",
-        "visual_forge_gate_run": 35168790563,
-        "visual_forge_gate": "GREEN",
-        "prototype_web_ci_run": 35168790557,
-        "prototype_web_ci": "RED only on canonical firewood real-control route; visual checks passed",
-        "playable_candidate_run": 35168790554,
-        "playable_candidate": "RED only on canonical firewood real-control route; visual checks passed",
-        "living_world_integration_run": 35168790572,
-        "living_world_integration": "RED only on canonical firewood real-control route; visual checks passed",
-        "web_contracts": "70/70 passed in fresh browser-bearing workflows",
-        "production_build": "PASS in fresh browser-bearing workflows; largest JS asset 1,151,512 / 1,200,000 bytes",
+        "candidate_sha": "5b21217cc05d97452dd3a21e5ccaa484f4188763",
+        "visual_forge_gate_run": 35185133987,
+        "prototype_web_ci_run": 35185133996,
+        "web_contracts": "70/70 passed",
+        "production_build": "PASS; largest JS asset 1,151,512 / 1,200,000 bytes",
         "desktop": [
-          "normal mode first-run clarity PASS",
-          "desktop Mira spatial dialogue with Russian text input PASS",
+          "normal-mode first-run clarity PASS",
           "desktop interaction ribbon PASS",
-          "touch/keyboard contract preserves E semantics and desktop keyboard flow PASS"
+          "desktop spatial Mira dialogue and Russian text input PASS",
+          "desktop keyboard flow preserved PASS"
         ],
         "portrait_390x844": [
-          "touch controls reachable without keyboard PASS",
-          "village contextual action label near firewood PASS",
-          "tavern contextual action label near Oren PASS",
-          "interaction ribbon and touch action bounded with durable pressed feedback PASS",
-          "touch held/release feedback PASS",
-          "Living World panel compact without hiding actions PASS"
+          "touch controls reachable PASS",
+          "contextual firewood and Oren action labels PASS",
+          "bounded interaction ribbon/touch action PASS",
+          "held/release feedback PASS"
         ],
         "landscape_844x390_coarse_pointer": [
-          "coarse-pointer landscape touch controls usable PASS"
+          "touch controls usable PASS"
         ],
-        "browser_errors": "No console or page errors were attached to the fresh canonical-route failures.",
-        "blocking_failures_outside_visual_ownership": [
-          "Prototype Web CI 35168790557: canonical vertical slice failed after firewood interaction did not advance HUD from 1/5 to 2/5.",
-          "Playable Candidate 35168790554: canonical vertical slice failed because the live interaction hint never exposed 'подобрать дрова' within 12 seconds.",
-          "Living World Integration 35168790572: canonical vertical slice failed after firewood interaction did not advance HUD from 1/5 to 2/5."
-        ],
-        "note": "Fresh exact-candidate evidence reconfirms RQ-H07 across desktop, 390x844 portrait fallback and 844x390 coarse-pointer landscape fallback. Required-gate failures reproduce only in the canonical real-control firewood route and do not establish a visual overflow, overlap, hidden-control, modal, readability or keyboard-flow regression. Human aesthetic judgment remains RQ-H09."
+        "same_code_publication": {
+          "working_sha": "0f36be13c32bfd83e54d46707449bf78699dc6ee",
+          "movement_blob": "7a13a060804fd92901782ec8a998929f3d9faf4e",
+          "spatial_navigation_blob": "e009faf553309140faff1971c155fa8c9879f541",
+          "movement_contract_blob": "3067200661161858c459adeb27ffe927a53df804",
+          "vertical_slice_blob": "336cb9363820cdac5fe6afd9c66bd12e3c023e4e"
+        },
+        "note": "Fresh validation reconfirms desktop, 390x844 portrait and 844x390 coarse-pointer fallback without blocking overflow, hidden controls, modal/input regression or route-blocking visual defect. Human aesthetic judgment remains RQ-H09."
       }
     },
     "RQ-H08": {
       "name": "Reproducibility and Supported Environment",
       "status": "GREEN",
       "evidence": {
-        "candidate_sha": "8402e77367bb0bb8ac28b1acd5ebcf485b3c9eb1",
-        "windows_compatibility_run": 35105180809,
-        "release_reproducibility_run": 35105180847,
-        "windows": "SUCCESS",
-        "release_reproducibility": "SUCCESS",
-        "note": "Fresh Windows clean install/full Python/preflight/web contracts/build/SQLite/backend API contour and both Windows/Linux reproducibility jobs are green."
+        "candidate_sha": "5b21217cc05d97452dd3a21e5ccaa484f4188763",
+        "windows_compatibility_run": 35185133960,
+        "release_reproducibility_run": 35185133952,
+        "note": "Fresh Windows compatibility plus Ubuntu and Windows clean dependency/build contours completed successfully, including Python suites, Stream Slice preflight, web contracts/build, SQLite/timezone and backend/API boot."
       }
     },
     "RQ-H09": {
@@ -157,28 +134,28 @@
   "score_categories": {
     "reliability": {
       "max": 30,
-      "score": 5,
-      "evidence": "Canonical vertical slice is GREEN in Prototype Web CI and two same-candidate Stream Slice executions are confirmed PASS, but two required release gates remain RED and the three-pass stability requirement is incomplete."
+      "score": 30,
+      "evidence": "Seven required gates are green on one candidate, three same-candidate Stream Slice acceptances pass, and the fresh canonical browser routes complete without a remaining P0/P1 release blocker or softlock."
     },
     "core_gameplay": {
       "max": 25,
       "score": 25,
-      "evidence": "Fresh canonical vertical slice and Stream Slice cover physical village/tavern navigation, TAKE/GIVE/WAIT, Oren firewood quest, Mira/Kaspar contact and Talen hospitality."
+      "evidence": "Fresh canonical and Stream Slice browser routes prove physical village/tavern navigation, TAKE/GIVE/WAIT, Oren firewood quest, Mira/Kaspar flow and Talen hospitality."
     },
     "living_world_causality": {
       "max": 20,
       "score": 20,
-      "evidence": "22 profile Python tests plus 3 Stream Slice Chromium tests and deterministic preflight prove Living World/NPC/Social/Living Conversation causal boundaries."
+      "evidence": "Fresh backend and browser acceptance proves Living World, Living NPC, Social World, Living Conversation and causal knowledge behavior on the candidate."
     },
     "ux_visual": {
       "max": 15,
       "score": 15,
-      "evidence": "Latest visual validation on 789d36a490dd1d10737a1671aa43213e33b5f0d8 proves 70/70 web/UI contracts, production build, desktop main mode, 390x844 portrait fallback and 844x390 coarse-pointer landscape fallback with bounded controls, readable interaction feedback, modal-safe text input and preserved desktop keyboard flow; Visual Forge is GREEN."
+      "evidence": "Fresh Visual Forge, 70/70 UI/web contracts, production build and browser checks pass for desktop, 390x844 portrait and 844x390 coarse-pointer landscape surfaces."
     },
     "persistence_compatibility": {
       "max": 10,
       "score": 10,
-      "evidence": "Fresh reload/SQLite reopen evidence plus green Windows Compatibility and Release Reproducibility gates."
+      "evidence": "Fresh SQLite persistence/reopen, Stream Slice reload, Windows Compatibility and Release Reproducibility evidence are green."
     }
   },
   "rules": {
@@ -188,5 +165,5 @@
     "v1_done_requires_explicit_owner_confirmation": true,
     "autonomous_threshold_reduction_forbidden": true
   },
-  "bootstrap_note": "Canonical V1 quality contract/state were copied unchanged from config/v1-quality-contract after legal lease acquisition. VISUAL ownership keeps RQ-H07 GREEN from fresh exact-candidate responsive evidence; mechanical required-gate failures remain for GAMEPLAY reconciliation without changing visual thresholds or score."
+  "bootstrap_note": "V1 technical quality is fully green on the fresh validation candidate. Autonomous V1 expansion is now frozen by contract. RQ-H09 remains pending and requires explicit owner human experience confirmation before V1_DONE."
 }
