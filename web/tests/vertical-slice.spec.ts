@@ -79,17 +79,23 @@ async function moveAndInteractWhenHint(
   hintText: string,
   timeout = 10_000
 ): Promise<void> {
-  const hint = page.locator("#interaction-hint");
   await releaseMovementKeys(page);
   for (const key of keys) await page.keyboard.down(key);
   try {
-    await expect(hint).toContainText(hintText, { timeout });
+    // Observe the live DOM from the browser frame loop while physical movement is
+    // held. Locator assertions poll from the controller process and can miss the
+    // scene's bounded 600 ms interaction latch when a loaded CI runner is delayed.
+    // This keeps the same real keys, collisions and interaction radius while making
+    // the game's own visible prompt the exact stop condition.
+    await page.waitForFunction(
+      ({ hintText }) => (document.getElementById("interaction-hint")?.textContent ?? "").includes(hintText),
+      { hintText },
+      { timeout }
+    );
 
     // The visible prompt means the scene has already latched this interaction and
     // keeps it valid for its short human input grace window. Release only the keys
-    // this approach is holding, then interact immediately. A second all-key release
-    // plus a settle/reconfirm round trip can outlive that grace window on a slow CI
-    // runner even though the player actually reached the interaction physically.
+    // this approach is holding, then interact immediately.
     for (const key of keys) await page.keyboard.up(key);
     await page.keyboard.press("e");
   } finally {
