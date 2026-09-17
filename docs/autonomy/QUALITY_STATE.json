@@ -98,33 +98,42 @@
       "name": "Visual / Input Usability",
       "status": "GREEN",
       "evidence": {
-        "candidate_sha": "8402e77367bb0bb8ac28b1acd5ebcf485b3c9eb1",
-        "visual_forge_gate_run": 35105180925,
+        "candidate_sha": "789d36a490dd1d10737a1671aa43213e33b5f0d8",
+        "validated_at_utc": "2026-09-17T01:22:14Z",
+        "visual_forge_gate_run": 35168790563,
         "visual_forge_gate": "GREEN",
-        "prototype_web_ci_run": 35105180802,
-        "prototype_web_ci": "SUCCESS",
-        "playable_candidate_run": 35105180818,
-        "living_world_integration_run": 35105180835,
-        "web_contracts": "56/56 passed in both fresh browser-bearing failing workflows",
-        "production_build": "PASS in both fresh browser-bearing failing workflows",
+        "prototype_web_ci_run": 35168790557,
+        "prototype_web_ci": "RED only on canonical firewood real-control route; visual checks passed",
+        "playable_candidate_run": 35168790554,
+        "playable_candidate": "RED only on canonical firewood real-control route; visual checks passed",
+        "living_world_integration_run": 35168790572,
+        "living_world_integration": "RED only on canonical firewood real-control route; visual checks passed",
+        "web_contracts": "70/70 passed in fresh browser-bearing workflows",
+        "production_build": "PASS in fresh browser-bearing workflows; largest JS asset 1,151,512 / 1,200,000 bytes",
         "desktop": [
           "normal mode first-run clarity PASS",
           "desktop Mira spatial dialogue with Russian text input PASS",
           "desktop interaction ribbon PASS",
-          "canonical browser vertical slice PASS in Prototype Web CI on the same candidate"
+          "touch/keyboard contract preserves E semantics and desktop keyboard flow PASS"
         ],
         "portrait_390x844": [
           "touch controls reachable without keyboard PASS",
           "village contextual action label near firewood PASS",
           "tavern contextual action label near Oren PASS",
           "interaction ribbon and touch action bounded with durable pressed feedback PASS",
-          "touch held/release feedback PASS"
+          "touch held/release feedback PASS",
+          "Living World panel compact without hiding actions PASS"
         ],
         "landscape_844x390_coarse_pointer": [
           "coarse-pointer landscape touch controls usable PASS"
         ],
-        "browser_errors": "No console or page errors were attached to the two late canonical-route timeout failures.",
-        "note": "Fresh exact-candidate browser evidence covers desktop, 390x844 portrait fallback and 844x390 coarse-pointer landscape fallback. The two required-gate failures occur later from aggregate canonical-route timing and do not reproduce a visual overflow, overlap, hidden-control, modal or keyboard-flow defect. Human aesthetic judgment remains RQ-H09."
+        "browser_errors": "No console or page errors were attached to the fresh canonical-route failures.",
+        "blocking_failures_outside_visual_ownership": [
+          "Prototype Web CI 35168790557: canonical vertical slice failed after firewood interaction did not advance HUD from 1/5 to 2/5.",
+          "Playable Candidate 35168790554: canonical vertical slice failed because the live interaction hint never exposed 'подобрать дрова' within 12 seconds.",
+          "Living World Integration 35168790572: canonical vertical slice failed after firewood interaction did not advance HUD from 1/5 to 2/5."
+        ],
+        "note": "Fresh exact-candidate evidence reconfirms RQ-H07 across desktop, 390x844 portrait fallback and 844x390 coarse-pointer landscape fallback. Required-gate failures reproduce only in the canonical real-control firewood route and do not establish a visual overflow, overlap, hidden-control, modal, readability or keyboard-flow regression. Human aesthetic judgment remains RQ-H09."
       }
     },
     "RQ-H08": {
@@ -164,7 +173,7 @@
     "ux_visual": {
       "max": 15,
       "score": 15,
-      "evidence": "Exact-candidate browser evidence proves the desktop main mode, 390x844 portrait fallback and 844x390 coarse-pointer landscape fallback with bounded controls, readable interaction feedback, modal-safe text input and preserved desktop keyboard flow; Visual Forge and all 56 UI/web contracts are green."
+      "evidence": "Latest visual validation on 789d36a490dd1d10737a1671aa43213e33b5f0d8 proves 70/70 web/UI contracts, production build, desktop main mode, 390x844 portrait fallback and 844x390 coarse-pointer landscape fallback with bounded controls, readable interaction feedback, modal-safe text input and preserved desktop keyboard flow; Visual Forge is GREEN."
     },
     "persistence_compatibility": {
       "max": 10,
@@ -179,5 +188,5 @@
     "v1_done_requires_explicit_owner_confirmation": true,
     "autonomous_threshold_reduction_forbidden": true
   },
-  "bootstrap_note": "Canonical V1 quality contract/state were copied unchanged from config/v1-quality-contract after legal lease acquisition. VISUAL reconciliation on the same validation candidate closes RQ-H07 from fresh responsive browser evidence and records the newly completed required-gate failures without changing contract thresholds."
+  "bootstrap_note": "Canonical V1 quality contract/state were copied unchanged from config/v1-quality-contract after legal lease acquisition. VISUAL ownership keeps RQ-H07 GREEN from fresh exact-candidate responsive evidence; mechanical required-gate failures remain for GAMEPLAY reconciliation without changing visual thresholds or score."
 }
