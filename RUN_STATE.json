@@ -20,11 +20,11 @@
   "next_action": "Inspect the remaining exact-candidate workflows on validation SHA 789d36a490dd1d10737a1671aa43213e33b5f0d8. If Prototype Web CI, Playable Candidate and Living World Integration finish GREEN, update QUALITY_STATE from exact evidence and evaluate TECHNICALLY_READY_AWAITING_HUMAN_QA. If any turns RED, fetch its logs and continue the same RQ-H01/RQ-H06 root-cause cycle.",
   "blockers": [],
   "active_run": {
-    "run_id": null,
-    "status": "idle",
-    "started_at_utc": null,
-    "lease_expires_at_utc": null,
-    "base_sha": null,
+    "run_id": "2026-09-17-visual-rqh07-reconcile-1",
+    "status": "running",
+    "started_at_utc": "2026-09-17T01:22:14Z",
+    "lease_expires_at_utc": "2026-09-17T02:52:14Z",
+    "base_sha": "f5a5511cb094c33e79fe2bf95dd8ac97df657232",
     "working_branch": "agent/autonomy-pilot-v0.1"
   },
   "last_handoff": {
