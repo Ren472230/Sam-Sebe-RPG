@@ -3,7 +3,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { expect, test, type Page } from "@playwright/test";
 
 import { installBrowserDiagnostics } from "./helpers/browser-diagnostics";
-import { enterTavernSpatially, moveTowardInteraction } from "./helpers/spatial-navigation";
+import { enterTavernSpatially } from "./helpers/spatial-navigation";
 
 type PlayerPosition = { x: number; y: number };
 type ActionPayload = {
@@ -108,21 +108,12 @@ async function leaveTavern(page: Page): Promise<void> {
 }
 
 async function collectOneFirewood(page: Page, expectedCount: number): Promise<void> {
-  const hint = page.locator("#interaction-hint");
-  const targets = [
-    { x: 112, y: 430 },
-    { x: 151, y: 446 },
-    { x: 188, y: 428 },
-    { x: 224, y: 449 },
-    { x: 260, y: 431 }
-  ];
-  const target = targets[expectedCount - 1];
-  if (!target) throw new Error(`unsupported firewood count: ${expectedCount}`);
-
-  await moveTowardInteraction(page, target.x, target.y, "подобрать дрова", 12_000);
-  await expect(hint).toContainText("подобрать дрова", { timeout: 3_000 });
-  await page.keyboard.press("e");
-  await releaseMovementKeys(page);
+  // The five canonical firewood hotspots form a continuous leftward sweep from the
+  // workshop anchor. Drive the real keyboard until the game itself exposes the TAKE
+  // interaction instead of asking an external controller to settle on exact pixels.
+  // This preserves physical input/collisions and remains stable when the CI runner
+  // delays key-up delivery, because the interaction hint is the stop condition.
+  await moveAndInteractWhenHint(page, ["a"], "подобрать дрова", 12_000);
   await expect(page.locator("#hud")).toContainText(`дрова ${expectedCount}/5`);
 }
 
