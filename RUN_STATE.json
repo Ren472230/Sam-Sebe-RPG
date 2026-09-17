@@ -15,52 +15,57 @@
     "draft": true,
     "merged": false
   },
-  "phase": "v1_quality_validation_in_progress",
-  "current_objective": "RQ-H01/RQ-H06: eliminate the reproducible canonical second-firewood real-control failure on the current validation line and recover the required browser gates without weakening gameplay, interactions, collisions, timeouts or acceptance criteria.",
-  "next_action": "Recover the expired prior gameplay run from current branch HEAD c28cc40dffbdd821bfcd216c83ba7b8239b5e756, inspect the exact second-firewood failure from validation run 35177003077, prove whether the defect is controller timing or game interaction handling, then apply the smallest evidence-backed fix and validate on one exact candidate.",
+  "phase": "v1_technically_ready_awaiting_human_qa",
+  "current_objective": "RQ-H07: final visual/input revalidation on the fresh all-green V1 candidate and quality-state reconciliation without adding cosmetic scope.",
+  "next_action": "Owner performs RQ-H09 Human Experience Gate on the current browser vertical slice. Keep autonomous V1 work read-only unless a fresh proven regression appears.",
   "blockers": [],
   "active_run": {
-    "run_id": "2026-09-17-visual-rq-h07-final-validation-1",
-    "status": "running",
-    "started_at_utc": "2026-09-17T06:24:00Z",
-    "lease_expires_at_utc": "2026-09-17T07:54:00Z",
-    "base_sha": "0f36be13c32bfd83e54d46707449bf78699dc6ee",
+    "run_id": null,
+    "status": "idle",
+    "started_at_utc": null,
+    "lease_expires_at_utc": null,
+    "base_sha": null,
     "working_branch": "agent/autonomy-pilot-v0.1"
   },
   "last_handoff": {
-    "completed_at_utc": "2026-09-17T01:58:47Z",
-    "result": "SESSION_OBJECTIVE: RQ-H01/RQ-H06 – remove the fresh canonical firewood real-control instability without weakening gameplay or quality gates. CHECKPOINT 1: root cause was isolated in the canonical Playwright controller: moveAndInteractWhenHint kept a movement key held while pressing E even though VillageScene handles E asynchronously; after the visible firewood prompt this could carry the avatar through the next narrow interaction window while TAKE/MOVE was still completing, matching the prior 1/5->2/5 miss and missing-hint failures. CHECKPOINT 2: the controller now mirrors the physical human sequence – stop real movement at the visible prompt, settle/reconfirm the same prompt, then press E once. No teleportation, direct state mutation, collision change, radius widening, timeout increase or retry loop was added. Working implementation commit: 0e4d17c9ab2758f4ba3407cf25b8bba5a8124853. Exact validation candidate: 51060290b334c6f4656dadeeca5a74f5889b096f. CHECKPOINT 3: on that candidate Visual Forge 35172408563, Release Reproducibility 35172408523, Windows Compatibility 35172408464 and Stream Slice 35172408746 are GREEN. Stream Slice exact evidence includes 22/22 profile Python tests, PASS preflight with SQLite integrity ok / 0 FK errors / one Talen arrival / one Oren bread request / road fact limited to Oren+Talen, 70/70 web/UI contracts, production build within bundle budget, and 3/3 real-control Chromium Stream Slice tests PASS. CHECKPOINT 4: Prototype Web CI 35172408525, Playable Candidate 35172408495 and Living World Integration 35172408572 were still executing their canonical browser routes when this run reached its execution boundary; their prerequisite contracts/build/backend checks were GREEN. QUALITY_STATE was intentionally left unchanged until those exact-candidate workflows finish. STOP_REASON: EXECUTION_LIMIT.",
-    "head_sha": "0e4d17c9ab2758f4ba3407cf25b8bba5a8124853",
-    "work_head_sha": "51060290b334c6f4656dadeeca5a74f5889b096f",
+    "completed_at_utc": "2026-09-17T06:27:59Z",
+    "result": "SESSION_OBJECTIVE: RQ-H07 – reconfirm Visual / Input Usability on the fresh final validation candidate and reconcile V1 quality only from exact evidence. CHECKPOINT 1: the expired gameplay lease was recovered after its working branch had advanced to 0f36be13c32bfd83e54d46707449bf78699dc6ee; no competing active lease remained. CHECKPOINT 2: validation PR #56 head 5b21217cc05d97452dd3a21e5ccaa484f4188763 completed all seven required release workflows GREEN. Prototype Web CI proves 70/70 web/UI contracts, production build within budget, desktop first-run/interaction/dialogue checks, 390x844 touch/context/modal checks, 844x390 coarse-pointer landscape, 20/20 general Chromium scenarios, 1/1 Living NPC, 1/1 Social World and 3/3 Stream Slice. CHECKPOINT 3: working and validation lines have identical current blobs for movement.ts, spatial-navigation.ts, movement-frame-delta.test.ts and vertical-slice.spec.ts, providing same-code publication evidence for the stabilization changes. CHECKPOINT 4: QUALITY_STATE was promoted to TECHNICALLY_READY_AWAITING_HUMAN_QA with RQ-H01..RQ-H08 GREEN and Quality Score 100/100. No new visual feature or cosmetic change was added. STOP_REASON: HUMAN_DECISION_REQUIRED.",
+    "head_sha": "0f36be13c32bfd83e54d46707449bf78699dc6ee",
+    "work_head_sha": "0f36be13c32bfd83e54d46707449bf78699dc6ee",
+    "validation_candidate_sha": "5b21217cc05d97452dd3a21e5ccaa484f4188763",
+    "validation_merge_sha": "e438517b3fa460c323b31224f8e3398d709a3a80",
     "verification": [
-      "Validation SHA 51060290b334c6f4656dadeeca5a74f5889b096f – Visual Forge Gate 35172408563: SUCCESS.",
-      "Validation SHA 51060290b334c6f4656dadeeca5a74f5889b096f – Release Reproducibility Gate 35172408523: SUCCESS on Windows and Ubuntu clean dependency/build contours.",
-      "Validation SHA 51060290b334c6f4656dadeeca5a74f5889b096f – Windows Compatibility Gate 35172408464: SUCCESS including full Python, Stream Slice preflight, web contracts/build, SQLite/timezone and backend API boot.",
-      "Validation SHA 51060290b334c6f4656dadeeca5a74f5889b096f – Stream Slice Gate 35172408746: SUCCESS; 22 profile Python tests passed; preflight PASS; 70/70 web/UI contracts passed; production build PASS; Stream Slice Chromium 3/3 passed in 2.6m.",
-      "Prototype Web CI 35172408525: contracts/build/startup/interaction-feedback checks GREEN; full browser route still in progress at handoff.",
-      "Playable Candidate 35172408495: backend + Living World job GREEN; web contracts/build GREEN; real browser integrated route still in progress at handoff.",
-      "Living World Integration 35172408572: backend + persistence GREEN; client contract/build GREEN; real browser critical route still in progress at handoff."
+      "Validation head 5b21217cc05d97452dd3a21e5ccaa484f4188763 – Visual Forge Gate 35185133987: SUCCESS.",
+      "Validation head 5b21217cc05d97452dd3a21e5ccaa484f4188763 – Stream Slice Gate 35185133958: SUCCESS.",
+      "Validation head 5b21217cc05d97452dd3a21e5ccaa484f4188763 – Prototype Web CI 35185133996: SUCCESS; 70/70 contracts, production build, visual interaction checks, 20/20 general Chromium, 1/1 Living NPC, 1/1 Social World, 3/3 Stream Slice.",
+      "Validation head 5b21217cc05d97452dd3a21e5ccaa484f4188763 – Playable Candidate Gate 35185133936: SUCCESS; backend/Living World and web real-browser jobs GREEN including Stream Slice acceptance.",
+      "Validation head 5b21217cc05d97452dd3a21e5ccaa484f4188763 – Windows Compatibility Gate 35185133960: SUCCESS.",
+      "Validation head 5b21217cc05d97452dd3a21e5ccaa484f4188763 – Living World Integration Gate 35185133954: SUCCESS including real browser critical route and SQLite persistence/reopen.",
+      "Validation head 5b21217cc05d97452dd3a21e5ccaa484f4188763 – Release Reproducibility Gate 35185133952: SUCCESS on Ubuntu and Windows.",
+      "Same-code blobs between working and validation lines: movement.ts 7a13a060804fd92901782ec8a998929f3d9faf4e; spatial-navigation.ts e009faf553309140faff1971c155fa8c9879f541; movement-frame-delta.test.ts 3067200661161858c459adeb27ffe927a53df804; vertical-slice.spec.ts 336cb9363820cdac5fe6afd9c66bd12e3c023e4e."
     ],
-    "next_action": "Finish same-SHA evidence reconciliation on 51060290b334c6f4656dadeeca5a74f5889b096f before changing code again. Promote quality gates only from completed fresh results; diagnose any remaining RED job from its exact logs.",
-    "owner_decision_required": false,
-    "stop_reason": "EXECUTION_LIMIT"
+    "next_action": "Run RQ-H09 as a real owner human playtest. If the experience is accepted, explicitly confirm the Human Experience Gate so QUALITY_STATE can move to V1_DONE; otherwise report the concrete observed defect for a regression-fix cycle.",
+    "owner_decision_required": true,
+    "stop_reason": "HUMAN_DECISION_REQUIRED"
   },
   "human_gate": {
-    "required": false,
-    "reason": null
+    "required": true,
+    "reason": "RQ-H09 requires an explicit owner human playtest and acceptance after technical readiness. Automated tests and agent visual review cannot close it."
   },
   "verified_gates_at_authoritative_head": {
-    "note": "The authoritative integration PR #53 remains unchanged. Current V1 quality stabilization is isolated on agent/autonomy-pilot-v0.1 and mirrored only to draft validation PR #56."
+    "note": "The authoritative integration PR #53 remains unchanged and unmerged. V1 technical readiness is proven on the isolated pilot validation line; main remains untouched."
   },
   "pilot_validation_at_work_head": {
-    "work_head_sha": "51060290b334c6f4656dadeeca5a74f5889b096f",
-    "visual_forge_gate": {"run_id": 35172408563, "status": "success"},
-    "prototype_web_ci": {"run_id": 35172408525, "status": "in_progress", "known_green_scope": "70/70 web/UI contracts, production build, startup controls and desktop/mobile interaction feedback before full browser route"},
-    "release_reproducibility_gate": {"run_id": 35172408523, "status": "success"},
-    "windows_compatibility_gate": {"run_id": 35172408464, "status": "success"},
-    "stream_slice_gate": {"run_id": 35172408746, "status": "success", "evidence": "22 profile Python tests; PASS preflight; 70/70 web/UI contracts; production build PASS; 3/3 Chromium Stream Slice tests PASS"},
-    "living_world_integration_gate": {"run_id": 35172408572, "status": "in_progress", "known_green_scope": "backend+persistence, client contract and production build before real browser critical route"},
-    "playable_candidate_gate": {"run_id": 35172408495, "status": "in_progress", "known_green_scope": "backend+Living World, web contracts and production build before real browser integrated route"}
+    "working_sha": "0f36be13c32bfd83e54d46707449bf78699dc6ee",
+    "validation_candidate_sha": "5b21217cc05d97452dd3a21e5ccaa484f4188763",
+    "validation_merge_sha": "e438517b3fa460c323b31224f8e3398d709a3a80",
+    "visual_forge_gate": {"run_id": 35185133987, "status": "success"},
+    "stream_slice_gate": {"run_id": 35185133958, "status": "success"},
+    "prototype_web_ci": {"run_id": 35185133996, "status": "success"},
+    "playable_candidate_gate": {"run_id": 35185133936, "status": "success"},
+    "windows_compatibility_gate": {"run_id": 35185133960, "status": "success"},
+    "living_world_integration_gate": {"run_id": 35185133954, "status": "success"},
+    "release_reproducibility_gate": {"run_id": 35185133952, "status": "success"}
   },
   "standalone_experiment": {
     "branch": "experiment/standalone-html-v1",
@@ -85,9 +90,9 @@
     "github_releases": "none"
   },
   "known_limitations": [
-    "The previous gameplay lease expired after partial work that changed only RUN_STATE.json and web/tests/vertical-slice.spec.ts; fresh validation on mirrored b43c0935d0aecd5750cea1d1d980304ffe02e037 kept Visual Forge, Stream Slice, Windows and Release Reproducibility GREEN while Prototype Web CI, Playable Candidate and Living World Integration remained RED on the canonical second-firewood path.",
-    "QUALITY_STATE still reflects the last fully reconciled evidence and must be updated only after a new exact-candidate result is complete.",
-    "RQ-H09 remains a real human experience gate after technical readiness."
+    "RQ-H09 Human Experience Gate remains pending and can only be closed by explicit owner confirmation after a real human playtest.",
+    "The current SVG stream pack is sufficient for the V1 production-facing technical contract; final aesthetic acceptance belongs to RQ-H09.",
+    "The authoritative integration PR #53 and main remain unchanged; no merge decision has been made."
   ],
-  "current_blocker": "Canonical browser route sees the second firewood prompt and presses E, but the HUD remains at 1/5 on fresh validation b43c0935d0aecd5750cea1d1d980304ffe02e037; root cause still requires proof."
+  "current_blocker": "RQ-H09 Human Experience Gate requires explicit owner confirmation before V1_DONE."
 }
