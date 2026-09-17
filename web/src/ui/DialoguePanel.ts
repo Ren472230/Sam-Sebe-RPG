@@ -1,8 +1,14 @@
-import type { DialogueDecision, QuestResult } from "../api";
+import type { QuestResult } from "../api";
+import { dialogueResultEvidence } from "../playtestClient";
 import type { ClientState } from "../state";
+
+type TranscriptLine = { speaker: "player" | "npc" | "quest" | "system"; text: string };
 
 export class DialoguePanel {
   private readonly root: HTMLElement;
+  private npcId = "npc_oren";
+  private transcript: TranscriptLine[] = [];
+  private sending = false;
 
   constructor(private readonly state: ClientState) {
     const root = document.getElementById("dialogue");
@@ -10,58 +16,126 @@ export class DialoguePanel {
     this.root = root;
   }
 
-  async openOren(userText = "Привет. Есть работа?"): Promise<void> {
-    this.showMessage("Орен", "...");
-    try {
-      const decision = await this.state.api.dialogue(this.state.playerId, userText);
-      await this.state.refresh();
-      this.renderDecision(decision);
-    } catch (error) {
-      this.showMessage("Связь с миром", readableError(error), [
-        this.button("Повторить", () => void this.openOren(userText)),
-        this.button("Закрыть", () => this.close())
-      ]);
-    }
+  async openNpc(npcId: string, initialText?: string): Promise<void> {
+    this.npcId = npcId;
+    this.transcript = [];
+    this.root.hidden = false;
+    this.render();
+    if (initialText?.trim()) await this.send(initialText.trim());
+  }
+
+  async openOren(): Promise<void> {
+    await this.openNpc("npc_oren");
   }
 
   close(): void {
     this.root.hidden = true;
     this.root.replaceChildren();
+    this.transcript = [];
   }
 
-  private renderDecision(decision: DialogueDecision): void {
-    const snapshot = this.state.snapshot;
-    if (!snapshot) return;
-    const actions: HTMLButtonElement[] = [];
-
-    if (snapshot.quest.status === "available") {
-      actions.push(this.button("Взяться за дрова", () => void this.acceptQuest()));
+  private async send(text: string): Promise<void> {
+    const clean = text.trim();
+    if (!clean || this.sending) return;
+    this.sending = true;
+    this.transcript.push({ speaker: "player", text: clean });
+    this.render();
+    try {
+      const decision = await this.state.api.dialogue(
+        this.state.playerId,
+        this.npcId,
+        clean
+      );
+      document.dispatchEvent(new CustomEvent("samseberpg:dialogue-result", {
+        detail: dialogueResultEvidence(this.npcId, decision.used_fallback)
+      }));
+      await this.state.refresh();
+      this.transcript.push({ speaker: "npc", text: decision.text });
+    } catch (error) {
+      this.transcript.push({ speaker: "system", text: readableError(error) });
+    } finally {
+      this.sending = false;
+      this.render();
     }
-    if (snapshot.quest.status === "active") {
-      actions.push(this.button("Передать дрова", () => void this.turnInQuest()));
-    }
-    actions.push(this.button("Закрыть", () => this.close()));
+  }
 
-    const proposalMeta = decision.proposal === "offer_quest:bring_5_firewood" ? " · предложение квеста" : "";
-    this.showMessage(
-      "Орен",
-      decision.text,
-      actions,
-      `${decision.used_fallback ? "локальная реплика" : "AI-реплика"}${proposalMeta}`
+  private render(): void {
+    const title = document.createElement("h2");
+    title.textContent = npcName(this.npcId);
+
+    const transcript = document.createElement("div");
+    transcript.className = "dialogue-transcript";
+    if (this.transcript.length === 0) {
+      const empty = document.createElement("p");
+      empty.className = "dialogue-empty";
+      empty.textContent = `Ты рядом с ${npcName(this.npcId)}. Скажи что-нибудь своими словами.`;
+      transcript.append(empty);
+    } else {
+      for (const line of this.transcript) {
+        const item = document.createElement("p");
+        const visualSpeaker = line.speaker === "quest" ? "system" : line.speaker;
+        item.className = `dialogue-line dialogue-line-${visualSpeaker}`;
+        const prefix = line.speaker === "player"
+          ? "Ты"
+          : line.speaker === "npc"
+            ? npcName(this.npcId)
+            : line.speaker === "quest"
+              ? "Задание"
+              : "Система";
+        item.textContent = `${prefix}: ${line.text}`;
+        transcript.append(item);
+      }
+    }
+
+    const input = document.createElement("textarea");
+    input.className = "dialogue-input";
+    input.rows = 2;
+    input.placeholder = `Сказать ${npcName(this.npcId)}…`;
+    input.disabled = this.sending;
+    input.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" && !event.shiftKey) {
+        event.preventDefault();
+        void this.send(input.value);
+      }
+    });
+
+    const send = this.button(
+      this.sending ? "…" : "Отправить",
+      () => void this.send(input.value)
     );
+    send.disabled = this.sending;
+    const controls = document.createElement("div");
+    controls.className = "dialogue-actions";
+    controls.append(send);
+
+    const snapshot = this.state.snapshot;
+    if (this.npcId === "npc_oren" && snapshot) {
+      if (snapshot.quest.status === "available") {
+        controls.append(
+          this.button("Взяться за дрова", () => void this.acceptQuest())
+        );
+      } else if (snapshot.quest.status === "active") {
+        controls.append(
+          this.button("Передать дрова", () => void this.turnInQuest())
+        );
+      }
+    }
+    controls.append(this.button("Закрыть", () => this.close()));
+
+    this.root.replaceChildren(title, transcript, input, controls);
+    this.root.hidden = false;
+    if (!this.sending) input.focus();
   }
 
   private async acceptQuest(): Promise<void> {
     try {
       const result = await this.state.api.acceptQuest(this.state.playerId);
       await this.state.refresh();
-      if (!result.success) {
-        this.showResult(result);
-        return;
-      }
-      await this.openOren("Я возьмусь. Напомни, сколько нужно?");
+      if (!result.success) return this.showResult(result);
+      await this.send("Я возьмусь. Напомни, сколько нужно?");
     } catch (error) {
-      this.showMessage("Система", readableError(error), [this.button("Закрыть", () => this.close())]);
+      this.transcript.push({ speaker: "system", text: readableError(error) });
+      this.render();
     }
   }
 
@@ -69,45 +143,17 @@ export class DialoguePanel {
     try {
       const result = await this.state.api.turnInQuest(this.state.playerId);
       await this.state.refresh();
-      if (!result.success) {
-        this.showResult(result);
-        return;
-      }
-      await this.openOren("Вот дрова.");
+      if (!result.success) return this.showResult(result);
+      await this.send("Вот дрова.");
     } catch (error) {
-      this.showMessage("Система", readableError(error), [this.button("Закрыть", () => this.close())]);
+      this.transcript.push({ speaker: "system", text: readableError(error) });
+      this.render();
     }
   }
 
   private showResult(result: QuestResult): void {
-    this.showMessage("Система", result.summary, [
-      this.button("Снова к Орену", () => void this.openOren("Ну что?")),
-      this.button("Закрыть", () => this.close())
-    ]);
-  }
-
-  private showMessage(
-    speaker: string,
-    text: string,
-    actions: HTMLButtonElement[] = [],
-    meta?: string
-  ): void {
-    const title = document.createElement("h2");
-    title.textContent = speaker;
-    const copy = document.createElement("p");
-    copy.textContent = text;
-    const controls = document.createElement("div");
-    controls.className = "dialogue-actions";
-    controls.append(...actions);
-    const elements: Node[] = [title, copy];
-    if (meta) {
-      const label = document.createElement("small");
-      label.textContent = meta;
-      elements.push(label);
-    }
-    elements.push(controls);
-    this.root.replaceChildren(...elements);
-    this.root.hidden = false;
+    this.transcript.push({ speaker: "quest", text: result.summary });
+    this.render();
   }
 
   private button(label: string, onClick: () => void): HTMLButtonElement {
@@ -117,6 +163,14 @@ export class DialoguePanel {
     button.addEventListener("click", onClick);
     return button;
   }
+}
+
+function npcName(npcId: string): string {
+  if (npcId === "npc_mira") return "Мира";
+  if (npcId === "npc_kaspar") return "Каспар";
+  if (npcId === "npc_oren") return "Орен";
+  if (npcId === "npc_wayfarer_1") return "Тален";
+  return npcId;
 }
 
 function readableError(error: unknown): string {

@@ -1,0 +1,98 @@
+{
+  "protocol_version": 1,
+  "project": "Ren472230/Sam-Sebe-RPG",
+  "run_id": "2026-09-13-standalone-html-build-1",
+  "authoritative_branch": "integration/audit-results-v1",
+  "authoritative_head": "bf45baa98bd4b4463911ac8f1600dc6f1fad2cb0",
+  "working_branch": "agent/autonomy-pilot-v0.1",
+  "integration_candidate": {
+    "pr": 53,
+    "branch": "integration/audit-results-v1",
+    "head_sha": "bf45baa98bd4b4463911ac8f1600dc6f1fad2cb0",
+    "base_branch": "main",
+    "base_sha": "813ac7beb233645546fcc1e7bda3827efe63dcdc",
+    "state": "open",
+    "draft": true,
+    "merged": false
+  },
+  "phase": "v1_quality_validation_in_progress",
+  "current_objective": "SESSION_OBJECTIVE: RQ-H01 / RQ-H06 reliability – diagnose and remove the proven runtime-duration instability that makes the same canonical real-control browser route finish in about 119 seconds on one exact-candidate run but exhaust the unchanged 180-second aggregate budget on slower required-gate runners, without increasing timeouts, changing gameplay speed, teleporting, disabling collisions or weakening real-control acceptance.",
+  "next_action": "Prove the frame-duration mechanism in the production movement loop, then implement the smallest collision-safe frame-delta handling correction with a deterministic contract test. Verify focused movement/build/browser evidence before rerunning required gates on the resulting exact SHA.",
+  "blockers": [
+    "Playable Candidate Gate 35105180818 is fresh RED on candidate 8402e77367bb0bb8ac28b1acd5ebcf485b3c9eb1: its canonical browser vertical slice exhausted the 180000ms test budget while waiting to click 'Подождать 5 шагов'. Browser console errors: none; page errors: none.",
+    "Living World Integration Gate 35105180835 is fresh RED on the same candidate: its canonical browser vertical slice exhausted the 180000ms test budget while waiting to click 'Подождать 1 шаг'. Browser console errors: none; page errors: none.",
+    "RQ-H07 is now GREEN from exact-candidate responsive/browser evidence and ux_visual is 15/15. No proven visual overflow, overlap, hidden-control, modal or desktop-keyboard regression remains for VISUAL to patch while the higher-priority required-gate failures are unresolved."
+  ],
+  "active_run": {
+    "run_id": "2026-09-16-gameplay-frame-delta-recovery-3",
+    "status": "running",
+    "started_at_utc": "2026-09-16T18:51:17Z",
+    "lease_expires_at_utc": "2026-09-16T20:21:17Z",
+    "base_sha": "d04f59b9228c8f1c7870b4dbdc6111f87d6f611b",
+    "working_branch": "agent/autonomy-pilot-v0.1"
+  },
+  "last_handoff": {
+    "completed_at_utc": "2026-09-16T14:27:22Z",
+    "result": "SESSION_OBJECTIVE: RQ-H07 – close Visual / Input Usability on exact V1 candidate 8402e77367bb0bb8ac28b1acd5ebcf485b3c9eb1 without adding cosmetic scope while fresh required-gate evidence is red. CHECKPOINT 1: reconciled the completed required workflows before visual closure. Prototype Web CI 35105180802 is GREEN including browser vertical slice and separate Stream Slice acceptance. Playable Candidate 35105180818 and Living World Integration 35105180835 are RED because their canonical browser route exhausts the 180000ms aggregate test budget at the Living World WAIT phase; both attach no browser-console or page errors. CHECKPOINT 2: exact-candidate visual/input evidence is independently GREEN: Visual Forge 35105180925 success; 56/56 web/UI contracts and production build pass in both fresh browser-bearing runs; desktop first-run clarity, desktop Mira spatial dialogue with Russian input, desktop interaction ribbon, 390x844 touch reachability/contextual actions/interaction ribbon/pressed feedback, and 844x390 coarse-pointer landscape usability all pass. Prototype Web CI also proves the canonical browser vertical slice can complete on this same SHA. CHECKPOINT 3: docs/autonomy/QUALITY_STATE.json was updated at commit eb21cce2b54eab3945ab7a53ffba705580c602aa: RQ-H07 GREEN, ux_visual 15/15, overall score 75; RQ-H01 and RQ-H06 RED from the two required-gate failures; RQ-H02 remains UNKNOWN with two confirmed same-candidate Stream Slice passes and the third skipped after Playable Candidate's preceding canonical-route failure. No product/UI code was changed. STOP_REASON: EXTERNAL_BLOCKER. Owner decision is not required.",
+    "head_sha": "eb21cce2b54eab3945ab7a53ffba705580c602aa",
+    "work_head_sha": "8402e77367bb0bb8ac28b1acd5ebcf485b3c9eb1",
+    "verification": [
+      "Visual Forge Gate 35105180925 on exact candidate 8402e77367bb0bb8ac28b1acd5ebcf485b3c9eb1: SUCCESS.",
+      "Prototype Web CI 35105180802 on the exact candidate: SUCCESS. Web contracts, production build, startup/focused controls, canonical browser vertical slice, Living NPC, Social World and Stream Slice browser acceptance all succeeded.",
+      "Playable Candidate Gate 35105180818: backend + Living World SUCCESS; 56/56 web contracts SUCCESS; production build SUCCESS; visual/input browser tests for desktop, 390x844 and 844x390 pass; canonical browser route later FAILED on 180000ms aggregate timeout waiting for 'Подождать 5 шагов'; console/page errors none.",
+      "Living World Integration Gate 35105180835: backend + persistence SUCCESS; 56/56 web contracts SUCCESS; production build SUCCESS; visual/input browser tests for desktop, 390x844 and 844x390 pass; canonical browser route later FAILED on 180000ms aggregate timeout waiting for 'Подождать 1 шаг'; console/page errors none.",
+      "Stream Slice Gate 35105180810: SUCCESS and first same-candidate Stream Slice pass. Prototype Web CI Stream Slice acceptance provides the second confirmed same-candidate pass. The third required pass is absent because Playable Candidate skips its later acceptance after the preceding canonical-route failure.",
+      "QUALITY_STATE commit eb21cce2b54eab3945ab7a53ffba705580c602aa records RQ-H07 GREEN, ux_visual 15/15, total score 75, RQ-H01/RQ-H06 RED and RQ-H02 UNKNOWN without changing contract thresholds."
+    ],
+    "next_action": "GAMEPLAY should diagnose and fix the exact-candidate aggregate canonical-route timeout in Playable Candidate and Living World Integration, then rerun required gates. VISUAL should remain read-only unless that work exposes a new reproducible visual/input regression or fresh exact-candidate RQ-H07 evidence turns red.",
+    "owner_decision_required": false,
+    "stop_reason": "EXTERNAL_BLOCKER"
+  },
+  "human_gate": {
+    "required": false,
+    "reason": null
+  },
+  "verified_gates_at_authoritative_head": {
+    "note": "The authoritative integration PR #53 remains unchanged. Current V1 quality stabilization is isolated on agent/autonomy-pilot-v0.1 and mirrored only to draft validation PR #56."
+  },
+  "pilot_validation_at_work_head": {
+    "work_head_sha": "8402e77367bb0bb8ac28b1acd5ebcf485b3c9eb1",
+    "visual_forge_gate": {"run_id": 35105180925, "status": "success"},
+    "prototype_web_ci": {"run_id": 35105180802, "status": "success"},
+    "release_reproducibility_gate": {"run_id": 35105180847, "status": "success"},
+    "windows_compatibility_gate": {"run_id": 35105180809, "status": "success"},
+    "stream_slice_gate": {"run_id": 35105180810, "status": "success"},
+    "living_world_integration_gate": {"run_id": 35105180835, "status": "failure", "failure_scope": "canonical browser vertical slice aggregate timeout at Living World WAIT phase"},
+    "playable_candidate_gate": {"run_id": 35105180818, "status": "failure", "failure_scope": "canonical browser vertical slice aggregate timeout at Living World WAIT phase"}
+  },
+  "standalone_experiment": {
+    "branch": "experiment/standalone-html-v1",
+    "branch_head": "cd5b55accea05283338ce043fb68bd122ebb9038",
+    "design_spec": "docs/superpowers/specs/2026-09-13-standalone-html-v1-design.md",
+    "implementation_plan": "docs/superpowers/plans/2026-09-13-standalone-html-v1.md",
+    "artifact_manifest": "standalone/ARTIFACT_MANIFEST.json",
+    "status": "verified_artifact_delivered_source_persistence_pending",
+    "target_artifact": "standalone/dist/sam-sebe-rpg.html",
+    "delivered_artifact": "Sam-Sebe-RPG-Standalone-v1.html",
+    "artifact_sha256": "0270ef50b4b09ee2572da95691df2dd07de3bf272945cb4187e2f06bde667dfb",
+    "artifact_size_bytes": 791780,
+    "visual_theme": "dark graphite UI with milk, scarlet, turquoise and amber accents; embedded generated concept art plus SVG gameplay scenes",
+    "standalone_tests": "13 passed, 0 failed; browser smoke PASS"
+  },
+  "release_reproducibility_work": {
+    "web_lockfile": "web/package-lock.json",
+    "python_constraints": "constraints/python-3.12.txt",
+    "ci_install_policy": "current release/browser workflows use npm ci and constrained pip installs",
+    "windows_launcher": "uses constrained pip and npm ci when the lockfile exists; npm install fallback only if missing",
+    "repository_hygiene": "root .gitignore covers generated caches, environments, browser reports, local SQLite state, environment files, secrets and editor/OS debris",
+    "github_releases": "none"
+  },
+  "known_limitations": [
+    "RQ-H01 and RQ-H06 are RED because two required browser-bearing workflows are fresh failures on the exact validation candidate.",
+    "RQ-H02 has two confirmed same-candidate Stream Slice passes; a third pass is still required after the canonical-route blocker is resolved.",
+    "RQ-H07 is GREEN and ux_visual is 15/15 from fresh exact-candidate desktop, 390x844 portrait and 844x390 coarse-pointer browser evidence. Human aesthetic judgment remains separate as RQ-H09.",
+    "An isolated temporary branch agent/autonomy-pilot-validation-v0.1-tmp-unused at 12c4e83c40121cf92dc7007e78ec3e4de424880a remains harmless and unrelated to V1 quality evidence.",
+    "A real human experience and aesthetic check remains required as RQ-H09 after technical gates are complete."
+  ],
+  "current_blocker": "Fresh required release gates Playable Candidate 35105180818 and Living World Integration 35105180835 are RED on candidate 8402e77367bb0bb8ac28b1acd5ebcf485b3c9eb1 because the canonical browser route exhausts its 180000ms aggregate test budget at the Living World WAIT phase."
+}

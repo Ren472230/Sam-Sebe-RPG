@@ -1,0 +1,192 @@
+#interaction-hint {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 42px;
+  border-top: 0;
+  border-left: 4px solid #65d5d9;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .45);
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+
+#interaction-hint::before {
+  content: "Подсказка";
+  flex: 0 0 auto;
+  padding: 4px 7px;
+  background: #202326;
+  color: #eee8dc;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+#interaction-hint[data-contextual="true"] {
+  border-left-color: #e13b3f;
+  box-shadow: inset 0 -3px 0 rgba(101, 213, 217, .55);
+}
+
+#interaction-hint[data-contextual="true"]::before {
+  content: "Действие";
+  background: #e13b3f;
+  color: #fff;
+}
+
+@media (max-width: 700px) {
+  #interaction-hint {
+    min-height: 40px;
+    gap: 8px;
+    padding: 7px 10px;
+    font-size: 12px;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+  }
+
+  #interaction-hint::before {
+    padding: 4px 6px;
+    font-size: 9px;
+  }
+
+  #touch-controls button[data-pressed="true"] {
+    background: #65d5d9;
+    border-color: #65d5d9;
+    box-shadow: inset 0 0 0 2px #202326, 0 2px 0 #0f1112;
+    transform: translateY(1px);
+  }
+
+  #touch-controls .touch-action[data-pressed="true"] {
+    border-left-color: #e13b3f;
+    border-bottom-color: #65d5d9;
+  }
+
+  #touch-controls button:focus-visible {
+    outline: 3px solid #65d5d9;
+    outline-offset: 2px;
+  }
+}
+
+@media (min-width: 701px) and (max-width: 900px) and (any-pointer: coarse) {
+  #interaction-hint {
+    min-height: 40px;
+    gap: 8px;
+    padding: 7px 10px;
+    font-size: 12px;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+  }
+
+  #interaction-hint::before {
+    padding: 4px 6px;
+    font-size: 9px;
+  }
+
+  body #touch-controls {
+    display: grid;
+    grid-template-columns: minmax(180px, auto) minmax(132px, .8fr);
+    gap: 10px;
+    align-items: stretch;
+    padding: 8px 12px max(10px, env(safe-area-inset-bottom));
+    background: #1d2023;
+    border: 1px solid #4a4f53;
+    border-top: 0;
+  }
+
+  .touch-dpad {
+    display: grid;
+    grid-template-columns: repeat(3, 48px);
+    grid-template-rows: repeat(2, 48px);
+    gap: 5px;
+    justify-content: center;
+  }
+
+  #touch-controls button {
+    min-width: 48px;
+    min-height: 48px;
+    border: 1px solid #6d7478;
+    background: #eee8dc;
+    color: #202326;
+    font-weight: 900;
+    font-size: 20px;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  .touch-up { grid-column: 2; grid-row: 1; }
+  .touch-left { grid-column: 1; grid-row: 2; }
+  .touch-down { grid-column: 2; grid-row: 2; }
+  .touch-right { grid-column: 3; grid-row: 2; }
+
+  #touch-controls .touch-action {
+    min-height: 101px;
+    display: grid;
+    align-content: center;
+    gap: 4px;
+    padding: 8px 10px;
+    border-left: 4px solid #e13b3f;
+    text-align: left;
+  }
+
+  .touch-action-key {
+    color: #3b5558;
+    font-size: 10px;
+    line-height: 1;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+  }
+
+  .touch-action-context {
+    font-size: 13px;
+    line-height: 1.2;
+    overflow-wrap: anywhere;
+  }
+
+  #touch-controls .touch-action[data-contextual="true"] {
+    border-bottom: 4px solid #65d5d9;
+  }
+
+  #touch-controls .touch-action[data-contextual="true"] .touch-action-context {
+    color: #8f2027;
+  }
+
+  #touch-controls button[data-pressed="true"] {
+    background: #65d5d9;
+    border-color: #65d5d9;
+    box-shadow: inset 0 0 0 2px #202326, 0 2px 0 #0f1112;
+    transform: translateY(1px);
+  }
+
+  #touch-controls .touch-action[data-pressed="true"] {
+    border-left-color: #e13b3f;
+    border-bottom-color: #65d5d9;
+  }
+
+  #touch-controls button:focus-visible {
+    outline: 3px solid #65d5d9;
+    outline-offset: 2px;
+  }
+
+  #dialogue {
+    position: fixed;
+    left: 12px;
+    right: 12px;
+    bottom: max(8px, env(safe-area-inset-bottom));
+    max-height: calc(100dvh - 16px - env(safe-area-inset-bottom));
+    z-index: 20;
+    overflow: hidden;
+  }
+
+  #dialogue:not([hidden]) {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .dialogue-transcript {
+    min-height: 0;
+    max-height: min(36dvh, 230px);
+  }
+
+  .dialogue-actions button {
+    min-height: 44px;
+  }
+}

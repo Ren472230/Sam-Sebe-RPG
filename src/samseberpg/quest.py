@@ -115,7 +115,7 @@ class QuestService:
                     action_type="QUEST_TURN_IN",
                     success=False,
                     code="INSUFFICIENT_FIREWOOD",
-                    summary=f"Oren still needs {REQUIRED_FIREWOOD - state.owned_firewood} more firewood.",
+                    summary=f"Орену всё ещё нужны дрова. Осталось принести: {REQUIRED_FIREWOOD - state.owned_firewood}.",
                 )
                 conn.execute("COMMIT")
                 return result

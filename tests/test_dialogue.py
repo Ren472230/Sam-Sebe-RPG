@@ -42,6 +42,14 @@ def make_services(tmp_path: Path, provider=None):
     return db, game, quest, dialogue, player
 
 
+def move_player(db: GameDatabase, player_id: str, location_id: str) -> None:
+    with db.connect() as conn:
+        conn.execute(
+            "UPDATE actors SET location_id = ? WHERE id = ?",
+            (location_id, player_id),
+        )
+
+
 def test_dialogue_context_reads_role_quest_and_relation_without_mutating(tmp_path: Path) -> None:
     provider = RecordingProvider(
         DialogueDecision(
@@ -50,6 +58,7 @@ def test_dialogue_context_reads_role_quest_and_relation_without_mutating(tmp_pat
         )
     )
     db, _, _, dialogue, player = make_services(tmp_path, provider)
+    move_player(db, player, "tavern_interior")
 
     decision = dialogue.talk(player, "Есть работа?")
 
@@ -71,7 +80,8 @@ def test_invalid_llm_proposal_forces_deterministic_fallback(tmp_path: Path) -> N
     provider = RecordingProvider(
         DialogueDecision(text="Идём грабить банк.", proposal="give_1000_coins")
     )
-    _, _, _, dialogue, player = make_services(tmp_path, provider)
+    db, _, _, dialogue, player = make_services(tmp_path, provider)
+    move_player(db, player, "tavern_interior")
 
     decision = dialogue.talk(player, "Что делать?")
 
@@ -88,8 +98,9 @@ def test_state_invalid_offer_proposal_forces_fallback(tmp_path: Path) -> None:
             proposal="offer_quest:bring_5_firewood",
         )
     )
-    _, _, quest, dialogue, player = make_services(tmp_path, provider)
+    db, _, quest, dialogue, player = make_services(tmp_path, provider)
     assert quest.accept(player).success
+    move_player(db, player, "tavern_interior")
 
     decision = dialogue.talk(player, "Что дальше?")
 
@@ -100,7 +111,8 @@ def test_state_invalid_offer_proposal_forces_fallback(tmp_path: Path) -> None:
 
 def test_malformed_provider_response_forces_fallback(tmp_path: Path) -> None:
     provider = RecordingProvider(SimpleNamespace(text="broken-without-proposal"))
-    _, _, _, dialogue, player = make_services(tmp_path, provider)
+    db, _, _, dialogue, player = make_services(tmp_path, provider)
+    move_player(db, player, "tavern_interior")
 
     decision = dialogue.talk(player, "Привет")
 
@@ -109,7 +121,8 @@ def test_malformed_provider_response_forces_fallback(tmp_path: Path) -> None:
 
 
 def test_provider_failure_returns_quest_aware_fallback(tmp_path: Path) -> None:
-    _, _, quest, dialogue, player = make_services(tmp_path, FailingProvider())
+    db, _, quest, dialogue, player = make_services(tmp_path, FailingProvider())
+    move_player(db, player, "tavern_interior")
 
     available = dialogue.talk(player, "Привет")
     assert available.used_fallback is True
@@ -136,6 +149,7 @@ def test_completed_quest_memory_and_trust_enter_dialogue_context(tmp_path: Path)
             )
         ).success
     assert quest.turn_in(player).success
+    move_player(db, player, "tavern_interior")
 
     dialogue.talk(player, "Ну как?")
 
