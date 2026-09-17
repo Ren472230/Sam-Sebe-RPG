@@ -22,16 +22,16 @@
     "Validation candidate 789d36a490dd1d10737a1671aa43213e33b5f0d8 has fresh RED required browser gates in the canonical firewood route: Prototype Web CI 35168790557, Playable Candidate 35168790554 and Living World Integration 35168790572."
   ],
   "active_run": {
-    "run_id": null,
-    "status": "idle",
-    "started_at_utc": null,
-    "lease_expires_at_utc": null,
-    "base_sha": null,
+    "run_id": "2026-09-17-gameplay-firewood-route-2",
+    "status": "running",
+    "started_at_utc": "2026-09-17T01:50:38Z",
+    "lease_expires_at_utc": "2026-09-17T03:20:38Z",
+    "base_sha": "140b05f261b833955dde71a3aea6708aadb4cbde",
     "working_branch": "agent/autonomy-pilot-v0.1"
   },
   "last_handoff": {
     "completed_at_utc": "2026-09-17T01:25:30Z",
-    "result": "SESSION_OBJECTIVE: RQ-H07 regression reconciliation on exact validation candidate 789d36a490dd1d10737a1671aa43213e33b5f0d8. CHECKPOINT 1: Visual Forge Gate 35168790563 is GREEN on the exact candidate. CHECKPOINT 2: fresh browser-bearing workflows prove the visual/input surfaces remain healthy: 70/70 web/UI contracts PASS, production build PASS, desktop first-run/dialogue/interaction tests PASS, 390x844 portrait touch/action/modal/Living World tests PASS, and 844x390 coarse-pointer landscape fallback PASS. CHECKPOINT 3: the three required-gate failures are isolated to the canonical real-control firewood route and do not reproduce overflow, overlap, hidden controls, unreadable hints, modal/input failure or desktop keyboard regression. Prototype Web CI 35168790557 and Living World Integration 35168790572 reached a firewood interaction but HUD remained at 1/5 instead of 2/5; Playable Candidate 35168790554 did not expose the 'подобрать дрова' interaction within the route timeout. Browser console/page errors were absent in the recorded failures. RQ-H07 therefore remains GREEN and ux_visual remains 15/15; QUALITY_STATE now records the fresh exact-candidate visual evidence. No visual feature or cosmetic code was added because no V1-required visual defect was proven. STOP_REASON: OBJECTIVE_COMPLETE.",
+    "result": "SESSION_OBJECTIVE: RQ-H07 regression reconciliation on exact validation candidate 789d36a490dd1d10737a1671aa43213e33b5f0d8. CHECKPOINT 1: Visual Forge Gate 35168790563 is GREEN on the exact candidate. CHECKPOINT 2: fresh browser-bearing workflows prove the visual/input surfaces remain healthy: 70/70 web/UI contracts PASS, production build PASS, desktop first-run/dialogue/interaction tests PASS, 390x844 portrait touch/action/modal/Living World tests PASS, and 844x390 coarse-pointer landscape fallback PASS. CHECKPOINT 3: the three required-gate failures are isolated to the canonical real-control firewood route and do not reproduce overflow, overlap, hidden controls, unreadable hints, modal/input failure or desktop keyboard regression. Prototype Web CI 35168790557 and Living World Integration 35168790572 reached a firewood interaction but HUD remained at 1/5 instead of 2/5; Playable Candidate 35168790554 did not expose the 'подобрать дрова' interaction within 12 seconds. Browser console/page errors were absent in the recorded failures. RQ-H07 therefore remains GREEN and ux_visual remains 15/15; QUALITY_STATE now records the fresh exact-candidate visual evidence. No visual feature or cosmetic code was added because no V1-required visual defect was proven. STOP_REASON: OBJECTIVE_COMPLETE.",
     "head_sha": "581e5b5e04174d3a33d557a6a59f8f9b63c15c1a",
     "work_head_sha": "789d36a490dd1d10737a1671aa43213e33b5f0d8",
     "verification": [
@@ -80,7 +80,7 @@
     "web_lockfile": "web/package-lock.json",
     "python_constraints": "constraints/python-3.12.txt",
     "ci_install_policy": "current release/browser workflows use npm ci and constrained pip installs",
-    "windows_launcher": "uses constrained pip and npm ci when the lockfile exists; npm install fallback only if missing",
+    "windows_launcher": "uses constrained pip and npm ci when lockfile exists; npm install fallback only if missing",
     "repository_hygiene": "root .gitignore covers generated caches, environments, browser reports, local SQLite state, environment files, secrets and editor/OS debris",
     "github_releases": "none"
   },
