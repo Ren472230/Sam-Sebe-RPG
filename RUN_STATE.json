@@ -16,15 +16,15 @@
     "merged": false
   },
   "phase": "v1_quality_validation_in_progress",
-  "current_objective": "RQ-H01/RQ-H06: eliminate the canonical firewood real-control blocker and prove all required release contours on one exact candidate without weakening controls, collisions, interaction radii, timeouts or acceptance criteria.",
-  "next_action": "Reconcile the remaining exact-candidate workflow results for validation SHA 51060290b334c6f4656dadeeca5a74f5889b096f. If Prototype Web CI 35172408525, Playable Candidate 35172408495 and Living World Integration 35172408572 finish GREEN, update QUALITY_STATE from the complete same-SHA evidence and evaluate RQ-H02 using the independent same-SHA Stream Slice executions. If any finishes RED, inspect that exact failed job before making another change.",
+  "current_objective": "RQ-H01/RQ-H06: eliminate the reproducible canonical second-firewood real-control failure on the current validation line and recover the required browser gates without weakening gameplay, interactions, collisions, timeouts or acceptance criteria.",
+  "next_action": "Recover the expired prior gameplay run from current branch HEAD c28cc40dffbdd821bfcd216c83ba7b8239b5e756, inspect the exact second-firewood failure from validation run 35177003077, prove whether the defect is controller timing or game interaction handling, then apply the smallest evidence-backed fix and validate on one exact candidate.",
   "blockers": [],
   "active_run": {
-    "run_id": "2026-09-17-gameplay-firewood-release-sequence-1",
+    "run_id": "2026-09-17-gameplay-firewood-interaction-race-2",
     "status": "running",
-    "started_at_utc": "2026-09-17T02:50:23Z",
-    "lease_expires_at_utc": "2026-09-17T04:20:23Z",
-    "base_sha": "26221b738d5030736f89590aedbb199281fb22bc",
+    "started_at_utc": "2026-09-17T04:52:12Z",
+    "lease_expires_at_utc": "2026-09-17T06:22:12Z",
+    "base_sha": "c28cc40dffbdd821bfcd216c83ba7b8239b5e756",
     "working_branch": "agent/autonomy-pilot-v0.1"
   },
   "last_handoff": {
@@ -85,9 +85,9 @@
     "github_releases": "none"
   },
   "known_limitations": [
-    "Exact-candidate verification is incomplete until Prototype Web CI, Playable Candidate and Living World Integration finish on 51060290b334c6f4656dadeeca5a74f5889b096f.",
-    "QUALITY_STATE still reflects the last fully reconciled evidence and must be updated only after the pending exact-candidate workflows complete.",
+    "The previous gameplay lease expired after partial work that changed only RUN_STATE.json and web/tests/vertical-slice.spec.ts; fresh validation on mirrored b43c0935d0aecd5750cea1d1d980304ffe02e037 kept Visual Forge, Stream Slice, Windows and Release Reproducibility GREEN while Prototype Web CI, Playable Candidate and Living World Integration remained RED on the canonical second-firewood path.",
+    "QUALITY_STATE still reflects the last fully reconciled evidence and must be updated only after a new exact-candidate result is complete.",
     "RQ-H09 remains a real human experience gate after technical readiness."
   ],
-  "current_blocker": null
+  "current_blocker": "Canonical browser route sees the second firewood prompt and presses E, but the HUD remains at 1/5 on fresh validation b43c0935d0aecd5750cea1d1d980304ffe02e037; root cause still requires proof."
 }
