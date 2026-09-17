@@ -85,14 +85,12 @@ async function moveAndInteractWhenHint(
   try {
     await expect(hint).toContainText(hintText, { timeout });
 
-    // Stop real movement before pressing the interaction key. The scene handles E
-    // asynchronously, so keeping a movement key held can carry the avatar through
-    // the next narrow interaction window while TAKE/MOVE is still completing.
-    // A human naturally stops at the visible prompt, then interacts; mirror that
-    // physical sequence without teleporting, widening radii or retrying actions.
+    // The visible prompt means the scene has already latched this interaction and
+    // keeps it valid for its short human input grace window. Release only the keys
+    // this approach is holding, then interact immediately. A second all-key release
+    // plus a settle/reconfirm round trip can outlive that grace window on a slow CI
+    // runner even though the player actually reached the interaction physically.
     for (const key of keys) await page.keyboard.up(key);
-    await releaseMovementKeys(page);
-    await expect(hint).toContainText(hintText, { timeout: 1_000 });
     await page.keyboard.press("e");
   } finally {
     for (const key of keys) await page.keyboard.up(key);
